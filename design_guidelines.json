@@ -1,0 +1,122 @@
+{
+  "project_name": "Girogirotondo Kindergarten App",
+  "theme": "light",
+  "archetype": "Vibrant Play (Youth Coaching & Education)",
+  "colors": {
+    "primary": "#4169E1",
+    "secondary": "#FF69B4",
+    "accent": "#32CD32",
+    "background": "#FFFDD0",
+    "surface": "#FFFFFF",
+    "text_primary": "#1A202C",
+    "text_secondary": "#4A5568",
+    "border": "#E2E8F0"
+  },
+  "typography": {
+    "heading_font": "Nunito, sans-serif",
+    "body_font": "Poppins, sans-serif",
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl font-black tracking-tight",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-gray-600",
+      "label": "text-xs font-bold uppercase tracking-wider text-gray-500"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous spacing, uncluttered UI, mobile-first design. Use generous padding to make elements feel touch-friendly and safe.",
+    "container_padding": "px-4 sm:px-6 md:px-8 py-6",
+    "grid_system": {
+      "dashboard_cards": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6",
+      "forms": "flex flex-col gap-4 md:gap-6"
+    }
+  },
+  "components": {
+    "corners": "rounded-2xl",
+    "shadows": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+    "buttons": {
+      "primary": "bg-[#4169E1] text-white rounded-2xl px-6 py-3 font-bold hover:bg-blue-700 transition-colors shadow-sm",
+      "secondary": "bg-[#FF69B4] text-white rounded-2xl px-6 py-3 font-bold hover:bg-pink-600 transition-colors shadow-sm",
+      "accent": "bg-[#32CD32] text-white rounded-2xl px-6 py-3 font-bold hover:bg-green-600 transition-colors shadow-sm",
+      "outline": "border-2 border-[#4169E1] text-[#4169E1] rounded-2xl px-6 py-3 font-bold hover:bg-blue-50 transition-colors"
+    },
+    "cards": {
+      "base": "bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-shadow duration-300"
+    },
+    "inputs": {
+      "base": "rounded-xl border-gray-200 bg-gray-50 px-4 py-3 focus:ring-2 focus:ring-[#4169E1] focus:bg-white transition-all outline-none w-full"
+    }
+  },
+  "motion": {
+    "hover": "transform hover:-translate-y-1 transition-all duration-300",
+    "tap": "active:scale-95 transition-transform",
+    "page_transition": "animate-in fade-in slide-in-from-bottom-4 duration-500"
+  },
+  "image_urls": {
+    "logos": [
+      {
+        "description": "Girogirotondo playful logo",
+        "url": "https://static.prod-images.emergentagent.com/jobs/10b09de9-cfb5-42c2-b2cf-51ea29d92cb3/images/9fa6dbe2f564e499527822187c53a5200863e4ee46a823a78d3cfee45191ab52.png",
+        "category": "logo"
+      }
+    ],
+    "backgrounds": [
+      {
+        "description": "Abstract pastel shapes background for Login screen",
+        "url": "https://static.prod-images.emergentagent.com/jobs/10b09de9-cfb5-42c2-b2cf-51ea29d92cb3/images/627bffb2200b7cd3e5d52fa7912c93c3b765874530dbc2301e86bfa893790f9e.png",
+        "category": "auth_bg"
+      }
+    ],
+    "gallery": [
+      {
+        "description": "Kids playing outdoors",
+        "url": "https://images.unsplash.com/photo-1627764940620-90393d0e8c34?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxjaGlsZHJlbiUyMHBsYXlpbmd8ZW58MHx8fHwxNzc0NDgxOTA3fDA&ixlib=rb-4.1.0&q=85",
+        "category": "gallery_item"
+      },
+      {
+        "description": "Toddler engaging with blocks",
+        "url": "https://images.pexels.com/photos/5435599/pexels-photo-5435599.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "gallery_item"
+      },
+      {
+        "description": "Joyful girl playing with wooden toys",
+        "url": "https://images.pexels.com/photos/3662648/pexels-photo-3662648.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "gallery_item"
+      }
+    ],
+    "meals": [
+      {
+        "description": "Healthy kid's lunch overhead view",
+        "url": "https://images.pexels.com/photos/5905683/pexels-photo-5905683.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "meal_item"
+      },
+      {
+        "description": "Kid at table with lunch container",
+        "url": "https://images.pexels.com/photos/5905690/pexels-photo-5905690.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "meal_item"
+      }
+    ],
+    "portraits": [
+      {
+        "description": "Teacher smiling portrait",
+        "url": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwxfHx0ZWFjaGVyJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzc0NDgxOTA5fDA&ixlib=rb-4.1.0&q=85",
+        "category": "teacher_avatar"
+      },
+      {
+        "description": "Teacher in classroom",
+        "url": "https://images.pexels.com/photos/5212675/pexels-photo-5212675.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "teacher_avatar"
+      }
+    ]
+  },
+  "instructions_to_main_agent": {
+    "app_structure": "Mobile-first dashboard with 3 distinct roles: Parent, Teacher, Admin. Use a unified layout wrapper with a bottom navigation bar for mobile and a side/top nav for desktop.",
+    "routing": "1. `/login` -> Role selection or unified login. 2. `/parent/...` (Dashboard, Profile, Modulistica, Appointments). 3. `/teacher/...` (Dashboard/Advanced Griglia, Media Upload). 4. `/admin/...` (Dashboard, User/Class CRUD, Appointments, Modulistica Manager).",
+    "ui_details": "Background of the app must be `#FFFDD0`. Cards must be `#FFFFFF` with `rounded-2xl`. Use `#4169E1` as primary action color. Use `#FF69B4` and `#32CD32` for accents (e.g., badges, secondary buttons). Iconography should be `lucide-react`.",
+    "footer_requirement": "Every screen MUST include the footer: 'Realizzata da Omnia. Piattaforma conforme alle normative GDPR per il trattamento dei dati personali e la tutela dei minori.' Style it subtly (text-xs, text-center, text-gray-500, p-4).",
+    "language": "All text and labels MUST be in Italian.",
+    "testing": "All interactive elements MUST have `data-testid` attributes (e.g., `data-testid=\"login-submit-button\"`, `data-testid=\"parent-dashboard-card\"`)."
+  }
+}

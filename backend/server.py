@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -371,14 +371,14 @@ async def login(req: LoginRequest):
     return {"token": token, "user": safe_user}
 
 @api_router.get("/auth/me")
-async def get_me(authorization: str = None):
+async def get_me(authorization: Optional[str] = Header(None)):
     if not authorization:
-        raise HTTPException(status_code=401)
+        raise HTTPException(status_code=401, detail="No token provided")
     token = authorization.replace("Bearer ", "")
     payload = decode_token(token)
     user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
     if not user:
-        raise HTTPException(status_code=401)
+        raise HTTPException(status_code=401, detail="User not found")
     safe_user = {k: v for k, v in user.items() if k != "password"}
     return safe_user
 

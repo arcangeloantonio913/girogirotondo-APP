@@ -57,12 +57,12 @@ class GrigliaEntry(BaseModel):
     class_id: str
     student_ids: List[str]
     date: str
-    presence: bool = False
-    bathroom: bool = False
-    sleep: bool = False
-    meal_first: bool = False
-    meal_second: bool = False
-    snack: bool = False
+    colazione: bool = False
+    pranzo: bool = False
+    frutta: bool = False
+    merenda: bool = False
+    cacca: bool = False
+    pisolino: bool = False
     notes: str = ""
 
 class DiaryEntry(BaseModel):
@@ -241,12 +241,12 @@ async def seed_database():
             "class_id": classes[0]["id"],
             "student_id": s["id"],
             "date": today,
-            "presence": True,
-            "bathroom": True,
-            "sleep": s["name"] != "Marco Russo",
-            "meal_first": True,
-            "meal_second": True,
-            "snack": True,
+            "colazione": True,
+            "pranzo": True,
+            "frutta": s["name"] != "Marco Russo",
+            "merenda": True,
+            "cacca": s["name"] == "Luca Marino",
+            "pisolino": s["name"] != "Marco Russo",
             "notes": "Giornata serena" if s == students[0] else "",
             "created_at": datetime.now(timezone.utc).isoformat()
         })
@@ -482,12 +482,12 @@ async def save_griglia(entry: GrigliaEntry):
             "class_id": entry.class_id,
             "student_id": sid,
             "date": entry.date,
-            "presence": entry.presence,
-            "bathroom": entry.bathroom,
-            "sleep": entry.sleep,
-            "meal_first": entry.meal_first,
-            "meal_second": entry.meal_second,
-            "snack": entry.snack,
+            "colazione": entry.colazione,
+            "pranzo": entry.pranzo,
+            "frutta": entry.frutta,
+            "merenda": entry.merenda,
+            "cacca": entry.cacca,
+            "pisolino": entry.pisolino,
             "notes": entry.notes,
             "created_at": datetime.now(timezone.utc).isoformat()
         }

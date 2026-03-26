@@ -20,7 +20,7 @@ export default function ParentProfile() {
         {/* Child Info Card */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#FF69B4' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#F4C2C2' }}>
               {child?.name?.charAt(0) || 'B'}
             </div>
             <div>
@@ -31,7 +31,7 @@ export default function ParentProfile() {
 
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl" data-testid="child-code-display">
-              <Hash className="w-5 h-5" style={{ color: '#4169E1' }} />
+              <Hash className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Codice Bambino</p>
                 <p className="text-sm font-bold text-gray-900">{child?.child_code || '-'}</p>
@@ -47,14 +47,14 @@ export default function ParentProfile() {
           </h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <User className="w-5 h-5" style={{ color: '#4169E1' }} />
+              <User className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Nome</p>
                 <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl" data-testid="parent-email-display">
-              <Mail className="w-5 h-5" style={{ color: '#4169E1' }} />
+              <Mail className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Email</p>
                 <p className="text-sm font-semibold text-gray-900">{user?.email}</p>
@@ -66,21 +66,21 @@ export default function ParentProfile() {
         {/* Support/Contact */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100" data-testid="support-contact-section">
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
-            Supporto e Contatti
+            Segreteria & Supporto
           </h3>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-              <Phone className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#A7C7E715' }}>
+              <Phone className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Telefono Scuola</p>
-                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>+39 02 1234 5678</p>
+                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>+39 02 1234 5678</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-              <Mail className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#A7C7E715' }}>
+              <Mail className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Email Scuola</p>
-                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>info@girogirotondo.it</p>
+                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>info@girogirotondo.it</p>
               </div>
             </div>
           </div>

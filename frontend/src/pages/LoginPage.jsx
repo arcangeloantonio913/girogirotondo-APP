@@ -54,13 +54,13 @@ export default function LoginPage() {
           <img
             src="https://customer-assets.emergentagent.com/job_early-learning-hub-14/artifacts/s6dyubjw_logo_girogirotondo-removebg-preview.png"
             alt="Girogirotondo"
-            className="w-32 h-32 mx-auto object-contain mb-2"
+            className="w-44 h-44 mx-auto object-contain mb-1"
             data-testid="login-logo"
           />
           <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            <span style={{ color: '#4169E1' }}>Giro</span>
-            <span style={{ color: '#FF69B4' }}>giro</span>
-            <span style={{ color: '#32CD32' }}>tondo</span>
+            <span style={{ color: '#A7C7E7' }}>Giro</span>
+            <span style={{ color: '#F4C2C2' }}>giro</span>
+            <span style={{ color: '#98FB98' }}>tondo</span>
           </h1>
           <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
             Scuola dell'infanzia
@@ -127,7 +127,7 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               className="w-full h-11 rounded-2xl font-bold text-white shadow-sm"
-              style={{ backgroundColor: '#4169E1' }}
+              style={{ backgroundColor: '#A7C7E7' }}
             >
               {loading ? 'Accesso in corso...' : 'Accedi'}
             </Button>
@@ -147,7 +147,7 @@ export default function LoginPage() {
               data-testid="quick-login-admin"
               onClick={() => quickLogin('admin')}
               className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#4169E1', color: 'white' }}
+              style={{ backgroundColor: '#A7C7E7', color: 'white' }}
             >
               Admin
             </button>
@@ -155,7 +155,7 @@ export default function LoginPage() {
               data-testid="quick-login-teacher"
               onClick={() => quickLogin('teacher')}
               className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#FF69B4', color: 'white' }}
+              style={{ backgroundColor: '#F4C2C2', color: 'white' }}
             >
               Maestra
             </button>
@@ -163,7 +163,7 @@ export default function LoginPage() {
               data-testid="quick-login-parent"
               onClick={() => quickLogin('parent')}
               className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#32CD32', color: 'white' }}
+              style={{ backgroundColor: '#98FB98', color: '#555' }}
             >
               Genitore
             </button>

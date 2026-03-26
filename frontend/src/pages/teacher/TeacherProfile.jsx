@@ -27,12 +27,12 @@ export default function TeacherProfile() {
         {/* Teacher Info Card */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#FF69B4' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#F4C2C2' }}>
               {user?.name?.charAt(0) || 'M'}
             </div>
             <div>
               <h2 className="text-xl font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{user?.name || 'Caricamento...'}</h2>
-              <p className="text-sm font-medium" style={{ color: '#FF69B4' }}>Maestra</p>
+              <p className="text-sm font-medium" style={{ color: '#E8919A' }}>Maestra</p>
             </div>
           </div>
 

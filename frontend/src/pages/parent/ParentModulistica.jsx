@@ -52,8 +52,8 @@ export default function ParentModulistica() {
     <AppLayout title="Documenti" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="parent-modulistica-page">
         {/* GDPR Notice */}
-        <div className="bg-blue-50 rounded-2xl p-4 flex items-start gap-3" data-testid="gdpr-notice">
-          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#4169E1' }} />
+        <div className="rounded-2xl p-4 flex items-start gap-3" style={{ backgroundColor: '#A7C7E715' }} data-testid="gdpr-notice">
+          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#A7C7E7' }} />
           <p className="text-xs text-gray-700 leading-relaxed">
             Il trattamento di dati e foto è rigorosamente conforme alle normative GDPR e alle leggi sulla privacy vigenti. Tutti i documenti sono gestiti nel rispetto della normativa sulla tutela dei minori.
           </p>
@@ -75,8 +75,8 @@ export default function ParentModulistica() {
                 className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100"
               >
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EBF0FF' }}>
-                    <FileText className="w-5 h-5" style={{ color: '#4169E1' }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#A7C7E720' }}>
+                    <FileText className="w-5 h-5" style={{ color: '#A7C7E7' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>{doc.title}</h3>
@@ -95,7 +95,7 @@ export default function ParentModulistica() {
                     onClick={() => handleAcknowledge(doc.id)}
                     disabled={acknowledging === doc.id}
                     className="w-full rounded-xl font-semibold h-10 text-sm"
-                    style={{ backgroundColor: '#4169E1' }}
+                    style={{ backgroundColor: '#A7C7E7' }}
                   >
                     <Circle className="w-4 h-4 mr-2" />
                     {acknowledging === doc.id ? 'Confermando...' : 'Presa Visione'}

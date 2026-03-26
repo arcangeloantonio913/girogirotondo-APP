@@ -36,9 +36,9 @@ function getNavItems(role) {
 }
 
 function getRoleColor(role) {
-  if (role === 'admin') return '#4169E1';
-  if (role === 'teacher') return '#FF69B4';
-  return '#32CD32';
+  if (role === 'admin') return '#A7C7E7';
+  if (role === 'teacher') return '#F4C2C2';
+  return '#98FB98';
 }
 
 function getRoleLabel(role) {
@@ -81,7 +81,7 @@ export default function AppLayout({ children, title, showBack }) {
                 className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors relative"
               >
                 <Bell className="w-5 h-5 text-gray-700" />
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#FF69B4' }}>3</span>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#F4C2C2' }}>3</span>
               </button>
             )}
           </div>
@@ -93,7 +93,7 @@ export default function AppLayout({ children, title, showBack }) {
               <img
                 src={LOGO_URL}
                 alt="Girogirotondo"
-                className="h-11 w-auto object-contain"
+                className="h-12 w-auto object-contain"
                 data-testid="header-logo"
               />
             )}

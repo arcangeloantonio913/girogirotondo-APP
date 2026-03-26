@@ -37,10 +37,15 @@ Build a complete, responsive mobile-first web application for a premium kinderga
 - Backend updated with new griglia fields: colazione, pranzo, frutta, merenda, cacca, pisolino
 - All 3 dashboards (Parent/Teacher/Admin) functional with mock JWT auth
 
+## UI Refinements (2026-03-26, Iteration 4)
+- **Login subtitle**: Changed to "La tua scuola a portata di mano"
+- **Teacher Media Upload**: Native OS file picker (input type=file accept=image/*,video/*), vertical student checklist with checkboxes and "Seleziona Tutti" toggle, file preview with remove, multi-file support
+- **UI Contrast**: Replaced all soft/diffuse shadows with crisp `shadow-md` across all pages. Quick login section now solid white (removed bg-white/60). Login card shadow upgraded. Header uses `shadow-sm`, bottom nav uses crisp upward shadow.
+- **Testing**: 100% frontend pass rate (iteration_4.json)
+
 ## Test Results
-- Backend: 87% (20/23 passed) → fixed /api/auth/me → now 100%
-- Frontend: 95% (19/20 features working)
-- Overall: 91%+ success rate
+- Iteration 1-3: Backend 100%, Frontend 95%+ 
+- Iteration 4 (UI Refinements): Frontend 100% (all 20 tests passed)
 
 ## Prioritized Backlog
 ### P0 (Critical - Next Phase)

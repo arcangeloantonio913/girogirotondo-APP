@@ -163,11 +163,12 @@ export default function TeacherMedia() {
 
         {/* Upload Modal */}
         <Dialog open={uploadModalOpen} onOpenChange={(open) => { if (!open) resetModal(); setUploadModalOpen(open); }}>
-          <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[90vh] overflow-y-auto" data-testid="upload-modal">
+          <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[90vh] overflow-y-auto" data-testid="upload-modal" aria-describedby="upload-dialog-desc">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
                 Carica Media
               </DialogTitle>
+              <p className="sr-only" id="upload-dialog-desc">Seleziona file, tagga alunni e carica media</p>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               {/* File Selection Area - triggers native OS file picker */}

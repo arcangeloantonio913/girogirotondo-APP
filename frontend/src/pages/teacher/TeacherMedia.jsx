@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -6,14 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Camera, Upload, Image, Check, Plus, X, FileImage, Film } from 'lucide-react';
-
-const PLACEHOLDER_IMAGES = [
-  'https://images.unsplash.com/photo-1627764940620-90393d0e8c34?w=600',
-  'https://images.pexels.com/photos/5435599/pexels-photo-5435599.jpeg?w=600',
-  'https://images.pexels.com/photos/3662648/pexels-photo-3662648.jpeg?w=600',
-  'https://images.pexels.com/photos/5905683/pexels-photo-5905683.jpeg?w=600',
-];
+import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Square } from 'lucide-react';
 
 export default function TeacherMedia() {
   const { user } = useAuth();
@@ -24,8 +17,9 @@ export default function TeacherMedia() {
   const [uploaded, setUploaded] = useState(false);
   const [gallery, setGallery] = useState([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [mediaType, setMediaType] = useState('photo');
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (user?.class_id) {
@@ -45,26 +39,57 @@ export default function TeacherMedia() {
     );
   };
 
-  const simulateFileSelect = () => {
-    const randomImg = PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)];
-    setSelectedFile(randomImg);
+  const selectAll = () => {
+    if (selectedStudents.length === students.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(students.map(s => s.id));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setSelectedFiles(files);
+    const urls = files.map(f => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+  };
+
+  const removeFile = (idx) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+    setPreviewUrls(prev => {
+      URL.revokeObjectURL(prev[idx]);
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const resetModal = () => {
+    setSelectedFiles([]);
+    previewUrls.forEach(u => URL.revokeObjectURL(u));
+    setPreviewUrls([]);
+    setSelectedStudents([]);
+    setCaption('');
   };
 
   const handleUpload = async () => {
-    if (selectedStudents.length === 0 || !caption || !selectedFile) return;
+    if (selectedStudents.length === 0 || !caption || selectedFiles.length === 0) return;
     setUploading(true);
     try {
+      const mediaUrl = previewUrls[0] || 'uploaded_file';
+      const mediaType = selectedFiles[0]?.type?.startsWith('video') ? 'video' : 'photo';
       const res = await api.post('/gallery', {
         class_id: user.class_id,
         student_ids: selectedStudents,
-        media_url: selectedFile,
+        media_url: mediaUrl,
         media_type: mediaType,
         caption,
       });
       setGallery([res.data, ...gallery]);
-      setSelectedStudents([]);
-      setCaption('');
-      setSelectedFile(null);
+      resetModal();
       setUploadModalOpen(false);
       setUploaded(true);
       setTimeout(() => setUploaded(false), 3000);
@@ -75,14 +100,27 @@ export default function TeacherMedia() {
     }
   };
 
+  const allSelected = students.length > 0 && selectedStudents.length === students.length;
+
   return (
     <AppLayout title="Carica Media" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="teacher-media-page">
+        {/* Hidden native file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          className="hidden"
+          onChange={handleFileChange}
+          data-testid="native-file-input"
+        />
+
         {/* Upload Button */}
         <button
           data-testid="open-upload-modal-button"
           onClick={() => setUploadModalOpen(true)}
-          className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border-2 border-dashed border-gray-200 hover:border-green-300 transition-all text-center group"
+          className="w-full bg-white rounded-2xl shadow-md p-6 border-2 border-dashed border-gray-200 hover:border-green-300 transition-all text-center group"
         >
           <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center transition-colors" style={{ backgroundColor: '#F0FFF0' }}>
             <Plus className="w-7 h-7" style={{ color: '#32CD32' }} />
@@ -98,7 +136,7 @@ export default function TeacherMedia() {
         )}
 
         {/* Recent Gallery */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden" data-testid="recent-gallery">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="recent-gallery">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
             <Image className="w-4 h-4" style={{ color: '#32CD32' }} />
             <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Caricamenti Recenti</span>
@@ -124,7 +162,7 @@ export default function TeacherMedia() {
         </div>
 
         {/* Upload Modal */}
-        <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+        <Dialog open={uploadModalOpen} onOpenChange={(open) => { if (!open) resetModal(); setUploadModalOpen(open); }}>
           <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[90vh] overflow-y-auto" data-testid="upload-modal">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
@@ -132,69 +170,94 @@ export default function TeacherMedia() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              {/* Media Type */}
-              <div className="flex gap-2">
-                <button
-                  data-testid="media-type-photo"
-                  onClick={() => setMediaType('photo')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${mediaType === 'photo' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
-                  style={mediaType === 'photo' ? { backgroundColor: '#32CD32' } : {}}
-                >
-                  <FileImage className="w-4 h-4" />
-                  Foto
-                </button>
-                <button
-                  data-testid="media-type-video"
-                  onClick={() => setMediaType('video')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${mediaType === 'video' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
-                  style={mediaType === 'video' ? { backgroundColor: '#32CD32' } : {}}
-                >
-                  <Film className="w-4 h-4" />
-                  Video
-                </button>
-              </div>
-
-              {/* File Selection Area */}
+              {/* File Selection Area - triggers native OS file picker */}
               <button
                 data-testid="file-select-area"
-                onClick={simulateFileSelect}
+                onClick={openFilePicker}
                 className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center hover:border-green-300 transition-colors"
               >
-                {selectedFile ? (
-                  <div className="relative">
-                    <img src={selectedFile} alt="Anteprima" className="w-full h-32 object-cover rounded-xl" />
-                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                      <Check className="w-4 h-4 text-white" />
+                {previewUrls.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {previewUrls.map((url, idx) => (
+                        <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden">
+                          {selectedFiles[idx]?.type?.startsWith('video') ? (
+                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                              <Film className="w-6 h-6 text-white" />
+                            </div>
+                          ) : (
+                            <img src={url} alt={`Anteprima ${idx + 1}`} className="w-full h-full object-cover" />
+                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
+                            data-testid={`remove-file-${idx}`}
+                          >
+                            <X className="w-3 h-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
+                    <p className="text-xs text-gray-500 font-medium">{selectedFiles.length} file selezionati - Tocca per aggiungere</p>
                   </div>
                 ) : (
                   <>
                     <Camera className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500 font-medium">Tocca per selezionare file</p>
-                    <p className="text-xs text-gray-400 mt-1">Simulazione con immagine placeholder</p>
+                    <p className="text-sm text-gray-500 font-medium">Tocca per selezionare foto o video</p>
+                    <p className="text-xs text-gray-400 mt-1">Supporta immagini e video multipli</p>
                   </>
                 )}
               </button>
 
-              {/* Tag Students */}
+              {/* Student Checklist - vertical list with checkboxes */}
               <div>
                 <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tagga Alunni</Label>
-                <div className="flex flex-wrap gap-2 mt-2" data-testid="modal-student-tags">
-                  {students.map((s) => {
-                    const selected = selectedStudents.includes(s.id);
-                    return (
-                      <button
-                        key={s.id}
-                        data-testid={`modal-tag-${s.id}`}
-                        onClick={() => toggleStudent(s.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selected ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                        style={selected ? { backgroundColor: '#32CD32' } : {}}
-                      >
-                        {selected && <Check className="w-3 h-3 inline mr-1" />}
-                        {s.name.split(' ')[0]}
-                      </button>
-                    );
-                  })}
+                <div className="mt-2 border border-gray-100 rounded-xl overflow-hidden" data-testid="student-checklist">
+                  {/* Select All button */}
+                  <button
+                    data-testid="select-all-students"
+                    onClick={selectAll}
+                    className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    {allSelected ? (
+                      <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-bold" style={{ color: allSelected ? '#32CD32' : '#374151' }}>
+                      Seleziona Tutti
+                    </span>
+                    <span className="text-xs text-gray-400 ml-auto">
+                      {selectedStudents.length}/{students.length}
+                    </span>
+                  </button>
+
+                  {/* Individual students */}
+                  <div className="max-h-48 overflow-y-auto">
+                    {students.map((s) => {
+                      const isChecked = selectedStudents.includes(s.id);
+                      return (
+                        <button
+                          key={s.id}
+                          data-testid={`student-check-${s.id}`}
+                          onClick={() => toggleStudent(s.id)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+                        >
+                          {isChecked ? (
+                            <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                          )}
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: isChecked ? '#32CD32' : '#D1D5DB' }}>
+                            {s.name.charAt(0)}
+                          </div>
+                          <span className={`text-sm font-medium ${isChecked ? 'text-gray-900' : 'text-gray-600'}`}>
+                            {s.name}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -214,7 +277,7 @@ export default function TeacherMedia() {
               <Button
                 data-testid="modal-upload-button"
                 onClick={handleUpload}
-                disabled={uploading || selectedStudents.length === 0 || !caption || !selectedFile}
+                disabled={uploading || selectedStudents.length === 0 || !caption || selectedFiles.length === 0}
                 className="w-full rounded-2xl font-bold h-11"
                 style={{ backgroundColor: '#32CD32' }}
               >

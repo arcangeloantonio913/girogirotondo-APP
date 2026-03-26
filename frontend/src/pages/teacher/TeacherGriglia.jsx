@@ -138,7 +138,7 @@ export default function TeacherGriglia() {
     <AppLayout title="Griglia Giornaliera" showBack>
       <div className="max-w-3xl mx-auto space-y-4" data-testid="teacher-griglia-page">
         {/* Date Navigation */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
           <div className="flex items-center justify-between">
             <button onClick={() => setDateOffset(d => d - 1)} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100" data-testid="date-prev">
               <ChevronLeft className="w-5 h-5 text-gray-600" />
@@ -161,7 +161,7 @@ export default function TeacherGriglia() {
         </div>
 
         {/* Select All Bar */}
-        <div className="flex items-center justify-between bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] px-4 py-3 border border-gray-100">
+        <div className="flex items-center justify-between bg-white rounded-2xl shadow-md px-4 py-3 border border-gray-100">
           <span className="text-sm font-semibold text-gray-700">{selectedStudents.length}/{students.length} selezionati</span>
           <Button
             data-testid="select-all-button"
@@ -182,7 +182,7 @@ export default function TeacherGriglia() {
 
         {/* Bulk Actions for Selected Students */}
         {selectedStudents.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-3 border border-gray-100" data-testid="bulk-actions">
+          <div className="bg-white rounded-2xl shadow-md p-3 border border-gray-100" data-testid="bulk-actions">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Azione rapida per i selezionati</p>
             <div className="flex gap-1.5 flex-wrap">
               {ACTIVITY_COLS.map(col => (
@@ -201,7 +201,7 @@ export default function TeacherGriglia() {
         )}
 
         {/* Grid Table */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden" data-testid="griglia-table">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="griglia-table">
           {/* Table Header */}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px]">
@@ -281,7 +281,7 @@ export default function TeacherGriglia() {
         </div>
 
         {/* Legend */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100" data-testid="griglia-legend">
+        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100" data-testid="griglia-legend">
           <div className="flex items-center gap-1.5 mb-2">
             <Info className="w-3.5 h-3.5 text-gray-400" />
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Legenda</span>

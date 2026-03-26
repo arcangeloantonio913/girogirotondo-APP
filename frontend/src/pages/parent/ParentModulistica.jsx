@@ -61,7 +61,7 @@ export default function ParentModulistica() {
 
         {/* Documents */}
         {documents.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun documento disponibile</p>
           </div>
@@ -72,7 +72,7 @@ export default function ParentModulistica() {
               <div
                 key={doc.id}
                 data-testid={`document-card-${doc.id}`}
-                className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100"
+                className="bg-white rounded-2xl shadow-md p-5 border border-gray-100"
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#A7C7E720' }}>

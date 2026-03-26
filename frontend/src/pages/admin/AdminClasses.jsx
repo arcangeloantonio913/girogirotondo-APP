@@ -79,7 +79,7 @@ export default function AdminClasses() {
           const color = classColors[idx % classColors.length];
 
           return (
-            <div key={cls.id} data-testid={`class-card-${cls.id}`} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
+            <div key={cls.id} data-testid={`class-card-${cls.id}`} className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
               <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">

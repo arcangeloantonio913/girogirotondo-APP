@@ -19,7 +19,7 @@ export default function ParentGallery() {
     <AppLayout title="Galleria Personale" showBack>
       <div className="max-w-lg mx-auto" data-testid="parent-gallery-page">
         {items.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <Image className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessuna foto disponibile</p>
           </div>
@@ -30,7 +30,7 @@ export default function ParentGallery() {
                 key={item.id}
                 data-testid={`gallery-item-${item.id}`}
                 onClick={() => setSelectedImg(item)}
-                className="relative aspect-square rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-lg transition-all hover:-translate-y-1 group"
+                className="relative aspect-square rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all hover:-translate-y-1 group"
               >
                 <img
                   src={item.media_url}

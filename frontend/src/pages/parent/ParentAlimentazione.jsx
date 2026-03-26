@@ -28,7 +28,7 @@ export default function ParentAlimentazione() {
     <AppLayout title="Alimentazione & Dieta" showBack>
       <div className="max-w-lg mx-auto" data-testid="parent-alimentazione-page">
         {/* Date Header */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 mb-4">
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 mb-4">
           <h3 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Menu del Giorno</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             {new Date(today).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -36,7 +36,7 @@ export default function ParentAlimentazione() {
         </div>
 
         {!meal ? (
-          <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <UtensilsCrossed className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Menu non ancora disponibile</p>
           </div>
@@ -46,7 +46,7 @@ export default function ParentAlimentazione() {
               <div
                 key={idx}
                 data-testid={`meal-item-${idx}`}
-                className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100 flex items-center gap-4"
+                className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 flex items-center gap-4"
               >
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: item.bg }}>
                   <item.icon className="w-5 h-5" style={{ color: item.color }} />

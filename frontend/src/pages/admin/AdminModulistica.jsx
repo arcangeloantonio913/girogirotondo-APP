@@ -82,7 +82,7 @@ export default function AdminModulistica() {
           const progress = parents.length > 0 ? Math.round((readCount / parents.length) * 100) : 0;
 
           return (
-            <div key={doc.id} data-testid={`admin-doc-card-${doc.id}`} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100">
+            <div key={doc.id} data-testid={`admin-doc-card-${doc.id}`} className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>{doc.title}</h3>

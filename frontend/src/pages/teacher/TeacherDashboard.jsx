@@ -52,7 +52,7 @@ export default function TeacherDashboard() {
               key={card.id}
               data-testid={`teacher-card-${card.id}`}
               onClick={() => navigate(card.path)}
-              className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 text-left flex items-center gap-4 active:scale-[0.98]"
+              className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-left flex items-center gap-4 active:scale-[0.98]"
             >
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: card.bg }}>
                 <card.icon className="w-6 h-6" style={{ color: card.color }} />
@@ -67,7 +67,7 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Students List */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden" data-testid="teacher-students-list">
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="teacher-students-list">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
             <Users className="w-4 h-4" style={{ color: '#FF69B4' }} />
             <h3 className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>I Miei Alunni</h3>

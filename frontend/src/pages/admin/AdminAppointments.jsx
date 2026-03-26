@@ -34,7 +34,7 @@ export default function AdminAppointments() {
         </div>
 
         {appointments.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <Calendar className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun appuntamento</p>
           </div>
@@ -42,7 +42,7 @@ export default function AdminAppointments() {
           appointments.map((apt) => {
             const statusInfo = getStatusStyle(apt.status);
             return (
-              <div key={apt.id} data-testid={`appointment-card-${apt.id}`} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100">
+              <div key={apt.id} data-testid={`appointment-card-${apt.id}`} className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#4169E1' }}>

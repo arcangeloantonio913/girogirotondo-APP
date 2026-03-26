@@ -60,7 +60,7 @@ export default function AdminDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6" data-testid="admin-stats-grid">
           {statCards.map((stat) => (
-            <div key={stat.label} data-testid={`stat-card-${stat.label.toLowerCase()}`} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100">
+            <div key={stat.label} data-testid={`stat-card-${stat.label.toLowerCase()}`} className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.bg }}>
                   <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
               key={card.id}
               data-testid={`admin-nav-${card.id}`}
               onClick={() => navigate(card.path)}
-              className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-4 active:scale-[0.99]"
+              className="w-full bg-white rounded-2xl shadow-md p-4 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-4 active:scale-[0.99]"
             >
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: card.bg }}>
                 <card.icon className="w-5 h-5" style={{ color: card.color }} />

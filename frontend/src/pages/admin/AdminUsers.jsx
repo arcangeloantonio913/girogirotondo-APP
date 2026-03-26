@@ -96,7 +96,7 @@ export default function AdminUsers() {
 
         {/* Users by Role */}
         {['admin', 'teacher', 'parent'].map((role) => (
-          <div key={role} className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden" data-testid={`user-group-${role}`}>
+          <div key={role} className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid={`user-group-${role}`}>
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2" style={{ backgroundColor: `${getRoleColor(role)}08` }}>
               {(() => { const Icon = getRoleIcon(role); return <Icon className="w-4 h-4" style={{ color: getRoleColor(role) }} />; })()}
               <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: getRoleColor(role) }}>{getRoleLabel(role)} ({grouped[role].length})</span>

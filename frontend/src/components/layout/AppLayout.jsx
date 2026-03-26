@@ -64,7 +64,7 @@ export default function AppLayout({ children, title, showBack }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FFFDD0' }}>
       {/* Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]" data-testid="app-header">
+      <header className="sticky top-0 z-40 bg-white shadow-sm" data-testid="app-header">
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-2">
             {showBack ? (
@@ -177,7 +177,7 @@ export default function AppLayout({ children, title, showBack }) {
       </footer>
 
       {/* Bottom Nav (Mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] md:hidden" data-testid="bottom-nav">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:hidden" data-testid="bottom-nav">
         <div className="flex items-center justify-around px-2 py-1.5 safe-bottom">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;

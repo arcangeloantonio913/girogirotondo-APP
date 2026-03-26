@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { ClipboardList } from 'lucide-react';
 
 const EmptyBearTimeline = () => (
-  <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+  <div className="bg-white rounded-2xl p-8 text-center shadow-md">
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mx-auto mb-3">
       <circle cx="32" cy="36" r="18" fill="#F4C2C2"/>
       <circle cx="18" cy="20" r="8" fill="#F4C2C2"/><circle cx="46" cy="20" r="8" fill="#F4C2C2"/>
@@ -48,7 +48,7 @@ export default function ParentGriglia() {
     <AppLayout title="Griglia Giornaliera" showBack>
       <div className="max-w-lg mx-auto" data-testid="parent-griglia-page">
         {/* Date & Child Header */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 mb-4">
+        <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 mb-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{child?.name || 'Caricamento...'}</h3>
@@ -93,7 +93,7 @@ export default function ParentGriglia() {
             ))}
 
             {griglia.notes && (
-              <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100 mt-4" data-testid="griglia-notes">
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mt-4" data-testid="griglia-notes">
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Note della Maestra</h4>
                 <p className="text-sm text-gray-700 leading-relaxed">{griglia.notes}</p>
               </div>

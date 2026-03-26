@@ -159,7 +159,7 @@ export default function ParentDashboard() {
       <button
         data-testid="parent-card-diario"
         onClick={() => navigate('/parent/diario')}
-        className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
+        className="w-full bg-white rounded-2xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
       >
         <div className="flex items-center gap-3 mb-3">
           <IllustratedDiary />
@@ -184,7 +184,7 @@ export default function ParentDashboard() {
       <button
         data-testid="parent-card-griglia"
         onClick={() => navigate('/parent/griglia')}
-        className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
+        className="w-full bg-white rounded-2xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
       >
         <div className="flex items-center gap-3 mb-3">
           <IllustratedGrid />
@@ -231,7 +231,7 @@ export default function ParentDashboard() {
               <button
                 key={item.id || idx}
                 onClick={() => navigate('/parent/gallery')}
-                className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.06)] hover:shadow-lg transition-all hover:-translate-y-0.5 relative group"
+                className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 relative group"
                 data-testid={`gallery-thumb-${idx}`}
               >
                 <img src={item.media_url || item.url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
@@ -240,7 +240,7 @@ export default function ParentDashboard() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
             <EmptyBear text="Nessuna foto oggi!" />
           </div>
         )}
@@ -250,7 +250,7 @@ export default function ParentDashboard() {
       <button
         data-testid="parent-card-alimentazione"
         onClick={() => navigate('/parent/alimentazione')}
-        className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
+        className="w-full bg-white rounded-2xl shadow-md p-5 border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 text-left mb-4 active:scale-[0.99]"
       >
         <div className="flex items-center gap-3 mb-3">
           <IllustratedMeal />

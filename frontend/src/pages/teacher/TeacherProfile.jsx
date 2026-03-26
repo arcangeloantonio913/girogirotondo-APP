@@ -25,7 +25,7 @@ export default function TeacherProfile() {
     <AppLayout title="Profilo Maestra" showBack>
       <div className="space-y-4 max-w-lg mx-auto" data-testid="teacher-profile-page">
         {/* Teacher Info Card */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#F4C2C2' }}>
               {user?.name?.charAt(0) || 'M'}
@@ -48,7 +48,7 @@ export default function TeacherProfile() {
         </div>
 
         {/* Class Assignment */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
             Assegnazione Classe
           </h3>
@@ -71,7 +71,7 @@ export default function TeacherProfile() {
         </div>
 
         {/* School Contact */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100" data-testid="teacher-support-section">
+        <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100" data-testid="teacher-support-section">
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
             Contatti Scuola
           </h3>

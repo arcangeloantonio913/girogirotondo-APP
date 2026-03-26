@@ -63,12 +63,12 @@ export default function LoginPage() {
             <span style={{ color: '#98FB98' }}>tondo</span>
           </h1>
           <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            Scuola dell'infanzia
+            La tua scuola a portata di mano
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] p-6 sm:p-8" data-testid="login-card">
+        <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8" data-testid="login-card">
           <h2 className="text-xl font-bold text-center mb-6" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
             Accedi al Portale
           </h2>
@@ -140,7 +140,7 @@ export default function LoginPage() {
         </div>
 
         {/* Quick Login (Demo) */}
-        <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-2xl p-4" data-testid="quick-login-section">
+        <div className="mt-6 bg-white rounded-2xl shadow-md p-4" data-testid="quick-login-section">
           <p className="text-xs font-semibold text-gray-500 text-center mb-3 uppercase tracking-wider">Accesso rapido demo</p>
           <div className="flex gap-2">
             <button

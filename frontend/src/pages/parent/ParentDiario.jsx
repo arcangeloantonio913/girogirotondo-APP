@@ -19,7 +19,7 @@ export default function ParentDiario() {
     <AppLayout title="Diario di Bordo" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="parent-diario-page">
         {entries.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun aggiornamento disponibile</p>
           </div>
@@ -28,7 +28,7 @@ export default function ParentDiario() {
             <div
               key={entry.id}
               data-testid={`diary-entry-${entry.id}`}
-              className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100"
+              className="bg-white rounded-2xl shadow-md p-5 border border-gray-100"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="w-4 h-4 text-gray-400" />

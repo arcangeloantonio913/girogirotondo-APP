@@ -22,30 +22,20 @@ Build a complete, responsive mobile-first web application for a premium kinderga
 - Mobile-first responsive design
 - Brand colors: #4169E1, #FF69B4, #32CD32, #FFFDD0
 
-## What's Been Implemented (2026-03-26)
-- Login screen with real Girogirotondo logo and quick demo login buttons
-- **Updated Header**: Bell with badge "3" (left), school logo image (center), hamburger menu (right)
-- **Parent Dashboard** - Rich functional cards:
-  - Diario di Bordo with text preview of diary entry
-  - Griglia Giornaliera with activity badges (Presente, Bagno, Riposo, Merenda) + notes
-  - Foto e Video del Giorno with horizontal thumbnail gallery strip
-  - Alimentazione & Dieta with meal preview grid (Primo, Secondo, Contorno, Frutta)
-- **Parent "Utente"** page: child info (name, DOB, child code GGT-001), parent account, school contacts
-- **Parent "Documenti"** page: GDPR disclaimer, PDF circulars with "Presa Visione" acknowledgment (state updates to confirmed)
-- **Parent Alimentazione & Dieta**: full meal list with categories
-- **Parent Appointment Booking**: FAB + dialog with date/slot/reason
-- **Teacher Dashboard**: class overview + student list with codes
-- **Teacher Griglia**: advanced daily grid with Select All, activity toggles, notes, batch save
-- **Teacher Media Upload Modal**: Photo/Video type toggle, file simulation, student tagging, description
-- **Teacher Profile**: login credentials, class assignment, student count, school contacts
-- **Admin Dashboard**: stats overview + navigation cards
-- **Admin CRUD**: Users (grouped by role), Classes (with teacher assignment)
-- **Admin Appointments Manager**: view/confirm/cancel bookings
-- **Admin Modulistica Manager**: document upload, read receipt progress tracking
-- **Updated Bottom Nav**: Parent (Home/Documenti/Dieta/Utente), Teacher (Home/Griglia/Media/Profilo)
-- **Omnia Footer** on all screens: "© 2026 Omnia - Piattaforma Istituzionale Girogirotondo..."
-- Complete REST API with seeded demo data (today's date)
-- Mock JWT auth with role-based routing protection
+## What's Been Implemented (2026-03-26, Iteration 3)
+- **Warm Pastel Theme**: Softer pastels (#F4C2C2 Pink, #A7C7E7 Blue, #98FB98 Green) on cream #FFFDD0
+- **Enlarged Logo**: School logo w-44 h-44 on login, h-12 in header — prominent branding
+- **Illustrated SVG Icons**: Custom friendly illustrations for Diary, Grid, Camera, Meal cards
+- **Friendly Empty States**: Cartoon bear graphics with Italian text for missing data
+- **Parent Dashboard** — Rich cards: Diario text preview, Griglia colored dots, thumbnail gallery, meal grid
+- **Teacher Griglia (New)**: Specialized daily grid matching paper form — Colazione/Pranzo/Frutta/Merenda/Cacca/Pisolino/Note columns, horizontal scroll table, colored toggles, Select All, bulk actions, date navigation, "Salva e Pubblica ai Genitori" button
+- **Parent Utente**: Child info + ID + class + "Segreteria & Supporto" section with phone/email
+- **Parent Documenti**: GDPR disclaimer + mock PDF circulars with Presa Visione acknowledgment
+- **Teacher Profile**: Login credentials, class assignment, student count
+- **Bottom Nav**: Parent (Home/Documenti/Dieta/Utente), Teacher (Home/Griglia/Media/Profilo)
+- **Omnia Footer**: "© 2026 Omnia - Piattaforma Istituzionale Girogirotondo..." on all screens
+- Backend updated with new griglia fields: colazione, pranzo, frutta, merenda, cacca, pisolino
+- All 3 dashboards (Parent/Teacher/Admin) functional with mock JWT auth
 
 ## Test Results
 - Backend: 87% (20/23 passed) → fixed /api/auth/me → now 100%

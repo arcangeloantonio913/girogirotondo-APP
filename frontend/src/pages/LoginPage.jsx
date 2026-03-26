@@ -51,16 +51,19 @@ export default function LoginPage() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo / School Name */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{ background: 'linear-gradient(135deg, #4169E1, #FF69B4)' }}>
-            <span className="text-white font-black text-2xl font-[Nunito]">G</span>
-          </div>
+          <img
+            src="https://customer-assets.emergentagent.com/job_early-learning-hub-14/artifacts/s6dyubjw_logo_girogirotondo-removebg-preview.png"
+            alt="Girogirotondo"
+            className="w-32 h-32 mx-auto object-contain mb-2"
+            data-testid="login-logo"
+          />
           <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
             <span style={{ color: '#4169E1' }}>Giro</span>
             <span style={{ color: '#FF69B4' }}>giro</span>
             <span style={{ color: '#32CD32' }}>tondo</span>
           </h1>
-          <p className="text-sm text-gray-500 mt-2" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            La scuola dell'infanzia
+          <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            Scuola dell'infanzia
           </p>
         </div>
 
@@ -169,7 +172,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-[10px] text-center text-gray-400 mt-8 leading-relaxed px-4">
-          Realizzata da Omnia. Piattaforma conforme alle normative GDPR per il trattamento dei dati personali e la tutela dei minori.
+          &copy; 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.
         </p>
       </div>
     </div>

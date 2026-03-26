@@ -14,6 +14,7 @@ import ParentAlimentazione from "@/pages/parent/ParentAlimentazione";
 import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
 import TeacherGriglia from "@/pages/teacher/TeacherGriglia";
 import TeacherMedia from "@/pages/teacher/TeacherMedia";
+import TeacherProfile from "@/pages/teacher/TeacherProfile";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminClasses from "@/pages/admin/AdminClasses";
@@ -60,6 +61,7 @@ function AppRoutes() {
       <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
       <Route path="/teacher/griglia" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherGriglia /></ProtectedRoute>} />
       <Route path="/teacher/media" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMedia /></ProtectedRoute>} />
+      <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />

@@ -15,7 +15,7 @@ export default function ParentProfile() {
   }, [user]);
 
   return (
-    <AppLayout title="Profilo" showBack>
+    <AppLayout title="Utente" showBack>
       <div className="space-y-4 max-w-lg mx-auto" data-testid="parent-profile-page">
         {/* Child Info Card */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border border-gray-100">

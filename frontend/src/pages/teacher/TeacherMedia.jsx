@@ -4,7 +4,9 @@ import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Camera, Upload, Image, Check } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Camera, Upload, Image, Check, Plus, X, FileImage, Film } from 'lucide-react';
 
 const PLACEHOLDER_IMAGES = [
   'https://images.unsplash.com/photo-1627764940620-90393d0e8c34?w=600',
@@ -21,6 +23,9 @@ export default function TeacherMedia() {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [gallery, setGallery] = useState([]);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [mediaType, setMediaType] = useState('photo');
 
   useEffect(() => {
     if (user?.class_id) {
@@ -40,21 +45,27 @@ export default function TeacherMedia() {
     );
   };
 
+  const simulateFileSelect = () => {
+    const randomImg = PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)];
+    setSelectedFile(randomImg);
+  };
+
   const handleUpload = async () => {
-    if (selectedStudents.length === 0 || !caption) return;
+    if (selectedStudents.length === 0 || !caption || !selectedFile) return;
     setUploading(true);
     try {
-      const randomImg = PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)];
       const res = await api.post('/gallery', {
         class_id: user.class_id,
         student_ids: selectedStudents,
-        media_url: randomImg,
-        media_type: 'photo',
+        media_url: selectedFile,
+        media_type: mediaType,
         caption,
       });
       setGallery([res.data, ...gallery]);
       setSelectedStudents([]);
       setCaption('');
+      setSelectedFile(null);
+      setUploadModalOpen(false);
       setUploaded(true);
       setTimeout(() => setUploaded(false), 3000);
     } catch (err) {
@@ -67,82 +78,152 @@ export default function TeacherMedia() {
   return (
     <AppLayout title="Carica Media" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="teacher-media-page">
-        {/* Upload Section */}
-        <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100">
-          <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
-            Nuova Foto/Video
-          </h3>
-
-          {/* Simulated File Upload Area */}
-          <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center mb-4 hover:border-green-300 transition-colors cursor-pointer" data-testid="upload-dropzone">
-            <Camera className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-            <p className="text-sm text-gray-500 font-medium">Tocca per scattare o selezionare</p>
-            <p className="text-xs text-gray-400 mt-1">Simulazione - immagine placeholder usata</p>
+        {/* Upload Button */}
+        <button
+          data-testid="open-upload-modal-button"
+          onClick={() => setUploadModalOpen(true)}
+          className="w-full bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-6 border-2 border-dashed border-gray-200 hover:border-green-300 transition-all text-center group"
+        >
+          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center transition-colors" style={{ backgroundColor: '#F0FFF0' }}>
+            <Plus className="w-7 h-7" style={{ color: '#32CD32' }} />
           </div>
+          <p className="text-sm font-bold text-gray-700" style={{ fontFamily: 'Nunito' }}>Carica Nuova Foto o Video</p>
+          <p className="text-xs text-gray-400 mt-1">Tocca per aprire il caricamento</p>
+        </button>
 
-          {/* Student Selection */}
-          <div className="mb-4">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tagga Alunni</p>
-            <div className="flex flex-wrap gap-2" data-testid="media-student-tags">
-              {students.map((s) => {
-                const selected = selectedStudents.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    data-testid={`media-tag-${s.id}`}
-                    onClick={() => toggleStudent(s.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selected ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    style={selected ? { backgroundColor: '#32CD32' } : {}}
-                  >
-                    {selected && <Check className="w-3 h-3 inline mr-1" />}
-                    {s.name.split(' ')[0]}
-                  </button>
-                );
-              })}
-            </div>
+        {uploaded && (
+          <div className="bg-green-50 rounded-2xl p-3 text-center" data-testid="upload-success-msg">
+            <p className="text-sm font-semibold" style={{ color: '#32CD32' }}>Media caricato con successo!</p>
           </div>
-
-          {/* Caption */}
-          <Input
-            data-testid="media-caption-input"
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Descrizione della foto..."
-            className="rounded-xl mb-4"
-          />
-
-          <Button
-            data-testid="media-upload-button"
-            onClick={handleUpload}
-            disabled={uploading || selectedStudents.length === 0 || !caption}
-            className="w-full rounded-2xl font-bold h-11"
-            style={{ backgroundColor: '#32CD32' }}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            {uploading ? 'Caricamento...' : 'Carica'}
-          </Button>
-
-          {uploaded && (
-            <p className="text-sm text-center font-semibold mt-3" style={{ color: '#32CD32' }} data-testid="upload-success-msg">
-              Media caricato con successo!
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Recent Gallery */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden" data-testid="recent-gallery">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
             <Image className="w-4 h-4" style={{ color: '#32CD32' }} />
             <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Caricamenti Recenti</span>
+            <span className="text-xs text-gray-400 ml-auto">{gallery.length} file</span>
           </div>
-          <div className="grid grid-cols-3 gap-1 p-2">
-            {gallery.slice(0, 9).map((item) => (
-              <div key={item.id} className="aspect-square rounded-xl overflow-hidden">
-                <img src={item.media_url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
-              </div>
-            ))}
-          </div>
+          {gallery.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 p-2">
+              {gallery.slice(0, 9).map((item) => (
+                <div key={item.id} className="aspect-square rounded-xl overflow-hidden relative group">
+                  <img src={item.media_url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
+                    <p className="text-white text-[9px] font-medium truncate">{item.caption}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <Image className="w-10 h-10 mx-auto text-gray-200 mb-2" />
+              <p className="text-xs text-gray-400">Nessun media caricato</p>
+            </div>
+          )}
         </div>
+
+        {/* Upload Modal */}
+        <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+          <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[90vh] overflow-y-auto" data-testid="upload-modal">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
+                Carica Media
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              {/* Media Type */}
+              <div className="flex gap-2">
+                <button
+                  data-testid="media-type-photo"
+                  onClick={() => setMediaType('photo')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${mediaType === 'photo' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
+                  style={mediaType === 'photo' ? { backgroundColor: '#32CD32' } : {}}
+                >
+                  <FileImage className="w-4 h-4" />
+                  Foto
+                </button>
+                <button
+                  data-testid="media-type-video"
+                  onClick={() => setMediaType('video')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${mediaType === 'video' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
+                  style={mediaType === 'video' ? { backgroundColor: '#32CD32' } : {}}
+                >
+                  <Film className="w-4 h-4" />
+                  Video
+                </button>
+              </div>
+
+              {/* File Selection Area */}
+              <button
+                data-testid="file-select-area"
+                onClick={simulateFileSelect}
+                className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center hover:border-green-300 transition-colors"
+              >
+                {selectedFile ? (
+                  <div className="relative">
+                    <img src={selectedFile} alt="Anteprima" className="w-full h-32 object-cover rounded-xl" />
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Camera className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-500 font-medium">Tocca per selezionare file</p>
+                    <p className="text-xs text-gray-400 mt-1">Simulazione con immagine placeholder</p>
+                  </>
+                )}
+              </button>
+
+              {/* Tag Students */}
+              <div>
+                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tagga Alunni</Label>
+                <div className="flex flex-wrap gap-2 mt-2" data-testid="modal-student-tags">
+                  {students.map((s) => {
+                    const selected = selectedStudents.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        data-testid={`modal-tag-${s.id}`}
+                        onClick={() => toggleStudent(s.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${selected ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        style={selected ? { backgroundColor: '#32CD32' } : {}}
+                      >
+                        {selected && <Check className="w-3 h-3 inline mr-1" />}
+                        {s.name.split(' ')[0]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div>
+                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Descrizione</Label>
+                <Input
+                  data-testid="modal-caption-input"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Descrizione della foto/video..."
+                  className="rounded-xl mt-2"
+                />
+              </div>
+
+              {/* Upload Button */}
+              <Button
+                data-testid="modal-upload-button"
+                onClick={handleUpload}
+                disabled={uploading || selectedStudents.length === 0 || !caption || !selectedFile}
+                className="w-full rounded-2xl font-bold h-11"
+                style={{ backgroundColor: '#32CD32' }}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {uploading ? 'Caricamento...' : 'Carica Media'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

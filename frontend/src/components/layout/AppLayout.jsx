@@ -1,16 +1,18 @@
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, Settings } from 'lucide-react';
+import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 
-const FOOTER_TEXT = "Realizzata da Omnia. Piattaforma conforme alle normative GDPR per il trattamento dei dati personali e la tutela dei minori.";
+const LOGO_URL = "https://customer-assets.emergentagent.com/job_early-learning-hub-14/artifacts/s6dyubjw_logo_girogirotondo-removebg-preview.png";
+const FOOTER_TEXT = "\u00A9 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.";
 
 function getNavItems(role) {
   if (role === 'parent') {
     return [
       { path: '/parent', icon: Home, label: 'Home' },
-      { path: '/parent/modulistica', icon: FileText, label: 'Modulistica' },
-      { path: '/parent/profile', icon: User, label: 'Profilo' },
+      { path: '/parent/modulistica', icon: FileText, label: 'Documenti' },
+      { path: '/parent/alimentazione', icon: UtensilsCrossed, label: 'Dieta' },
+      { path: '/parent/profile', icon: User, label: 'Utente' },
     ];
   }
   if (role === 'teacher') {
@@ -18,6 +20,7 @@ function getNavItems(role) {
       { path: '/teacher', icon: Home, label: 'Home' },
       { path: '/teacher/griglia', icon: Grid3X3, label: 'Griglia' },
       { path: '/teacher/media', icon: Camera, label: 'Media' },
+      { path: '/teacher/profile', icon: User, label: 'Profilo' },
     ];
   }
   if (role === 'admin') {
@@ -62,7 +65,7 @@ export default function AppLayout({ children, title, showBack }) {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FFFDD0' }}>
       {/* Top App Bar */}
       <header className="sticky top-0 z-40 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]" data-testid="app-header">
-        <div className="flex items-center justify-between px-4 h-14">
+        <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-2">
             {showBack ? (
               <button
@@ -78,7 +81,7 @@ export default function AppLayout({ children, title, showBack }) {
                 className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors relative"
               >
                 <Bell className="w-5 h-5 text-gray-700" />
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ backgroundColor: '#FF69B4' }} />
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#FF69B4' }}>3</span>
               </button>
             )}
           </div>
@@ -87,11 +90,12 @@ export default function AppLayout({ children, title, showBack }) {
             {title ? (
               <h1 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{title}</h1>
             ) : (
-              <h1 className="text-base font-black" style={{ fontFamily: 'Nunito' }}>
-                <span style={{ color: '#4169E1' }}>Giro</span>
-                <span style={{ color: '#FF69B4' }}>giro</span>
-                <span style={{ color: '#32CD32' }}>tondo</span>
-              </h1>
+              <img
+                src={LOGO_URL}
+                alt="Girogirotondo"
+                className="h-11 w-auto object-contain"
+                data-testid="header-logo"
+              />
             )}
           </div>
 
@@ -161,13 +165,20 @@ export default function AppLayout({ children, title, showBack }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 px-4 py-5 pb-24 md:pb-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 px-4 py-5 pb-28 md:pb-12 max-w-5xl mx-auto w-full">
         {children}
       </main>
 
+      {/* Omnia Footer - visible on all devices */}
+      <footer className="py-3 px-6 text-center pb-20 md:pb-4" data-testid="gdpr-footer">
+        <p className="text-[10px] text-gray-400 leading-relaxed">
+          {FOOTER_TEXT}
+        </p>
+      </footer>
+
       {/* Bottom Nav (Mobile) */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.04)] md:hidden" data-testid="bottom-nav">
-        <div className="flex items-center justify-around px-2 py-1.5">
+        <div className="flex items-center justify-around px-2 py-1.5 safe-bottom">
           {navItems.slice(0, 5).map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -193,13 +204,6 @@ export default function AppLayout({ children, title, showBack }) {
           })}
         </div>
       </nav>
-
-      {/* GDPR Footer */}
-      <footer className="hidden md:block py-4 px-6 text-center" data-testid="gdpr-footer">
-        <p className="text-[10px] text-gray-400 leading-relaxed">
-          {FOOTER_TEXT}
-        </p>
-      </footer>
     </div>
   );
 }

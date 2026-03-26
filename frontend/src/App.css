@@ -51,3 +51,20 @@
     padding-bottom: calc(env(safe-area-inset-bottom) + 4rem);
   }
 }
+
+/* Hide scrollbar but keep scrollable */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Line clamp */
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}

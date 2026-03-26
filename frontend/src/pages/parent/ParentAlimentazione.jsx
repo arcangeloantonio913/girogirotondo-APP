@@ -25,7 +25,7 @@ export default function ParentAlimentazione() {
   ] : [];
 
   return (
-    <AppLayout title="Alimentazione" showBack>
+    <AppLayout title="Alimentazione & Dieta" showBack>
       <div className="max-w-lg mx-auto" data-testid="parent-alimentazione-page">
         {/* Date Header */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-5 border border-gray-100 mb-4">

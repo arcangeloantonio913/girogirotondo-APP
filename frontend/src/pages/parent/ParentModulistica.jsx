@@ -47,13 +47,13 @@ export default function ParentModulistica() {
   };
 
   return (
-    <AppLayout title="Modulistica" showBack>
+    <AppLayout title="Documenti" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="parent-modulistica-page">
         {/* GDPR Notice */}
         <div className="bg-blue-50 rounded-2xl p-4 flex items-start gap-3" data-testid="gdpr-notice">
           <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#4169E1' }} />
           <p className="text-xs text-gray-700 leading-relaxed">
-            Il trattamento di dati e foto è rigorosamente conforme alle normative GDPR e alle leggi sulla privacy vigenti.
+            Il trattamento di dati e foto è rigorosamente conforme alle normative GDPR e alle leggi sulla privacy vigenti. Tutti i documenti sono gestiti nel rispetto della normativa sulla tutela dei minori.
           </p>
         </div>
 

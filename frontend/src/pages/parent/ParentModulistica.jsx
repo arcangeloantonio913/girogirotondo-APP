@@ -36,9 +36,11 @@ export default function ParentModulistica() {
         document_id: docId,
         parent_id: user.id,
       });
-      if (res.data.id) {
-        setReceipts([...receipts, res.data]);
-      }
+      // Always add to local state on success (even if already acknowledged server-side)
+      setReceipts(prev => {
+        if (prev.some(r => r.document_id === docId && r.parent_id === user.id)) return prev;
+        return [...prev, { document_id: docId, parent_id: user.id, id: res.data.id || 'local', acknowledged_at: new Date().toISOString() }];
+      });
     } catch (err) {
       console.error(err);
     } finally {

@@ -6,6 +6,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
+function getLoginErrorMessage(err) {
+  const code = err?.code;
+  if (code === 'auth/invalid-email') return 'Indirizzo email non valido.';
+  if (code === 'auth/user-disabled') return 'Questo account è stato disabilitato.';
+  if (code === 'auth/user-not-found') return 'Nessun account trovato con questa email.';
+  if (code === 'auth/wrong-password') return 'Password errata.';
+  if (code === 'auth/invalid-credential') return 'Email o password non corretti.';
+  if (code === 'auth/too-many-requests') return 'Troppi tentativi. Riprova più tardi.';
+  if (code === 'auth/network-request-failed') return 'Errore di rete. Controlla la connessione.';
+  if (err?.message === 'NO_PROFILE') {
+    return 'Profilo utente non trovato. Contatta la direzione.';
+  }
+  if (err?.message === 'INVALID_ROLE') {
+    return 'Ruolo non riconosciuto. Contatta la direzione.';
+  }
+  return 'Errore di accesso. Riprova.';
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,9 +41,10 @@ export default function LoginPage() {
       const userData = await login(email, password);
       if (userData.role === 'admin') navigate('/admin');
       else if (userData.role === 'teacher') navigate('/teacher');
-      else navigate('/parent');
+      else if (userData.role === 'parent') navigate('/parent');
+      else setError('Ruolo non riconosciuto. Contatta la direzione.');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Errore di accesso');
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }

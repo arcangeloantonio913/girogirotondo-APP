@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { auth } from './firebase';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
 const API_BASE = `${BACKEND_URL}/api`;
 
 const api = axios.create({
@@ -8,10 +9,16 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ggt_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Attach Firebase ID token on every request
+api.interceptors.request.use(async (config) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // If Firebase token retrieval fails, proceed without token
   }
   return config;
 });
@@ -20,8 +27,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('ggt_token');
-      localStorage.removeItem('ggt_user');
+      auth.signOut().catch(() => {});
       window.location.href = '/login';
     }
     return Promise.reject(err);

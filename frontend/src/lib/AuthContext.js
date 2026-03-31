@@ -1,38 +1,78 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from './api';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
 
 const AuthContext = createContext(null);
+
+const VALID_ROLES = ['admin', 'teacher', 'parent'];
+
+function buildUserFromProfile(fbUser, data) {
+  return {
+    uid: fbUser.uid,
+    email: fbUser.email,
+    ...data,
+    role: data.role,
+  };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('ggt_user');
-    const token = localStorage.getItem('ggt_token');
-    if (stored && token) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        localStorage.removeItem('ggt_user');
-        localStorage.removeItem('ggt_token');
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
-    }
-    setLoading(false);
+      try {
+        const snap = await getDoc(doc(db, 'users', fbUser.uid));
+        if (!snap.exists) {
+          await signOut(auth);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        const data = snap.data();
+        if (!VALID_ROLES.includes(data.role)) {
+          await signOut(auth);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        setUser(buildUserFromProfile(fbUser, data));
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    });
+    return () => unsub();
   }, []);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    const { token, user: userData } = res.data;
-    localStorage.setItem('ggt_token', token);
-    localStorage.setItem('ggt_user', JSON.stringify(userData));
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const snap = await getDoc(doc(db, 'users', cred.user.uid));
+    if (!snap.exists) {
+      await signOut(auth);
+      const err = new Error('NO_PROFILE');
+      throw err;
+    }
+    const data = snap.data();
+    if (!VALID_ROLES.includes(data.role)) {
+      await signOut(auth);
+      const err = new Error('INVALID_ROLE');
+      throw err;
+    }
+    const userData = buildUserFromProfile(cred.user, data);
     setUser(userData);
     return userData;
   };
 
-  const logout = () => {
-    localStorage.removeItem('ggt_token');
-    localStorage.removeItem('ggt_user');
+  const logout = async () => {
+    await signOut(auth);
     setUser(null);
   };
 

@@ -7,6 +7,11 @@ const AuthContext = createContext(null);
 
 const VALID_ROLES = ['admin', 'teacher', 'parent'];
 
+export const SEDI = [
+  { id: 'girogirotondo', label: 'Girogirotondo', color: '#4169E1' },
+  { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
+];
+
 function buildUserFromProfile(fbUser, data) {
   return {
     uid: fbUser.uid,
@@ -19,6 +24,9 @@ function buildUserFromProfile(fbUser, data) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sede, setSede] = useState(
+    () => localStorage.getItem('ggt_sede') || 'il-magico-mondo'
+  );
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
@@ -76,8 +84,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateSede = (sedeId) => {
+    localStorage.setItem('ggt_sede', sedeId);
+    setSede(sedeId);
+  };
+
+  const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[1];
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, sede, sedeInfo, updateSede }}>
       {children}
     </AuthContext.Provider>
   );

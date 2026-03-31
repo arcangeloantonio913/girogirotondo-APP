@@ -1,0 +1,36 @@
+{
+  "short_name": "Girogirotondo",
+  "name": "Girogirotondo — Il Magico Mondo",
+  "description": "Piattaforma digitale per genitori, maestre e amministratori della scuola dell'infanzia Girogirotondo.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#4169E1",
+  "background_color": "#FFFDD0",
+  "categories": ["education", "kids"],
+  "icons": [
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "url": "/parent",
+      "description": "Accedi alla dashboard"
+    }
+  ]
+}

@@ -11,14 +11,26 @@ from utils.firebase_client import get_auth, is_initialized
 
 logger = logging.getLogger(__name__)
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "girogirotondo-secret-key-2024")
+_JWT_SECRET = os.environ.get("JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
+# DEV_MODE: custom JWT fallback ONLY for local development. MUST be false in production.
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
+
+if not _JWT_SECRET:
+    logger.warning("JWT_SECRET env variable is not set — custom JWT fallback disabled.")
+
+if DEV_MODE:
+    logger.warning(
+        "DEV_MODE is enabled: custom JWT fallback is active. "
+        "NEVER enable DEV_MODE in production."
+    )
 
 
 def _decode_custom_jwt(token: str) -> dict:
+    if not _JWT_SECRET:
+        raise HTTPException(status_code=401, detail="JWT_SECRET non configurato")
     try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return jwt.decode(token, _JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token scaduto")
     except jwt.InvalidTokenError:
@@ -53,8 +65,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         except Exception as exc:
             logger.debug("Firebase token verification failed: %s", exc)
 
-    # --- Fallback: custom JWT (DEV_MODE only) ---
-    if DEV_MODE:
+    # --- Fallback: custom JWT (DEV_MODE only — disabled in production) ---
+    if DEV_MODE and _JWT_SECRET:
         payload = _decode_custom_jwt(token)
         user = await db.users.find_one(
             {"id": payload["user_id"], "active": True},

@@ -1,0 +1,22 @@
+CREDENZIALI STAFF — Girogirotondo App
+======================================================================
+Consegnare personalmente a ciascun utente.
+Chiedere cambio password al primo accesso.
+NOTA: Gli utenti 'già registrato' hanno una password preesistente.
+
+NOME                      EMAIL                                         PASSWORD        RUOLO      SEZIONE
+------------------------------------------------------------------------------------------------------------------------
+Teresa Melignano          melignanoTeresa@gmail.com                     Meli3668        admin      —
+Giovanna Melignano        giovannaMelignano@gmail.com                   Meli9629        admin      —
+Maria Grazia Schiera      mariucciasc@gmail.com                         Schi5561        admin      —
+Giorgia Greco             giorgia.greco1495@gmail.com                   Grec1278        teacher    Nido Pesciolini
+Marika Russo              graziamaruikarusso@gmail.com                  Russ3428        teacher    Nido Tigrotti
+Chiara Lionetti           chiaralionetti98@gmail.com                    Lion0598        teacher    Primavera Pulcini
+Rachele Impastato         rachele.impastato@gmail.com                   Impa1311        teacher    Primavera Colorandia
+Loredana Pillitteri       loredana.pillitteri@hotmail.it                Pill3103        teacher    I Infanzia Girogirotondo
+Elisabetta Saitta         saitta.es@libero.it                           Sait8595        teacher    I Infanzia Girogirotondo
+Sefora Caruso             seficar@hotmail.it                            Caru5075        teacher    II Infanzia Girogirotondo
+Marzia Barone             marziabarone34@gmail.com                      Baro6549        teacher    II Infanzia Girogirotondo
+Gabriella Franco          gabri.franco@hotmail.it                       Fran7337        teacher    Nido Il Magico Mondo
+Claudia Pizzo             claudiapizzo29@outlook.it                     Pizz6672        teacher    Primavera Giardino delle Meraviglie
+Tatiana Cardinale         tatianacardinale@icloud.com                   Card3214        teacher    Primavera Oceano Incantato

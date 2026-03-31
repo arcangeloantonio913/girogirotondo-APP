@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/AuthContext';
+import { useAuth, SEDI } from '@/lib/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
@@ -48,7 +48,7 @@ function getRoleLabel(role) {
 }
 
 export default function AppLayout({ children, title, showBack }) {
-  const { user, logout } = useAuth();
+  const { user, logout, sede, sedeInfo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -86,16 +86,25 @@ export default function AppLayout({ children, title, showBack }) {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center gap-0">
             {title ? (
               <h1 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{title}</h1>
             ) : (
-              <img
-                src={LOGO_URL}
-                alt="Girogirotondo"
-                className="h-12 w-auto object-contain"
-                data-testid="header-logo"
-              />
+              <>
+                <img
+                  src={LOGO_URL}
+                  alt="Girogirotondo"
+                  className="h-9 w-auto object-contain"
+                  data-testid="header-logo"
+                />
+                <span
+                  data-testid="header-sede-badge"
+                  className="text-[10px] font-bold tracking-wide leading-none"
+                  style={{ color: sedeInfo?.color || '#4169E1', fontFamily: 'Poppins, sans-serif' }}
+                >
+                  ✨ {sedeInfo?.label}
+                </span>
+              </>
             )}
           </div>
 
@@ -127,6 +136,13 @@ export default function AppLayout({ children, title, showBack }) {
                 <div>
                   <p className="font-semibold text-sm text-gray-900" style={{ fontFamily: 'Nunito' }}>{user?.name}</p>
                   <p className="text-xs font-medium" style={{ color: roleColor }}>{getRoleLabel(user?.role)}</p>
+                  <p
+                    data-testid="sidebar-sede-label"
+                    className="text-[10px] font-semibold mt-0.5"
+                    style={{ color: sedeInfo?.color || '#4169E1', fontFamily: 'Poppins, sans-serif' }}
+                  >
+                    ✨ {sedeInfo?.label}
+                  </p>
                 </div>
               </div>
             </div>

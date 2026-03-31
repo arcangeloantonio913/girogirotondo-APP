@@ -7,17 +7,18 @@ from typing import Optional
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
 
 from services.database import get_db
 from models.user import UserRegister
 from middleware.auth import get_current_user
+from middleware.rate_limiter import limiter
 from utils.firebase_client import get_auth, is_initialized
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "girogirotondo-secret-key-2024")
+JWT_SECRET = os.environ.get("JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
 
 
@@ -26,7 +27,8 @@ JWT_ALGORITHM = "HS256"
 # ---------------------------------------------------------------------------
 
 @router.post("/register", status_code=201)
-async def register(payload: UserRegister):
+@limiter.limit("5/minute")
+async def register(request: Request, payload: UserRegister):
     """
     Create a Firebase Auth user + extended MongoDB profile.
     Returns the new user profile (without password).
@@ -81,7 +83,8 @@ async def register(payload: UserRegister):
 # ---------------------------------------------------------------------------
 
 @router.post("/login")
-async def login(payload: dict):
+@limiter.limit("10/minute")
+async def login(request: Request, payload: dict):
     """Legacy login endpoint. Returns custom JWT token."""
     db = get_db()
     email = payload.get("email", "")
@@ -95,11 +98,13 @@ async def login(payload: dict):
     if not stored_pw or not bcrypt.checkpw(password.encode(), stored_pw.encode()):
         raise HTTPException(status_code=401, detail="Credenziali non valide")
 
+    if not JWT_SECRET:
+        raise HTTPException(status_code=500, detail="JWT_SECRET non configurato sul server")
     from datetime import timedelta
     token_payload = {
         "user_id": user["id"],
         "role": user["role"],
-        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k != "password"}

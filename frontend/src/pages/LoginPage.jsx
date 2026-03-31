@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { SEDI } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,8 +31,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, sede, updateSede } = useAuth();
   const navigate = useNavigate();
+
+  const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[1];
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -81,6 +84,13 @@ export default function LoginPage() {
             <span style={{ color: '#F4C2C2' }}>giro</span>
             <span style={{ color: '#98FB98' }}>tondo</span>
           </h1>
+          <p
+            data-testid="school-branch"
+            className="text-base font-semibold mt-1 transition-all duration-300"
+            style={{ fontFamily: 'Poppins, sans-serif', color: sedeInfo.color }}
+          >
+            ✨ {sedeInfo.label}
+          </p>
           <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
             La tua scuola a portata di mano
           </p>
@@ -88,6 +98,35 @@ export default function LoginPage() {
 
         {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8" data-testid="login-card">
+
+          {/* Sede Selector */}
+          <div className="mb-5" data-testid="sede-selector">
+            <p className="text-xs font-semibold text-gray-400 text-center uppercase tracking-wider mb-2">
+              Seleziona la sede
+            </p>
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+              {SEDI.map((s) => {
+                const isActive = sede === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    data-testid={`sede-btn-${s.id}`}
+                    onClick={() => updateSede(s.id)}
+                    className="flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all duration-200"
+                    style={{
+                      backgroundColor: isActive ? s.color : 'transparent',
+                      color: isActive ? 'white' : '#6B7280',
+                      boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <h2 className="text-xl font-bold text-center mb-6" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
             Accedi al Portale
           </h2>

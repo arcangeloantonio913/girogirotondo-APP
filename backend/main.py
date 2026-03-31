@@ -2,10 +2,27 @@
 import logging
 import os
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+        ],
+        traces_sample_rate=0.2,   # 20% delle transazioni tracciate (regola in produzione)
+        profiles_sample_rate=0.1,
+        environment=os.environ.get("RAILWAY_ENVIRONMENT", "development"),
+        send_default_pii=False,   # Nessun dato personale inviato a Sentry (GDPR)
+    )
 
 from services.database import seed_database, get_client
 from middleware.error_handler import add_error_handlers

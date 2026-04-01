@@ -9,16 +9,22 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach Firebase ID token on every request
+// Attach auth token on every request (Firebase ID token or backend JWT fallback)
 api.interceptors.request.use(async (config) => {
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
       const token = await currentUser.getIdToken();
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Fallback: use stored JWT from backend login (demo users)
+      const jwtToken = localStorage.getItem('ggt_token');
+      if (jwtToken) {
+        config.headers.Authorization = `Bearer ${jwtToken}`;
+      }
     }
   } catch {
-    // If Firebase token retrieval fails, proceed without token
+    // If token retrieval fails, proceed without token
   }
   return config;
 });

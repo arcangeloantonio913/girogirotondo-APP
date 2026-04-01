@@ -1,7 +1,7 @@
 {
   "framework": "create-react-app",
   "buildCommand": "craco build",
-  "installCommand": "yarn install --frozen-lockfile",
+  "installCommand": "yarn install",
   "outputDirectory": "build",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [

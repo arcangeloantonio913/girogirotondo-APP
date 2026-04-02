@@ -1,4 +1,5 @@
 {
+  "id": "it.girogirotondo.app",
   "short_name": "Girogirotondo",
   "name": "Girogirotondo — Il Magico Mondo",
   "description": "Piattaforma digitale per genitori, maestre e amministratori della scuola dell'infanzia Girogirotondo.",
@@ -10,21 +11,37 @@
   "theme_color": "#4169E1",
   "background_color": "#FFFDD0",
   "categories": ["education", "kids"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard amministratore"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard genitore"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Dashboard",

@@ -27,10 +27,11 @@ function buildUserFromProfile(fbUser, data) {
 // JWT-based login against backend (fallback when Firebase user doesn't exist)
 async function loginWithBackend(email, password) {
   const res = await axios.post(`${BACKEND_URL}/api/auth/login`, { email, password });
-  const { access_token, user } = res.data;
-  if (!access_token || !user) throw new Error('Risposta backend non valida');
+  const token = res.data.token || res.data.access_token;
+  const user = res.data.user;
+  if (!token || !user) throw new Error('Risposta backend non valida');
   if (!VALID_ROLES.includes(user.role)) throw new Error('INVALID_ROLE');
-  localStorage.setItem('ggt_token', access_token);
+  localStorage.setItem('ggt_token', token);
   localStorage.setItem('ggt_user', JSON.stringify(user));
   return user;
 }

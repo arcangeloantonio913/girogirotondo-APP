@@ -65,8 +65,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         except Exception as exc:
             logger.debug("Firebase token verification failed: %s", exc)
 
-    # --- Fallback: custom JWT (DEV_MODE only — disabled in production) ---
-    if DEV_MODE and _JWT_SECRET:
+    # --- Fallback: custom JWT (always active when JWT_SECRET is set) ---
+    if _JWT_SECRET:
         payload = _decode_custom_jwt(token)
         user = await db.users.find_one(
             {"id": payload["user_id"], "active": True},

@@ -12,6 +12,7 @@
   "background_color": "#FFFDD0",
   "categories": ["education", "kids"],
   "prefer_related_applications": false,
+  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
   "icons": [
     {
       "src": "logo192.png",
@@ -23,23 +24,13 @@
       "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshot1.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard amministratore"
+      "purpose": "any"
     },
     {
-      "src": "screenshot2.png",
-      "sizes": "750x1334",
+      "src": "logo512.png",
       "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Dashboard genitore"
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

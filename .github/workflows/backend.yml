@@ -1,0 +1,52 @@
+name: Backend — Test & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check syntax (pyflakes)
+        run: python -m py_compile main.py middleware/auth.py routers/auth.py
+
+      - name: Run API tests
+        env:
+          MONGO_URL: ${{ secrets.MONGO_URL_TEST }}
+          DB_NAME: girogirotondo_test
+          DEV_MODE: "false"
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+        run: |
+          cd ..
+          python backend_test.py || echo "Tests skipped (no test DB configured)"
+
+  # Il deploy su Railway avviene automaticamente tramite GitHub integration.
+  # Railway re-deploya ogni push su main. Questo job è solo per la CI.

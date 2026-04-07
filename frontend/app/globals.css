@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Nascondi scrollbar ma mantieni funzionalità */
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  ::selection {
+    background-color: rgba(0, 240, 255, 0.3);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  @keyframes omnia-thanks-fade {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .omnia-thanks-fade {
+    animation: omnia-thanks-fade 0.5s ease-out forwards;
+  }
+
+  .text-gradient-omnia {
+    @apply bg-gradient-to-r from-omnia-cyan to-omnia-magenta bg-clip-text text-transparent;
+  }
+  .glow-cyan {
+    box-shadow:
+      0 0 40px rgba(0, 240, 255, 0.15),
+      0 0 80px rgba(0, 240, 255, 0.05);
+  }
+  .glow-magenta {
+    box-shadow:
+      0 0 40px rgba(255, 0, 229, 0.15),
+      0 0 80px rgba(255, 0, 229, 0.05);
+  }
+}

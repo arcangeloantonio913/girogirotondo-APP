@@ -1,44 +1,39 @@
 {
-  "id": "it.girogirotondo.app",
+  "name": "Girogirotondo - Gestione Asilo",
   "short_name": "Girogirotondo",
-  "name": "Girogirotondo — Il Magico Mondo",
-  "description": "Piattaforma digitale per genitori, maestre e amministratori della scuola dell'infanzia Girogirotondo.",
-  "lang": "it",
+  "description": "App per la gestione quotidiana, diari di bordo e comunicazioni per asili e scuole dell'infanzia.",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#4169E1",
-  "background_color": "#FFFDD0",
-  "categories": ["education", "kids"],
-  "prefer_related_applications": false,
-  "iarc_rating_id": "e84b072d-71b3-4d3e-86ae-31a8ce4e53b7",
+  "background_color": "#ffffff",
+  "theme_color": "#FFB6C1",
+  "categories": ["education", "productivity", "lifestyle"],
   "icons": [
     {
-      "src": "logo192.png",
-      "type": "image/png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512",
       "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
-  "shortcuts": [
+  "screenshots": [
     {
-      "name": "Dashboard",
-      "short_name": "Home",
-      "url": "/parent",
-      "description": "Accedi alla dashboard"
+      "src": "/screenshot-mobile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home Mobile"
+    },
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard Desktop"
     }
   ]
 }

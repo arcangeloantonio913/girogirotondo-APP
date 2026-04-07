@@ -1,12 +1,17 @@
 {
   "name": "Girogirotondo - Gestione Asilo",
   "short_name": "Girogirotondo",
-  "description": "App per la gestione quotidiana, diari di bordo e comunicazioni per asili e scuole dell'infanzia.",
+  "description": "App professionale per la gestione quotidiana, diari di bordo e comunicazioni per asili e scuole dell'infanzia.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#FFB6C1",
-  "categories": ["education", "productivity", "lifestyle"],
+  "orientation": "portrait",
+  "categories": [
+    "education",
+    "productivity",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -17,7 +22,14 @@
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-1024x1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -26,14 +38,14 @@
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Home Mobile"
+      "label": "Interfaccia Mobile Girogirotondo"
     },
     {
       "src": "/screenshot-desktop.png",
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Dashboard Desktop"
+      "label": "Dashboard Amministrativa Girogirotondo"
     }
   ]
 }

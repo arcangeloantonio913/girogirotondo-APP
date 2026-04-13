@@ -17,6 +17,12 @@
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "maskable"
     },
     {
@@ -26,12 +32,21 @@
       "purpose": "any"
     },
     {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/icon-1024x1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     }
   ],
+  "dir": "ltr",
+  "lang": "it-IT",
+  "display_override": ["standalone", "minimal-ui"],
   "screenshots": [
     {
       "src": "/screenshot-mobile.png",

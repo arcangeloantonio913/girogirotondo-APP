@@ -15,9 +15,7 @@ export default function ScrollProgress(): ReactElement {
     const init = async (): Promise<void> => {
       const gsap = (await import("gsap")).default;
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
-
-      if (cancelled) return;
+      gsap.registerPlugin (scrollTrigger)
 
       const mainEl = document.querySelector("main#main");
       if (!mainEl) return;

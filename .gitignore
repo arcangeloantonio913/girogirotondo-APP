@@ -79,5 +79,12 @@ agenthub/agents/youtube/db
 memory/test_credentials.md
 
 # Mobile development
-android-sdk/frontend/node_modules/@next/swc-darwin-arm64/next-swc.darwin-arm64.node
+android-sdk/
 frontend/node_modules/@next/swc-darwin-arm64/next-swc.darwin-arm64.node
+
+# GitHub workflows (token doesn't have workflow scope)
+.github/workflows/
+
+# Credentials files (SECURITY)
+backend/scripts/credenziali_staff.txt
+backend/credenziali_staff.txt

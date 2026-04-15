@@ -1,10 +1,13 @@
 """Gallery router — upload to Firebase Storage, signed URLs, publish, delete."""
+import re
 import uuid
 import logging
 from typing import Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 from services.database import get_db
 from models.gallery import MediaUpload
@@ -49,6 +52,8 @@ async def get_gallery(
     if media_type:
         query["media_type"] = media_type
     if date:
+        if not _DATE_RE.match(date):
+            raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["created_at"] = {"$regex": f"^{date}"}
 
     items = await db.gallery.find(query, {"_id": 0}).to_list(1000)

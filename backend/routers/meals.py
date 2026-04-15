@@ -1,14 +1,17 @@
 """Meals / menu router — /api/meals and /api/meals/menu."""
+import re
 import uuid
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
 from models.meals import MealCreate
 from middleware.auth import get_current_user
 
 router = APIRouter(tags=["meals"])
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 async def _get_meals(class_id: Optional[str], date: Optional[str]):
@@ -17,6 +20,8 @@ async def _get_meals(class_id: Optional[str], date: Optional[str]):
     if class_id:
         query["class_id"] = class_id
     if date:
+        if not _DATE_RE.match(date):
+            raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["date"] = date
     return await db.meals.find(query, {"_id": 0}).to_list(100)
 
@@ -46,4 +51,7 @@ async def create_meal(
     payload: MealCreate,
     current_user: dict = Depends(get_current_user),
 ):
+    # Solo admin e maestre possono creare menu
+    if current_user.get("role") not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può creare menu")
     return await _create_meal(payload, current_user.get("id", ""))

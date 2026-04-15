@@ -3,7 +3,10 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 
-const LOGO_URL = "https://customer-assets.emergentagent.com/job_early-learning-hub-14/artifacts/s6dyubjw_logo_girogirotondo-removebg-preview.png";
+const SEDE_LOGOS = {
+  'girogirotondo': '/logo-girogirotondo.png',
+  'il-magico-mondo': '/logo-magico-mondo.png',
+};
 const FOOTER_TEXT = "\u00A9 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.";
 
 function getNavItems(role) {
@@ -92,7 +95,7 @@ export default function AppLayout({ children, title, showBack }) {
             ) : (
               <>
                 <img
-                  src={LOGO_URL}
+                  src={SEDE_LOGOS[sede] || SEDE_LOGOS['girogirotondo']}
                   alt="Girogirotondo"
                   className="h-9 w-auto object-contain"
                   data-testid="header-logo"

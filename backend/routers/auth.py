@@ -83,12 +83,17 @@ async def register(request: Request, payload: UserRegister):
 # ---------------------------------------------------------------------------
 
 @router.post("/login")
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 async def login(request: Request, payload: dict):
-    """Legacy login endpoint. Returns custom JWT token."""
+    """Login endpoint. Returns custom JWT token."""
+    from datetime import timedelta
     db = get_db()
-    email = payload.get("email", "")
+    email = payload.get("email", "").strip().lower()
     password = payload.get("password", "")
+
+    # Validazione input base
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email e password obbligatori")
 
     user = await db.users.find_one({"email": email, "active": True}, {"_id": 0})
     if not user:
@@ -100,11 +105,11 @@ async def login(request: Request, payload: dict):
 
     if not JWT_SECRET:
         raise HTTPException(status_code=500, detail="JWT_SECRET non configurato sul server")
-    from datetime import timedelta
+
     token_payload = {
         "user_id": user["id"],
         "role": user["role"],
-        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=8),
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k != "password"}

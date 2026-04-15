@@ -127,10 +127,8 @@ export default function LoginPage() {
 
         {/* School Name */}
         <div className="text-center mb-6">
-          <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            <span style={{ color: '#A7C7E7' }}>Giro</span>
-            <span style={{ color: '#F4C2C2' }}>giro</span>
-            <span style={{ color: '#98FB98' }}>tondo</span>
+          <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif', background: 'linear-gradient(90deg, #A7C7E7 0%, #F4C2C2 50%, #98FB98 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            Girogirotondo
           </h1>
           <p
             data-testid="school-branch"

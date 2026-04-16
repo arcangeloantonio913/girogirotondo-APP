@@ -1,4 +1,5 @@
 """Documents router — upload to Firebase Storage, signed URLs, categories."""
+import re
 import uuid
 import logging
 from typing import Optional
@@ -26,6 +27,10 @@ def _refresh_url(doc: dict) -> dict:
     return doc
 
 
+_DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_VALID_CATEGORIES = {"circolari", "autorizzazioni", "modulistica", "altro"}
+
+
 @router.get("")
 async def get_documents(
     classe_id: Optional[str] = None,
@@ -38,8 +43,13 @@ async def get_documents(
     if classe_id:
         query["classe_id"] = classe_id
     if categoria:
+        # Whitelist categoria per evitare injection
+        if categoria not in _VALID_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Categoria non valida")
         query["categoria"] = categoria
     if date:
+        if not _DATE_RE_DOCS.match(date):
+            raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["created_at"] = {"$regex": f"^{date}"}
 
     docs = await db.documents.find(query, {"_id": 0}).to_list(100)

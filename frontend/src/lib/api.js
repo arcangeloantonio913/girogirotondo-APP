@@ -29,12 +29,25 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Prevent multiple concurrent logout redirects
+let _isLoggingOut = false;
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      auth.signOut().catch(() => {});
-      window.location.href = '/login';
+  async (err) => {
+    if (err.response?.status === 401 && !_isLoggingOut) {
+      _isLoggingOut = true;
+      // Clear all stored session data BEFORE signing out
+      localStorage.removeItem('ggt_token');
+      localStorage.removeItem('ggt_user');
+      // Wait for signOut to fully complete (clears Firebase IndexedDB persistence)
+      // so onAuthStateChanged doesn't re-login automatically on page load
+      try {
+        await auth.signOut();
+      } catch {
+        // ignore
+      }
+      window.location.replace('/login');
     }
     return Promise.reject(err);
   }

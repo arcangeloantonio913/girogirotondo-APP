@@ -17,8 +17,24 @@ async def get_students(
 ):
     db = get_db()
     query = {}
+    role = current_user.get("role")
+
+    if role == "parent":
+        # I genitori vedono solo il proprio figlio
+        child_id = current_user.get("child_id")
+        if not child_id:
+            return []
+        student = await db.students.find_one({"id": child_id}, {"_id": 0})
+        return [student] if student else []
+
     if class_id:
         query["class_id"] = class_id
+    elif role == "teacher":
+        # Le maestre vedono solo la loro classe
+        teacher_class = current_user.get("class_id")
+        if teacher_class:
+            query["class_id"] = teacher_class
+
     students = await db.students.find(query, {"_id": 0}).to_list(1000)
     return students
 

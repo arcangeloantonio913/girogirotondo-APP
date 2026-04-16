@@ -1,14 +1,17 @@
 """Griglia (daily activity grid) router."""
+import re
 import uuid
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
 from models.griglia import GrigliaEntry
 from middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/griglia", tags=["griglia"])
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 @router.get("")
@@ -23,6 +26,8 @@ async def get_griglia(
     if class_id:
         query["class_id"] = class_id
     if date:
+        if not _DATE_RE.match(date):
+            raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["date"] = date
     if student_id:
         query["student_id"] = student_id
@@ -35,6 +40,9 @@ async def save_griglia(
     entry: GrigliaEntry,
     current_user: dict = Depends(get_current_user),
 ):
+    # Solo admin e maestre possono aggiornare la griglia giornaliera
+    if current_user.get("role") not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può aggiornare la griglia")
     db = get_db()
     entries_created = []
     for sid in entry.student_ids:

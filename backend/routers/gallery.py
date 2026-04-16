@@ -146,6 +146,9 @@ async def upload_media_url(
     payload: MediaUpload,
     current_user: dict = Depends(get_current_user),
 ):
+    # Solo admin e maestre possono aggiungere media
+    if current_user.get("role") not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())

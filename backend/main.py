@@ -124,6 +124,60 @@ async def root():
     return {"message": "Girogirotondo API v2"}
 
 
+# --- Temporary staff seed endpoint (remove after use) ---
+import uuid as _uuid
+from datetime import datetime as _dt, timezone as _tz
+from fastapi import Query as _Query
+from services.database import get_db as _get_db
+
+_STAFF_DATA = [
+    ("Teresa","Melignano","melignanoteresa@gmail.com","$2b$12$9fH3ov/CF6jcGkgOAiBO/OMgKMBRkDfeJsIQcQqJaTFgkXApKoQ/y","admin"),
+    ("Giovanna","Melignano","giovannamelignano@gmail.com","$2b$12$Xo56iatrMOMRQKmd0uK36.oQoy.jGUbgYHAo/Qp6h4LlG7GTt7YC2","admin"),
+    ("Maria Grazia","Schiera","mariucciasc@gmail.com","$2b$12$TJOa3ggfxZ3w0e/xRXopZ.kTEDnvRJroa9YHQxe7yEK.hTCOndKwm","admin"),
+    ("Giorgia","Greco","giorgia.greco1495@gmail.com","$2b$12$vKjnjPeorc2k.gLRA2wL6O5dRmMUldiTzY.S1aXGDH1X2Z98e9qhK","teacher"),
+    ("Marika","Russo","graziamaruikarusso@gmail.com","$2b$12$/QHmyVxIOW8qb6U9upddCuVb4oLphn8y2STfzAO5LjZSjNHzDgeoC","teacher"),
+    ("Chiara","Lionetti","chiaralionetti98@gmail.com","$2b$12$JKuH9nqebV9udV/mUEqaqOuVgN5g/GTIHBduTSaiGELPlT.tT0n.u","teacher"),
+    ("Rachele","Impastato","rachele.impastato@gmail.com","$2b$12$jpyOLURQHQq3zW8bNBsiDeu9.8zNPA0Y6Ovr.vIaFDqrcaAn.1W4a","teacher"),
+    ("Loredana","Pillitteri","loredana.pillitteri@hotmail.it","$2b$12$1zYeh1Nq7dz0KL/fI.jU7ud7iWKWSsjvFtHaLCCVawhT1WP0Wdylq","teacher"),
+    ("Elisabetta","Saitta","saitta.es@libero.it","$2b$12$NPmGdg.CbaoOBmkwgMDNE.T/LDXjiLe3V1pEPlv/OBVNoZrfC9mCS","teacher"),
+    ("Sefora","Caruso","seficar@hotmail.it","$2b$12$QOu9t.lw31blOpR4gRGbceY2F2rdsiyiroiIoyY5OeUqTCH0ZFwGG","teacher"),
+    ("Marzia","Barone","marziabarone34@gmail.com","$2b$12$Bzn3yoMgNH6b.RoVgKYVQuiL5NzW9t.aT8SjDfEuv5cf5GK8IZ9eu","teacher"),
+    ("Gabriella","Franco","gabri.franco@hotmail.it","$2b$12$u5eLZFBtH/V5nu.3VWVWJOKz/wkp11.Q.32.hOolsDynHD2p1m50a","teacher"),
+    ("Claudia","Pizzo","claudiapizzo29@outlook.it","$2b$12$J0xmt9dEZlEx2.Uyu1Rw5.weWSRzN.YPUIPwW3mzBHSZ713HTYXwO","teacher"),
+    ("Tatiana","Cardinale","tatianacardinale@icloud.com","$2b$12$6LvPPv9XuembCWB79g5fcesTtuHBBc9C.D/cVIqt9Os8hyei2Jcpu","teacher"),
+]
+
+@app.post("/api/internal/seed-staff")
+async def seed_staff(secret: str = _Query(...)):
+    if secret != "ggt-seed-2026":
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Forbidden")
+    db = _get_db()
+    now = _dt.now(_tz.utc).isoformat()
+    created, skipped = 0, 0
+    for name, cognome, email, pw_hash, role in _STAFF_DATA:
+        existing = await db.users.find_one({"email": email})
+        if existing:
+            skipped += 1
+            continue
+        await db.users.insert_one({
+            "id": str(_uuid.uuid4()),
+            "firebase_uid": None,
+            "name": name,
+            "cognome": cognome,
+            "email": email,
+            "password": pw_hash,
+            "role": role,
+            "class_id": None,
+            "child_id": None,
+            "avatar_url": None,
+            "active": True,
+            "created_at": now,
+        })
+        created += 1
+    return {"created": created, "skipped": skipped, "total": len(_STAFF_DATA)}
+
+
 # --- Lifecycle ---
 @app.on_event("startup")
 async def startup():

@@ -37,25 +37,28 @@ async function loginWithBackend(email, password) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    // Restore JWT session immediately to avoid loading flash on reload
+    const storedUser = localStorage.getItem('ggt_user');
+    const storedToken = localStorage.getItem('ggt_token');
+    if (storedUser && storedToken) {
+      try { return JSON.parse(storedUser); } catch {
+        localStorage.removeItem('ggt_user');
+        localStorage.removeItem('ggt_token');
+      }
+    }
+    return null;
+  });
+  // Start loading=false if we already have JWT — prevents spinner flash
+  const [loading, setLoading] = useState(() => {
+    const hasJWT = localStorage.getItem('ggt_token') && localStorage.getItem('ggt_user');
+    return !hasJWT;
+  });
   const [sede, setSede] = useState(
     () => localStorage.getItem('ggt_sede') || 'il-magico-mondo'
   );
 
   useEffect(() => {
-    // Check for stored JWT user (backend fallback session)
-    const storedUser = localStorage.getItem('ggt_user');
-    const storedToken = localStorage.getItem('ggt_token');
-    if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem('ggt_user');
-        localStorage.removeItem('ggt_token');
-      }
-    }
-
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
         // Don't clear user if we have a backend JWT session

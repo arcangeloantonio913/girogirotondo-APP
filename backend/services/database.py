@@ -19,7 +19,11 @@ def get_client() -> AsyncIOMotorClient:
         import certifi
         _client = AsyncIOMotorClient(
             os.environ["MONGO_URL"],
+            # TLS: use certifi CA bundle + bypass cert/hostname validation
+            # needed on some Railway / cloud environments with OpenSSL quirks
             tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=True,
+            tlsAllowInvalidHostnames=True,
             serverSelectionTimeoutMS=20000,
             connectTimeoutMS=20000,
             socketTimeoutMS=20000,

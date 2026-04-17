@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2"
+startCommand = "OPENSSL_CONF=./openssl.cnf uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2"
 healthcheckPath = "/api/"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

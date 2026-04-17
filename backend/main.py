@@ -1,4 +1,22 @@
 """Girogirotondo API — FastAPI entry point."""
+# ── SSL fix: lower OpenSSL SECLEVEL to 1 for Railway + MongoDB Atlas ─────────
+# Railway's OpenSSL 3.x defaults to SECLEVEL=2 which causes
+# TLSV1_ALERT_INTERNAL_ERROR with Atlas M0. Patching create_default_context
+# here (before any other import uses ssl) forces SECLEVEL=1.
+import ssl as _ssl_mod
+_orig_create_default_context = _ssl_mod.create_default_context
+
+def _patched_create_default_context(*args, **kwargs):
+    ctx = _orig_create_default_context(*args, **kwargs)
+    try:
+        ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
+    except Exception:
+        pass
+    return ctx
+
+_ssl_mod.create_default_context = _patched_create_default_context
+# ─────────────────────────────────────────────────────────────────────────────
+
 import logging
 import os
 

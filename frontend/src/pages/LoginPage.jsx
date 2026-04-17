@@ -83,23 +83,21 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #FFFDD0 0%, #FFF0F7 50%, #F0FFF0 100%)' }}
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #FFFDD0 0%, #FFF8E1 100%)' }}
     >
-      {/* Soft decorative blobs */}
-      <div className="absolute top-0 left-0 w-72 h-72 rounded-full opacity-25 blur-3xl pointer-events-none" style={{ backgroundColor: '#A7C7E7', transform: 'translate(-40%, -40%)' }} />
-      <div className="absolute bottom-0 right-0 w-60 h-60 rounded-full opacity-25 blur-3xl pointer-events-none" style={{ backgroundColor: '#F4C2C2', transform: 'translate(30%, 30%)' }} />
-      <div className="absolute top-1/2 left-0 w-44 h-44 rounded-full opacity-20 blur-2xl pointer-events-none" style={{ backgroundColor: '#98FB98', transform: 'translate(-50%, -50%)' }} />
+      {/* Decorative blobs */}
+      <div className="absolute top-[-60px] left-[-60px] w-[180px] h-[180px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: sedeInfo.color }} />
+      <div className="absolute bottom-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: '#FF69B4' }} />
+      <div className="absolute top-[30%] right-[-30px] w-[100px] h-[100px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: '#32CD32' }} />
 
       <div className="w-full max-w-sm relative z-10">
 
-        {/* ── Logo + header ── */}
-        <div className="flex flex-col items-center mb-7" data-testid="login-logos">
-
-          {/* Active sede logo — small & perfectly round */}
+        {/* ── Logo piccolo e tondo ── */}
+        <div className="flex justify-center mb-3" data-testid="login-logos">
           <div
-            className="w-20 h-20 rounded-full overflow-hidden border-4 border-white mb-3"
-            style={{ boxShadow: `0 8px 28px ${sedeInfo.color}45` }}
+            className="w-16 h-16 rounded-full overflow-hidden border-2 border-white"
+            style={{ boxShadow: `0 4px 20px ${sedeInfo.color}40` }}
           >
             <img
               src={SEDE_LOGOS[sede] || SEDE_LOGOS['girogirotondo']}
@@ -108,12 +106,15 @@ export default function LoginPage() {
               data-testid={`logo-${sede}`}
             />
           </div>
+        </div>
 
+        {/* ── Titolo + sede label ── */}
+        <div className="text-center mb-6">
           <h1
-            className="text-3xl font-black tracking-tight text-center"
+            className="text-3xl sm:text-4xl font-black tracking-tight"
             style={{
               fontFamily: 'Nunito, sans-serif',
-              background: 'linear-gradient(90deg, #4169E1 0%, #FF69B4 55%, #32CD32 100%)',
+              background: 'linear-gradient(90deg, #A7C7E7 0%, #F4C2C2 50%, #98FB98 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -122,61 +123,65 @@ export default function LoginPage() {
           >
             Girogirotondo
           </h1>
-
-          <p className="text-xs text-gray-400 mt-1 mb-4" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <p
+            data-testid="school-branch"
+            className="text-base font-semibold mt-1 transition-all duration-300"
+            style={{ fontFamily: 'Poppins, sans-serif', color: sedeInfo.color }}
+          >
+            ✨ {sedeInfo.label}
+          </p>
+          <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
             La tua scuola a portata di mano
           </p>
-
-          {/* Sede switcher — pill buttons with mini logos */}
-          <div className="flex gap-2" data-testid="sede-selector">
-            {SEDI.map((s) => {
-              const isActive = sede === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  data-testid={`sede-btn-${s.id}`}
-                  onClick={() => updateSede(s.id)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border"
-                  style={{
-                    backgroundColor: isActive ? s.color : 'white',
-                    color: isActive ? 'white' : '#9CA3AF',
-                    borderColor: isActive ? s.color : '#E5E7EB',
-                    boxShadow: isActive ? `0 3px 12px ${s.color}45` : 'none',
-                    transform: isActive ? 'scale(1.04)' : 'scale(1)',
-                  }}
-                >
-                  <img
-                    src={SEDE_LOGOS[s.id]}
-                    alt={s.label}
-                    className="w-4 h-4 rounded-full object-cover flex-shrink-0"
-                  />
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
-        {/* ── Login / Reset card ── */}
-        <div
-          className="bg-white rounded-3xl shadow-xl p-7"
-          data-testid="login-card"
-          style={{ border: '1px solid #F3F4F6' }}
-        >
+        {/* ── Card login/reset ── */}
+        <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8" data-testid="login-card">
+
+          {/* Sede selector DENTRO la card */}
+          <div className="mb-5" data-testid="sede-selector">
+            <p className="text-xs font-semibold text-gray-400 text-center uppercase tracking-wider mb-2">
+              Seleziona la sede
+            </p>
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+              {SEDI.map((s) => {
+                const isActive = sede === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    data-testid={`sede-btn-${s.id}`}
+                    onClick={() => updateSede(s.id)}
+                    className="flex items-center justify-center gap-1.5 flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all duration-200"
+                    style={{
+                      backgroundColor: isActive ? s.color : 'transparent',
+                      color: isActive ? 'white' : '#6B7280',
+                      boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                    }}
+                  >
+                    <img
+                      src={SEDE_LOGOS[s.id]}
+                      alt={s.label}
+                      className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                    />
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {!showResetForm ? (
             <>
-              <h2 className="text-base font-bold text-center mb-5 text-gray-800" style={{ fontFamily: 'Nunito' }}>
+              <h2 className="text-xl font-bold text-center mb-6" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
                 Accedi al Portale
               </h2>
 
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Email
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       data-testid="login-email-input"
                       id="email"
@@ -184,32 +189,30 @@ export default function LoginPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="nome@email.it"
-                      className="pl-10 rounded-xl border-gray-100 bg-gray-50 focus:bg-white h-11 text-sm transition-colors"
+                      className="pl-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white h-11"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="password" className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Password
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       data-testid="login-password-input"
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="pl-10 pr-10 rounded-xl border-gray-100 bg-gray-50 focus:bg-white h-11 text-sm transition-colors"
+                      placeholder="La tua password"
+                      className="pl-10 pr-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white h-11"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       data-testid="toggle-password-visibility"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -218,10 +221,7 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <div
-                    data-testid="login-error"
-                    className="text-xs text-red-500 text-center bg-red-50 px-3 py-2.5 rounded-xl border border-red-100"
-                  >
+                  <div data-testid="login-error" className="text-sm text-red-500 text-center bg-red-50 p-2 rounded-xl border border-red-100">
                     {error}
                   </div>
                 )}
@@ -230,10 +230,10 @@ export default function LoginPage() {
                   data-testid="login-submit-button"
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 rounded-2xl font-bold text-white shadow-md hover:shadow-lg hover:opacity-90 transition-all mt-1"
-                  style={{ background: `linear-gradient(135deg, ${sedeInfo.color} 0%, ${sedeInfo.color}CC 100%)` }}
+                  className="w-full h-11 rounded-2xl font-bold text-white shadow-sm hover:opacity-90 transition-all"
+                  style={{ backgroundColor: sedeInfo.color }}
                 >
-                  {loading ? 'Accesso in corso...' : 'Accedi →'}
+                  {loading ? 'Accesso in corso...' : 'Accedi'}
                 </Button>
               </form>
 
@@ -241,31 +241,30 @@ export default function LoginPage() {
                 type="button"
                 data-testid="forgot-password-link"
                 onClick={() => { setShowResetForm(true); setResetEmail(email); }}
-                className="w-full text-[11px] text-center text-gray-400 hover:text-gray-600 mt-4 transition-colors"
+                className="w-full text-xs text-center text-gray-400 hover:text-gray-600 mt-3 underline underline-offset-2 transition-colors"
               >
                 Password dimenticata?
               </button>
 
-              <p className="text-[10px] text-center text-gray-300 mt-3 leading-relaxed">
-                Gli account sono generati dalla direzione.
+              <p className="text-xs text-center text-gray-400 mt-3 leading-relaxed">
+                Gli account sono generati dalla direzione.<br />
+                Usa le credenziali fornite.
               </p>
             </>
           ) : (
             <>
-              <h2 className="text-base font-bold text-center mb-1 text-gray-800" style={{ fontFamily: 'Nunito' }}>
-                Reset Password
+              <h2 className="text-xl font-bold text-center mb-2" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
+                Reimpostazione Password
               </h2>
-              <p className="text-[11px] text-center text-gray-400 mb-5">
-                Ti invieremo un link per reimpostare la password.
+              <p className="text-xs text-center text-gray-500 mb-5">
+                Inserisci la tua email per ricevere il link di reimpostazione.
               </p>
 
               <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="reset-email" className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Email
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email" className="text-sm font-medium text-gray-700">Email</Label>
                   <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       data-testid="reset-email-input"
                       id="reset-email"
@@ -273,7 +272,7 @@ export default function LoginPage() {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="nome@email.it"
-                      className="pl-10 rounded-xl border-gray-100 bg-gray-50 focus:bg-white h-11 text-sm"
+                      className="pl-10 rounded-xl border-gray-200 bg-gray-50 focus:bg-white h-11"
                       required
                     />
                   </div>
@@ -282,11 +281,7 @@ export default function LoginPage() {
                 {resetMessage && (
                   <div
                     data-testid="reset-message"
-                    className={`text-xs text-center px-3 py-2.5 rounded-xl border ${
-                      resetMessage.includes('inviata')
-                        ? 'text-green-600 bg-green-50 border-green-100'
-                        : 'text-red-500 bg-red-50 border-red-100'
-                    }`}
+                    className={`text-sm text-center p-2 rounded-xl ${resetMessage.includes('inviata') ? 'text-green-600 bg-green-50 border border-green-100' : 'text-red-500 bg-red-50 border border-red-100'}`}
                   >
                     {resetMessage}
                   </div>
@@ -296,10 +291,10 @@ export default function LoginPage() {
                   data-testid="reset-submit-button"
                   type="submit"
                   disabled={resetLoading}
-                  className="w-full h-11 rounded-2xl font-bold text-white shadow-md"
-                  style={{ background: `linear-gradient(135deg, ${sedeInfo.color} 0%, ${sedeInfo.color}CC 100%)` }}
+                  className="w-full h-11 rounded-2xl font-bold text-white shadow-sm"
+                  style={{ backgroundColor: sedeInfo.color }}
                 >
-                  {resetLoading ? 'Invio...' : 'Invia Link di Reset'}
+                  {resetLoading ? 'Invio in corso...' : 'Invia Link di Reset'}
                 </Button>
               </form>
 
@@ -307,17 +302,17 @@ export default function LoginPage() {
                 type="button"
                 data-testid="back-to-login"
                 onClick={() => { setShowResetForm(false); setResetMessage(''); }}
-                className="w-full text-[11px] text-center text-gray-400 hover:text-gray-600 mt-4 transition-colors"
+                className="w-full text-xs text-center text-gray-400 hover:text-gray-600 mt-3 underline underline-offset-2 transition-colors"
               >
-                ← Torna al login
+                Torna al login
               </button>
             </>
           )}
         </div>
 
         {/* GDPR footer */}
-        <p className="text-[10px] text-center text-gray-300 mt-5 leading-relaxed px-4">
-          © 2026 Omnia · Piattaforma Girogirotondo · Conforme GDPR e standard digitali EU.
+        <p className="text-[10px] text-center text-gray-400 mt-8 leading-relaxed px-4">
+          © 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.
         </p>
       </div>
     </div>

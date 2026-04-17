@@ -79,9 +79,9 @@ export default function LoginPage() {
         {/* Logo piccolo e tondo + titolo */}
         <div className="text-center mb-8">
           <img
-            src="/logo-girogirotondo.png"
+            src="https://customer-assets.emergentagent.com/job_early-learning-hub-14/artifacts/s6dyubjw_logo_girogirotondo-removebg-preview.png"
             alt="Girogirotondo"
-            className="w-20 h-20 mx-auto rounded-full object-cover border-4 border-white shadow-md mb-3"
+            className="w-16 h-16 mx-auto rounded-full object-contain bg-white border-2 border-gray-100 shadow-sm mb-3"
             data-testid="login-logo"
           />
           <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>

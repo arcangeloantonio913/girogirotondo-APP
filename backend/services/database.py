@@ -32,7 +32,7 @@ def get_client() -> AsyncIOMotorClient:
 
 
 def get_db():
-    return get_client()[os.environ["DB_NAME"]]
+    return get_client()[os.environ.get("DB_NAME", "girogirotondo")]
 
 
 def hash_password(password: str) -> str:

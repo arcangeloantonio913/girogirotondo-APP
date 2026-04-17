@@ -6,12 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Lock, Mail, Eye, EyeOff, KeyRound } from 'lucide-react';
 
+const SCHOOLS = [
+  { id: 'girogirotondo', name: 'Girogirotondo', logo: '/logo-girogirotondo.png' },
+  { id: 'magico-mondo', name: 'Il Magico Mondo', logo: '/logo-magico-mondo.png' },
+];
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState(null);
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
@@ -29,20 +35,10 @@ export default function LoginPage() {
       else if (userData.role === 'teacher') navigate('/teacher');
       else navigate('/parent');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Errore di accesso');
+      setError(err.response?.data?.detail || 'Credenziali non valide. Riprova.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const quickLogin = (preset) => {
-    const creds = {
-      admin: { email: 'admin@girogirotondo.it', password: 'admin123' },
-      teacher: { email: 'giulia@girogirotondo.it', password: 'teacher123' },
-      parent: { email: 'paolo@famiglia.it', password: 'parent123' },
-    };
-    setEmail(creds[preset].email);
-    setPassword(creds[preset].password);
   };
 
   const handleResetPassword = async (e) => {
@@ -57,11 +53,11 @@ export default function LoginPage() {
       setResetMessage('Email di reimpostazione inviata! Controlla la tua casella di posta.');
     } catch (err) {
       if (err?.code === 'auth/user-not-found') {
-        setResetMessage('Nessun account trovato con questa email. Contatta la direzione.');
+        setResetMessage('Nessun account trovato. Contatta la direzione.');
       } else if (err?.code === 'auth/invalid-email') {
         setResetMessage('Indirizzo email non valido.');
       } else {
-        setResetMessage("Errore nell'invio. Riprova più tardi o contatta la direzione.");
+        setResetMessage("Errore nell'invio. Contatta la direzione.");
       }
     } finally {
       setResetLoading(false);
@@ -69,22 +65,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #FFFDD0 0%, #FFF8E1 100%)' }}>
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #FFFDD0 0%, #FFF8E1 100%)' }}
+    >
       {/* Decorative circles */}
-      <div className="absolute top-[-60px] left-[-60px] w-[180px] h-[180px] rounded-full bg-[#4169E1] opacity-10" />
-      <div className="absolute bottom-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#FF69B4] opacity-10" />
-      <div className="absolute top-[30%] right-[-30px] w-[100px] h-[100px] rounded-full bg-[#32CD32] opacity-10" />
+      <div className="absolute top-[-60px] left-[-60px] w-[180px] h-[180px] rounded-full bg-[#4169E1] opacity-10 pointer-events-none" />
+      <div className="absolute bottom-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#FF69B4] opacity-10 pointer-events-none" />
+      <div className="absolute top-[30%] right-[-30px] w-[100px] h-[100px] rounded-full bg-[#32CD32] opacity-10 pointer-events-none" />
 
       <div className="w-full max-w-sm relative z-10">
-        {/* Logo piccolo e tondo + titolo */}
+
+        {/* School selector + titolo */}
         <div className="text-center mb-8">
-          <img
-            src="/logo-girogirotondo.png"
-            alt="Girogirotondo"
-            className="w-16 h-16 mx-auto rounded-full object-cover bg-white border-2 border-gray-100 shadow-sm mb-3"
-            data-testid="login-logo"
-          />
-          <h1 data-testid="school-name" className="text-3xl sm:text-4xl font-black tracking-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>
+          {/* I due loghi affiancati */}
+          <div className="flex items-center justify-center gap-5 mb-4" data-testid="school-selector">
+            {SCHOOLS.map((school) => {
+              const isSelected = selectedSchool === school.id;
+              const isOther = selectedSchool && selectedSchool !== school.id;
+              return (
+                <button
+                  key={school.id}
+                  data-testid={`school-btn-${school.id}`}
+                  onClick={() => setSelectedSchool(school.id)}
+                  className="flex flex-col items-center gap-1.5 transition-all duration-200 group focus:outline-none"
+                  title={school.name}
+                >
+                  <div
+                    className="rounded-full transition-all duration-200"
+                    style={{
+                      padding: isSelected ? '3px' : '2px',
+                      background: isSelected
+                        ? 'linear-gradient(135deg, #A7C7E7, #F4C2C2)'
+                        : 'transparent',
+                      boxShadow: isSelected
+                        ? '0 0 0 2px #A7C7E7, 0 4px 12px rgba(167,199,231,0.5)'
+                        : '0 2px 6px rgba(0,0,0,0.08)',
+                      opacity: isOther ? 0.45 : 1,
+                      transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                    }}
+                  >
+                    <img
+                      src={school.logo}
+                      alt={school.name}
+                      className="w-14 h-14 rounded-full object-cover bg-white block"
+                    />
+                  </div>
+                  <span
+                    className="text-[10px] font-semibold transition-all duration-200"
+                    style={{
+                      fontFamily: 'Nunito, sans-serif',
+                      color: isSelected ? '#4169E1' : '#9CA3AF',
+                      opacity: isOther ? 0.5 : 1,
+                    }}
+                  >
+                    {school.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Titolo */}
+          <h1
+            data-testid="school-name"
+            className="text-3xl sm:text-4xl font-black tracking-tight"
+            style={{ fontFamily: 'Nunito, sans-serif' }}
+          >
             <span style={{ color: '#A7C7E7' }}>Giro</span>
             <span style={{ color: '#F4C2C2' }}>giro</span>
             <span style={{ color: '#98FB98' }}>tondo</span>
@@ -94,11 +141,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login Card */}
+        {/* Login / Reset Card */}
         <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8" data-testid="login-card">
           {!showResetForm ? (
             <>
-              <h2 className="text-xl font-bold text-center mb-6" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
+              <h2
+                className="text-xl font-bold text-center mb-6"
+                style={{ fontFamily: 'Nunito', color: '#1A202C' }}
+              >
                 Accedi al Portale
               </h2>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -174,7 +224,10 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-center mb-2" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
+              <h2
+                className="text-xl font-bold text-center mb-2"
+                style={{ fontFamily: 'Nunito', color: '#1A202C' }}
+              >
                 Reimposta Password
               </h2>
               <p className="text-xs text-center text-gray-500 mb-5">
@@ -221,46 +274,16 @@ export default function LoginPage() {
                 onClick={() => { setShowResetForm(false); setResetMessage(''); }}
                 className="w-full text-xs text-center text-gray-400 hover:text-gray-600 mt-3 underline underline-offset-2 transition-colors"
               >
-                Torna al login
+                ← Torna al login
               </button>
             </>
           )}
         </div>
 
-        {/* Quick Login (Demo) */}
-        <div className="mt-6 bg-white rounded-2xl shadow-md p-4" data-testid="quick-login-section">
-          <p className="text-xs font-semibold text-gray-500 text-center mb-3 uppercase tracking-wider">Accesso rapido demo</p>
-          <div className="flex gap-2">
-            <button
-              data-testid="quick-login-admin"
-              onClick={() => quickLogin('admin')}
-              className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#A7C7E7', color: 'white' }}
-            >
-              Admin
-            </button>
-            <button
-              data-testid="quick-login-teacher"
-              onClick={() => quickLogin('teacher')}
-              className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#F4C2C2', color: 'white' }}
-            >
-              Maestra
-            </button>
-            <button
-              data-testid="quick-login-parent"
-              onClick={() => quickLogin('parent')}
-              className="flex-1 py-2 px-3 text-xs font-semibold rounded-xl transition-all hover:-translate-y-0.5"
-              style={{ backgroundColor: '#98FB98', color: '#555' }}
-            >
-              Genitore
-            </button>
-          </div>
-        </div>
-
         {/* Footer */}
         <p className="text-[10px] text-center text-gray-400 mt-8 leading-relaxed px-4">
-          &copy; 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.
+          &copy; 2026 Piattaforma Istituzionale Girogirotondo — Conforme GDPR e normative EU.<br />
+          <span className="text-gray-300">Realizzato da Omnia</span>
         </p>
       </div>
     </div>

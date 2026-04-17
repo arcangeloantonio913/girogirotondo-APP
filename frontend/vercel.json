@@ -1,7 +1,7 @@
 {
   "framework": null,
   "buildCommand": "CI=false craco build",
-  "installCommand": "yarn install --frozen-lockfile",
+  "installCommand": "yarn install",
   "outputDirectory": "build",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

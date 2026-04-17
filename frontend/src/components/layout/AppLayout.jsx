@@ -97,15 +97,15 @@ export default function AppLayout({ children, title, showBack }) {
                 <img
                   src={SEDE_LOGOS[sede] || SEDE_LOGOS['girogirotondo']}
                   alt="Girogirotondo"
-                  className="h-9 w-auto object-contain"
+                  className="w-8 h-8 rounded-full object-cover border-2 border-gray-100 shadow-sm"
                   data-testid="header-logo"
                 />
                 <span
                   data-testid="header-sede-badge"
-                  className="text-[10px] font-bold tracking-wide leading-none"
+                  className="text-[9px] font-bold tracking-wide leading-none mt-0.5"
                   style={{ color: sedeInfo?.color || '#4169E1', fontFamily: 'Poppins, sans-serif' }}
                 >
-                  ✨ {sedeInfo?.label}
+                  {sedeInfo?.label}
                 </span>
               </>
             )}

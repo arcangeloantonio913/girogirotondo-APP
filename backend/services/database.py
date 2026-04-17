@@ -16,7 +16,14 @@ _client: AsyncIOMotorClient = None
 def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
-        _client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+        _client = AsyncIOMotorClient(
+            os.environ["MONGO_URL"],
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+            serverSelectionTimeoutMS=20000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000,
+        )
     return _client
 
 

@@ -16,18 +16,27 @@ _client: AsyncIOMotorClient = None
 def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
-        import certifi
-        _client = AsyncIOMotorClient(
-            os.environ["MONGO_URL"],
-            # TLS: use certifi CA bundle + bypass cert/hostname validation
-            # needed on some Railway / cloud environments with OpenSSL quirks
-            tlsCAFile=certifi.where(),
-            tlsAllowInvalidCertificates=True,
-            tlsAllowInvalidHostnames=True,
-            serverSelectionTimeoutMS=20000,
-            connectTimeoutMS=20000,
-            socketTimeoutMS=20000,
-        )
+        mongo_url = os.environ["MONGO_URL"]
+        # Only enable TLS for Atlas (mongodb+srv://) connections.
+        # Railway-internal connections use plain TCP — no TLS needed.
+        if mongo_url.startswith("mongodb+srv://"):
+            import certifi
+            _client = AsyncIOMotorClient(
+                mongo_url,
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=True,
+                tlsAllowInvalidHostnames=True,
+                serverSelectionTimeoutMS=20000,
+                connectTimeoutMS=20000,
+                socketTimeoutMS=20000,
+            )
+        else:
+            _client = AsyncIOMotorClient(
+                mongo_url,
+                serverSelectionTimeoutMS=20000,
+                connectTimeoutMS=20000,
+                socketTimeoutMS=20000,
+            )
     return _client
 
 

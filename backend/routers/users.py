@@ -118,20 +118,19 @@ async def update_user(
 
 
 # ---------------------------------------------------------------------------
-# DELETE /api/users/{user_id}  — soft delete
+# DELETE /api/users/{user_id}  — hard delete (admin only, cannot delete self)
 # ---------------------------------------------------------------------------
 
 @router.delete("/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
     _require_admin(current_user)
+    # Prevent admin from deleting their own account
+    if current_user.get("id") == user_id:
+        raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo account")
     db = get_db()
-    result = await db.users.update_one(
-        {"id": user_id},
-        {"$set": {"active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    if result.matched_count == 0:
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Utente non trovato")
-
-    # Remove all push tokens for this user
+    # Clean up related data
     await db.push_tokens.delete_many({"user_id": user_id})
-    return {"message": "Utente disattivato"}
+    return {"message": "Utente eliminato"}

@@ -124,44 +124,6 @@ async def root():
     return {"message": "Girogirotondo API v2"}
 
 
-# --- Temporary password reset endpoint (remove after use) ---
-import uuid as _uuid
-from datetime import datetime as _dt, timezone as _tz
-from fastapi import Query as _Query
-from services.database import get_db as _get_db
-
-_NEW_PASSWORDS = [
-    ("melignanoteresa@gmail.com",      "$2b$12$jX3uRmhVAp6qCoHXftB1Su2pwkUMgceR/qD0prxBJz2PUh9PTd5YO"),
-    ("giovannamelignano@gmail.com",    "$2b$12$ncc35S6vRjnHPERIZOFJZOAvDOp9ImUNIIqYZUBg5HG./m.FCWlPm"),
-    ("mariucciasc@gmail.com",          "$2b$12$A10UrhkD79BQA5reOUyQGuPko6F65YTGqW1fyvv7QQjK2rkQflODW"),
-    ("giorgia.greco1495@gmail.com",    "$2b$12$Ub8vQ7ehm8WMFdt7KmRIr.d6Bkdno7IXJqPD69boZP.oxO9FXhqWe"),
-    ("graziamaruikarusso@gmail.com",   "$2b$12$IFGVHC0tEZdg9zl5Q0MKUONMElf2xl7BxppNJxs11/cLuhQvPs5/."),
-    ("chiaralionetti98@gmail.com",     "$2b$12$l2M6UFHg7/N/81Z.Dk5Oi.T6c4OcVO4ILsT.yzOTju16CvEL7y5l."),
-    ("rachele.impastato@gmail.com",    "$2b$12$TxAYYQZ2dUN6gjRFH.BSROP6PdCqAF6rxz0XeqkThVad96CfhHs8y"),
-    ("loredana.pillitteri@hotmail.it", "$2b$12$EzhXUWYc8l4Q7ao8o6KRVORRXFgNnX5yqaZIrQ.rQFUEjInesBRH."),
-    ("saitta.es@libero.it",            "$2b$12$VHW1IJFNl4GzEt2gZpjPi.mBO2hF89oGbKuTyqmyTK3XE2RU0pF2K"),
-    ("seficar@hotmail.it",             "$2b$12$479dECp9ErEpJL7Sw0cFp.Mq5HJN5sPtXe7anQdqCyBP4Oe3vXv06"),
-    ("marziabarone34@gmail.com",       "$2b$12$p6sPsF0qZYjsND1d14gPt.bdWdpsbMlktuDPZXSeSnKo5PuRRL3g6"),
-    ("gabri.franco@hotmail.it",        "$2b$12$jnbOHiCmOmgZpQYgPipnkudsvSOK1GYhn.d9i7wInbn5WC3lyqBbG"),
-    ("claudiapizzo29@outlook.it",      "$2b$12$/naVQJ8EvuIOVYiFKBphTukPlTMMmvzufmh5LG9lK68xbEdDSQ8E6"),
-    ("tatianacardinale@icloud.com",    "$2b$12$sXKJPPylylVGy0J1Cvh4EeKoRreIsyYHoNghopVMRcVIrHUhxsMr."),
-]
-
-@app.post("/api/internal/reset-passwords")
-async def reset_passwords(secret: str = _Query(...)):
-    if secret != "ggt-reset-2026":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="Forbidden")
-    db = _get_db()
-    updated = 0
-    for email, pw_hash in _NEW_PASSWORDS:
-        result = await db.users.update_one({"email": email}, {"$set": {"password": pw_hash}})
-        if result.modified_count:
-            updated += 1
-    return {"updated": updated, "total": len(_NEW_PASSWORDS)}
-# --- End temporary endpoint ---
-
-
 # --- Lifecycle ---
 @app.on_event("startup")
 async def startup():

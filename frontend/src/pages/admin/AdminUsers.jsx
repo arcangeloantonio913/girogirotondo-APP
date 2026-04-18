@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, Plus, Trash2, Shield, GraduationCap, Heart } from 'lucide-react';
+import { Users, Plus, Trash2, Shield, GraduationCap, Heart, AlertTriangle } from 'lucide-react';
 
 function getRoleIcon(role) {
   if (role === 'admin') return Shield;
@@ -31,6 +31,8 @@ export default function AdminUsers() {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null });
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: '', class_id: '', child_id: '' });
 
   useEffect(() => {
@@ -59,12 +61,17 @@ export default function AdminUsers() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async () => {
+    if (!deleteDialog.user) return;
+    setDeleteLoading(true);
     try {
-      await api.delete(`/users/${id}`);
+      await api.delete(`/users/${deleteDialog.user.id}`);
+      setDeleteDialog({ open: false, user: null });
       loadData();
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -113,7 +120,7 @@ export default function AdminUsers() {
                   </div>
                   <button
                     data-testid={`delete-user-${u.id}`}
-                    onClick={() => handleDelete(u.id)}
+                    onClick={() => setDeleteDialog({ open: true, user: u })}
                     className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -126,6 +133,47 @@ export default function AdminUsers() {
             </div>
           </div>
         ))}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, user: null })}>
+          <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-user-dialog">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
+                <AlertTriangle className="w-5 h-5" />
+                Elimina Utente
+              </DialogTitle>
+            </DialogHeader>
+            <div className="pt-1 space-y-4">
+              <p className="text-sm text-gray-600">
+                Sei sicura di voler eliminare <span className="font-bold text-gray-900">{deleteDialog.user?.name}</span>?
+                <br />
+                <span className="text-xs text-gray-400">{deleteDialog.user?.email}</span>
+              </p>
+              <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">
+                ⚠️ Questa azione è irreversibile. L'account verrà eliminato definitivamente.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  data-testid="cancel-delete-user"
+                  variant="outline"
+                  onClick={() => setDeleteDialog({ open: false, user: null })}
+                  className="flex-1 rounded-xl h-10 text-sm"
+                >
+                  Annulla
+                </Button>
+                <Button
+                  data-testid="confirm-delete-user"
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="flex-1 rounded-xl h-10 text-sm font-bold text-white"
+                  style={{ backgroundColor: '#EF4444' }}
+                >
+                  {deleteLoading ? 'Eliminazione...' : 'Elimina'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Create User Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

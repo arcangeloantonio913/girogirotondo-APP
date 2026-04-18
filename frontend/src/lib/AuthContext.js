@@ -38,10 +38,9 @@ async function loginWithBackend(email, password) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    // Restore JWT session immediately to avoid loading flash on reload
+    // Restore session immediately (JWT or cached Firebase user) to avoid loading flash
     const storedUser = localStorage.getItem('ggt_user');
-    const storedToken = localStorage.getItem('ggt_token');
-    if (storedUser && storedToken) {
+    if (storedUser) {
       try { return JSON.parse(storedUser); } catch {
         localStorage.removeItem('ggt_user');
         localStorage.removeItem('ggt_token');
@@ -49,10 +48,9 @@ export function AuthProvider({ children }) {
     }
     return null;
   });
-  // Start loading=false if we already have JWT — prevents spinner flash
+  // Start loading=false if we have any cached session — prevents spinner flash
   const [loading, setLoading] = useState(() => {
-    const hasJWT = localStorage.getItem('ggt_token') && localStorage.getItem('ggt_user');
-    return !hasJWT;
+    return !localStorage.getItem('ggt_user');
   });
   const [sede, setSede] = useState(
     () => localStorage.getItem('ggt_sede') || 'il-magico-mondo'
@@ -64,6 +62,7 @@ export function AuthProvider({ children }) {
         // Don't clear user if we have a backend JWT session
         const hasJwtSession = localStorage.getItem('ggt_token');
         if (!hasJwtSession) {
+          localStorage.removeItem('ggt_user');
           setUser(null);
         }
         setLoading(false);
@@ -71,8 +70,10 @@ export function AuthProvider({ children }) {
       }
       try {
         const snap = await getDoc(doc(db, 'users', fbUser.uid));
-        if (!snap.exists) {
+        // snap.exists is a function in Firebase v9 SDK
+        if (!snap.exists()) {
           await signOut(auth);
+          localStorage.removeItem('ggt_user');
           setUser(null);
           setLoading(false);
           return;
@@ -80,13 +81,18 @@ export function AuthProvider({ children }) {
         const data = snap.data();
         if (!VALID_ROLES.includes(data.role)) {
           await signOut(auth);
+          localStorage.removeItem('ggt_user');
           setUser(null);
           setLoading(false);
           return;
         }
-        setUser(buildUserFromProfile(fbUser, data));
+        const userData = buildUserFromProfile(fbUser, data);
+        // Cache Firebase user in localStorage to prevent flash on next load
+        localStorage.setItem('ggt_user', JSON.stringify(userData));
+        setUser(userData);
       } catch {
-        setUser(null);
+        // Network/Firestore error: keep existing cached session, don't log out
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -99,7 +105,7 @@ export function AuthProvider({ children }) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
-      if (!snap.exists) {
+      if (!snap.exists()) {
         await signOut(auth);
         throw new Error('NO_PROFILE');
       }
@@ -109,6 +115,8 @@ export function AuthProvider({ children }) {
         throw new Error('INVALID_ROLE');
       }
       const userData = buildUserFromProfile(cred.user, data);
+      // Cache immediately → no flicker on next page load
+      localStorage.setItem('ggt_user', JSON.stringify(userData));
       setUser(userData);
       return userData;
     } catch (firebaseErr) {

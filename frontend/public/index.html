@@ -25,6 +25,15 @@
         -->
         <title>Girogirotondo - Scuola dell'Infanzia</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <script>
+          // Rimuove immediatamente qualsiasi Service Worker obsoleto.
+          // Gira prima del bundle React: funziona anche se il vecchio SW serve HTML dalla cache.
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(reg) { reg.unregister(); });
+            });
+          }
+        </script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>

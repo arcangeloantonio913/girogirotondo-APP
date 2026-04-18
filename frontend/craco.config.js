@@ -51,6 +51,20 @@ let webpackConfig = {
         ],
       };
 
+      // Force the new Service Worker to activate immediately (skipWaiting)
+      // so it replaces the old cached SW in all users' browsers on first update.
+      // Combined with unregisterSW() in index.js, this ensures a clean migration:
+      // old browser detects new SW → new SW skipWaiting → activates → serves new
+      // content → unregisterSW() removes SW permanently.
+      const GenerateSWPlugin = webpackConfig.plugins.find(
+        (p) => p && p.constructor && p.constructor.name === 'GenerateSW'
+      );
+      if (GenerateSWPlugin) {
+        GenerateSWPlugin.config = GenerateSWPlugin.config || {};
+        GenerateSWPlugin.config.skipWaiting = true;
+        GenerateSWPlugin.config.clientsClaim = true;
+      }
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);

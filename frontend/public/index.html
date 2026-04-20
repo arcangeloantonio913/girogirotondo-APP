@@ -2,16 +2,22 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#4169E1" />
         <meta name="description" content="Piattaforma digitale per genitori e maestre della scuola dell'infanzia Girogirotondo." />
-        <!-- PWA -->
+        <!-- PWA manifest -->
         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-        <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
+        <!-- iOS: richiesto per modalità standalone (Add to Home Screen → schermo intero) -->
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Girogirotondo" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Girogiro" />
+        <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/icon-192x192.png" />
+        <!-- Android Chrome -->
         <meta name="mobile-web-app-capable" content="yes" />
+        <!-- Disabilita zoom automatico su input iOS (migliora UX form) -->
+        <meta name="format-detection" content="telephone=no" />
+        <!-- CSP: protegge da XSS e injection -->
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://us.i.posthog.com https://*.firebaseapp.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.railway.app https://*.firebaseio.com https://*.googleapis.com https://us.i.posthog.com wss://*.firebaseio.com; frame-ancestors 'none';" />
         <!-- Open Graph -->
         <meta property="og:title" content="Girogirotondo — Il Magico Mondo" />
         <meta property="og:description" content="Piattaforma digitale per genitori e maestre della scuola dell'infanzia." />

@@ -114,6 +114,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # HSTS: forza HTTPS per 1 anno su tutti i client che visitano il backend
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # CSP per l'API: non serve caricare nulla, quindi blocchiamo tutto tranne 'none'
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none';"
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)

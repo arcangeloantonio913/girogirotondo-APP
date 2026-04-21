@@ -10,9 +10,8 @@ export default function ParentDiario() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    if (user?.class_id) {
-      api.get(`/diary?class_id=${user.class_id}`).then(res => setEntries(res.data));
-    }
+    // Il backend filtra automaticamente per le classi dei figli del genitore
+    api.get('/diary').then(res => setEntries(res.data)).catch(() => {});
   }, [user]);
 
   return (

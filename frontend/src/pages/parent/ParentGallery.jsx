@@ -10,8 +10,10 @@ export default function ParentGallery() {
   const [selectedImg, setSelectedImg] = useState(null);
 
   useEffect(() => {
-    if (user?.child_id) {
-      api.get(`/gallery?student_id=${user.child_id}`).then(res => setItems(res.data));
+    // Supporta child_ids (nuovo) e child_id legacy
+    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    if (primaryChildId) {
+      api.get(`/gallery?student_id=${primaryChildId}`).then(res => setItems(res.data));
     }
   }, [user]);
 

@@ -10,13 +10,20 @@ export default function TeacherProfile() {
   const [studentCount, setStudentCount] = useState(0);
 
   useEffect(() => {
-    if (!user?.class_id) return;
+    // Supporta class_ids (nuovo) e class_id legacy
+    const classIds = user?.class_ids?.length ? user.class_ids : (user?.class_id ? [user.class_id] : []);
+    if (!classIds.length) return;
     Promise.all([
       api.get('/classes'),
-      api.get(`/students?class_id=${user.class_id}`),
+      // GET /students senza class_id: il backend filtra per le classi della maestra
+      api.get('/students'),
     ]).then(([cRes, sRes]) => {
-      const cls = cRes.data.find(c => c.id === user.class_id);
-      if (cls) setClassName(cls.name);
+      const assignedClasses = cRes.data.filter(c => classIds.includes(c.id));
+      if (assignedClasses.length === 1) {
+        setClassName(assignedClasses[0].name);
+      } else if (assignedClasses.length > 1) {
+        setClassName(assignedClasses.map(c => c.name).join(', '));
+      }
       setStudentCount(sRes.data.length);
     });
   }, [user]);

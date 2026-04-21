@@ -12,14 +12,22 @@ export default function TeacherDashboard() {
   const [className, setClassName] = useState('');
 
   useEffect(() => {
-    if (!user?.class_id) return;
+    // Supporta class_ids (nuovo) e class_id legacy
+    const classIds = user?.class_ids?.length ? user.class_ids : (user?.class_id ? [user.class_id] : []);
+    if (!classIds.length) return;
     Promise.all([
-      api.get(`/students?class_id=${user.class_id}`),
+      // GET /students senza class_id: il backend filtra per le classi della maestra
+      api.get('/students'),
       api.get('/classes'),
     ]).then(([sRes, cRes]) => {
       setStudents(sRes.data);
-      const cls = cRes.data.find(c => c.id === user.class_id);
-      if (cls) setClassName(cls.name);
+      // Mostra il nome della prima classe assegnata (o tutte se più di una)
+      const assignedClasses = cRes.data.filter(c => classIds.includes(c.id));
+      if (assignedClasses.length === 1) {
+        setClassName(assignedClasses[0].name);
+      } else if (assignedClasses.length > 1) {
+        setClassName(assignedClasses.map(c => c.name).join(', '));
+      }
     });
   }, [user]);
 

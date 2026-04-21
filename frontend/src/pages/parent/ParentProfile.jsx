@@ -9,8 +9,10 @@ export default function ParentProfile() {
   const [child, setChild] = useState(null);
 
   useEffect(() => {
-    if (user?.child_id) {
-      api.get(`/students/${user.child_id}`).then(res => setChild(res.data));
+    // Supporta child_ids (nuovo) e child_id legacy
+    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    if (primaryChildId) {
+      api.get(`/students/${primaryChildId}`).then(res => setChild(res.data));
     }
   }, [user]);
 

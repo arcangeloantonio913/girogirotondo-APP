@@ -82,7 +82,9 @@ export default function ParentDashboard() {
         setGriglia(grigliaRes.data?.[0] || null);
         setGalleryItems(galleryRes.data || []);
         setMeal(mealRes.data?.[0] || null);
-        const cls = classesRes.data.find(c => c.id === user.class_id);
+        // La classe si ricava dal bambino (non più direttamente dal genitore)
+        const childClassId = childRes.data?.class_id;
+        const cls = classesRes.data.find(c => c.id === childClassId);
         if (cls) setClassName(cls.name);
       } catch (err) {
         console.error('Error loading dashboard:', err);

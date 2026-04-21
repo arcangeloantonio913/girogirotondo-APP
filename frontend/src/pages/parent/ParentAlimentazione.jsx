@@ -10,8 +10,10 @@ export default function ParentAlimentazione() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    if (user?.class_id) {
-      api.get(`/meals?class_id=${user.class_id}&date=${today}`).then(res => setMeal(res.data?.[0] || null));
+    // Supporta class_ids (nuovo) e class_id legacy
+    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
+    if (primaryClassId) {
+      api.get(`/meals?class_id=${primaryClassId}&date=${today}`).then(res => setMeal(res.data?.[0] || null));
     }
   }, [user, today]);
 

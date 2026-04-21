@@ -33,7 +33,9 @@ export default function AdminUsers() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: '', class_id: '', child_id: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: '', class_ids: [], child_ids: [] });
+  const [selectedClass, setSelectedClass] = useState('');  // helper per selezione classe
+  const [selectedChild, setSelectedChild] = useState('');  // helper per selezione bambino
 
   useEffect(() => {
     loadData();
@@ -54,11 +56,29 @@ export default function AdminUsers() {
     try {
       await api.post('/users', form);
       setDialogOpen(false);
-      setForm({ name: '', email: '', password: '', role: '', class_id: '', child_id: '' });
+      setForm({ name: '', email: '', password: '', role: '', class_ids: [], child_ids: [] });
+      setSelectedClass('');
+      setSelectedChild('');
       loadData();
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Aggiunge/rimuove una classe dalla selezione teacher
+  const toggleClass = (classId) => {
+    setForm(prev => ({
+      ...prev,
+      class_ids: prev.class_ids.includes(classId)
+        ? prev.class_ids.filter(id => id !== classId)
+        : [...prev.class_ids, classId],
+    }));
+  };
+
+  // Imposta il figlio selezionato per il genitore
+  const selectChild = (childId) => {
+    setSelectedChild(childId);
+    setForm(prev => ({ ...prev, child_ids: childId ? [childId] : [] }));
   };
 
   const handleDelete = async () => {
@@ -207,36 +227,64 @@ export default function AdminUsers() {
                   </SelectContent>
                 </Select>
               </div>
-              {(form.role === 'teacher' || form.role === 'parent') && (
+              {/* Classi per Maestre — selezione multipla */}
+              {form.role === 'teacher' && (
                 <div>
-                  <Label className="text-xs font-medium text-gray-600">Classe</Label>
-                  <Select value={form.class_id} onValueChange={v => setForm({ ...form, class_id: v })}>
-                    <SelectTrigger className="rounded-xl mt-1" data-testid="user-class-select">
-                      <SelectValue placeholder="Seleziona classe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs font-medium text-gray-600">Classi Assegnate</Label>
+                  <div className="mt-1 flex flex-wrap gap-1.5" data-testid="user-class-multi-select">
+                    {classes.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleClass(c.id)}
+                        className={`px-3 py-1 rounded-xl text-xs font-semibold border-2 transition-all ${form.class_ids.includes(c.id) ? 'text-white border-transparent' : 'border-gray-200 text-gray-500'}`}
+                        style={form.class_ids.includes(c.id) ? { backgroundColor: '#FF69B4', borderColor: '#FF69B4' } : {}}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                  {form.class_ids.length > 0 && (
+                    <p className="text-[10px] text-gray-400 mt-1">{form.class_ids.length} class{form.class_ids.length > 1 ? 'i' : 'e'} selezionat{form.class_ids.length > 1 ? 'e' : 'a'}</p>
+                  )}
                 </div>
               )}
-              {form.role === 'parent' && form.class_id && (
-                <div>
-                  <Label className="text-xs font-medium text-gray-600">Bambino</Label>
-                  <Select value={form.child_id} onValueChange={v => setForm({ ...form, child_id: v })}>
-                    <SelectTrigger className="rounded-xl mt-1" data-testid="user-child-select">
-                      <SelectValue placeholder="Seleziona bambino" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {students.filter(s => s.class_id === form.class_id).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              {/* Bambino per Genitori — prima scegli la classe, poi il bambino */}
+              {form.role === 'parent' && (
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Classe del bambino</Label>
+                    <Select value={selectedClass} onValueChange={v => { setSelectedClass(v); setSelectedChild(''); setForm(prev => ({ ...prev, child_ids: [] })); }}>
+                      <SelectTrigger className="rounded-xl mt-1" data-testid="user-class-select">
+                        <SelectValue placeholder="Seleziona classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {selectedClass && (
+                    <div>
+                      <Label className="text-xs font-medium text-gray-600">Bambino associato</Label>
+                      <Select value={selectedChild} onValueChange={selectChild}>
+                        <SelectTrigger className="rounded-xl mt-1" data-testid="user-child-select">
+                          <SelectValue placeholder="Seleziona bambino" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {students.filter(s => s.class_id === selectedClass).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
               <Button
                 data-testid="create-user-submit"
                 onClick={handleCreate}
-                disabled={!form.name || !form.email || !form.password || !form.role}
+                disabled={
+                  !form.name || !form.email || !form.password || !form.role ||
+                  (form.role === 'parent' && form.child_ids.length === 0)
+                }
                 className="w-full rounded-2xl font-bold h-11"
                 style={{ backgroundColor: '#4169E1' }}
               >

@@ -61,6 +61,7 @@ from routers.documents import router as documents_router
 from routers.read_receipts import router as read_receipts_router
 from routers.calendar import router as calendar_router
 from routers.notifications import router as notifications_router
+from routers.avvisi import router as avvisi_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,6 +101,7 @@ app.include_router(documents_router)
 app.include_router(read_receipts_router)
 app.include_router(calendar_router)
 app.include_router(notifications_router)
+app.include_router(avvisi_router)
 
 
 # --- Security headers middleware ---

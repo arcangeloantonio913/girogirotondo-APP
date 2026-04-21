@@ -64,15 +64,17 @@ export default function ParentDashboard() {
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
   useEffect(() => {
-    if (!user?.child_id) return;
+    // Supporta sia child_ids (nuovo) sia child_id (legacy)
+    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    if (!primaryChildId) return;
     const load = async () => {
       try {
         const [childRes, diaryRes, grigliaRes, galleryRes, mealRes, classesRes] = await Promise.all([
-          api.get(`/students/${user.child_id}`),
-          api.get(`/diary?class_id=${user.class_id}&date=${today}`),
-          api.get(`/griglia?student_id=${user.child_id}&date=${today}`),
-          api.get(`/gallery?student_id=${user.child_id}`),
-          api.get(`/meals?class_id=${user.class_id}&date=${today}`),
+          api.get(`/students/${primaryChildId}`),
+          api.get(`/diary?date=${today}`),
+          api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
+          api.get(`/gallery?student_id=${primaryChildId}`),
+          api.get(`/meals?date=${today}`),
           api.get('/classes'),
         ]);
         setChild(childRes.data);
@@ -119,10 +121,10 @@ export default function ParentDashboard() {
   };
 
   const grigliaActivities = griglia ? [
-    { label: 'Colazione', active: griglia.colazione, color: '#A7C7E7' },
-    { label: 'Pranzo', active: griglia.pranzo, color: '#F4C2C2' },
-    { label: 'Merenda', active: griglia.merenda, color: '#98FB98' },
-    { label: 'Pisolino', active: griglia.pisolino, color: '#D4B8E0' },
+    { label: 'Pasta',   active: griglia.pasta,   color: '#F4C2C2' },
+    { label: 'Secondo', active: griglia.secondo, color: '#A7C7E7' },
+    { label: 'Pane',    active: griglia.pane,    color: '#FFD699' },
+    { label: 'Frutta',  active: griglia.frutta,  color: '#98FB98' },
   ] : [];
 
   const displayGallery = galleryItems.length > 0 ? galleryItems : MOCK_GALLERY;

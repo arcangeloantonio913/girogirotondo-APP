@@ -77,13 +77,27 @@ async def create_user(payload: UserCreate, current_user: dict = Depends(get_curr
     user_dict = payload.model_dump()
     user_dict["id"] = str(uuid.uuid4())
     user_dict["firebase_uid"] = None
-    user_dict["cognome"] = ""
+    user_dict["cognome"] = payload.cognome or ""
     user_dict["avatar_url"] = None
     user_dict["active"] = True
     user_dict["created_at"] = datetime.now(timezone.utc).isoformat()
     user_dict["password"] = bcrypt.hashpw(
         payload.password.encode(), bcrypt.gensalt()
     ).decode()
+
+    # Normalizza class_ids: se passato class_id legacy, aggiungilo a class_ids
+    class_ids = list(payload.class_ids or [])
+    if payload.class_id and payload.class_id not in class_ids:
+        class_ids.append(payload.class_id)
+    user_dict["class_ids"] = class_ids
+    user_dict["class_id"] = class_ids[0] if class_ids else None
+
+    # Normalizza child_ids: se passato child_id legacy, aggiungilo a child_ids
+    child_ids = list(payload.child_ids or [])
+    if payload.child_id and payload.child_id not in child_ids:
+        child_ids.append(payload.child_id)
+    user_dict["child_ids"] = child_ids
+    user_dict["child_id"] = child_ids[0] if child_ids else None
 
     await db.users.insert_one(user_dict)
     user_dict.pop("_id", None)

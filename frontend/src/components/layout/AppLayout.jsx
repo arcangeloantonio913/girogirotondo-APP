@@ -1,6 +1,6 @@
 import { useAuth, SEDI } from '@/lib/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed } from 'lucide-react';
+import { Home, User, FileText, Calendar, Camera, Grid3X3, LogOut, Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed, Megaphone } from 'lucide-react';
 import { useState } from 'react';
 
 const SEDE_LOGOS = {
@@ -13,15 +13,17 @@ function getNavItems(role) {
   if (role === 'parent') {
     return [
       { path: '/parent', icon: Home, label: 'Home' },
+      { path: '/parent/avvisi', icon: Megaphone, label: 'Avvisi' },
       { path: '/parent/modulistica', icon: FileText, label: 'Documenti' },
       { path: '/parent/alimentazione', icon: UtensilsCrossed, label: 'Dieta' },
-      { path: '/parent/profile', icon: User, label: 'Utente' },
+      { path: '/parent/profile', icon: User, label: 'Profilo' },
     ];
   }
   if (role === 'teacher') {
     return [
       { path: '/teacher', icon: Home, label: 'Home' },
       { path: '/teacher/griglia', icon: Grid3X3, label: 'Griglia' },
+      { path: '/teacher/avvisi', icon: Megaphone, label: 'Avvisi' },
       { path: '/teacher/media', icon: Camera, label: 'Media' },
       { path: '/teacher/profile', icon: User, label: 'Profilo' },
     ];
@@ -31,8 +33,8 @@ function getNavItems(role) {
       { path: '/admin', icon: Home, label: 'Home' },
       { path: '/admin/users', icon: Users, label: 'Utenti' },
       { path: '/admin/classes', icon: BookOpen, label: 'Classi' },
-      { path: '/admin/appointments', icon: Calendar, label: 'Appuntamenti' },
-      { path: '/admin/modulistica', icon: FileText, label: 'Modulistica' },
+      { path: '/admin/avvisi', icon: Megaphone, label: 'Avvisi' },
+      { path: '/admin/mensa', icon: UtensilsCrossed, label: 'Mensa' },
     ];
   }
   return [];

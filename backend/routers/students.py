@@ -20,20 +20,26 @@ async def get_students(
     role = current_user.get("role")
 
     if role == "parent":
-        # I genitori vedono solo il proprio figlio
-        child_id = current_user.get("child_id")
-        if not child_id:
+        # I genitori vedono solo i propri figli (supporta child_ids e legacy child_id)
+        child_ids = list(current_user.get("child_ids") or [])
+        legacy = current_user.get("child_id")
+        if legacy and legacy not in child_ids:
+            child_ids.append(legacy)
+        if not child_ids:
             return []
-        student = await db.students.find_one({"id": child_id}, {"_id": 0})
-        return [student] if student else []
+        students = await db.students.find({"id": {"$in": child_ids}}, {"_id": 0}).to_list(100)
+        return students
 
     if class_id:
         query["class_id"] = class_id
     elif role == "teacher":
-        # Le maestre vedono solo la loro classe
-        teacher_class = current_user.get("class_id")
-        if teacher_class:
-            query["class_id"] = teacher_class
+        # Le maestre vedono le loro classi (supporta class_ids e legacy class_id)
+        teacher_class_ids = list(current_user.get("class_ids") or [])
+        legacy_class = current_user.get("class_id")
+        if legacy_class and legacy_class not in teacher_class_ids:
+            teacher_class_ids.append(legacy_class)
+        if teacher_class_ids:
+            query["class_id"] = {"$in": teacher_class_ids}
 
     students = await db.students.find(query, {"_id": 0}).to_list(1000)
     return students
@@ -42,6 +48,17 @@ async def get_students(
 @router.get("/{student_id}")
 async def get_student(student_id: str, current_user: dict = Depends(get_current_user)):
     db = get_db()
+    role = current_user.get("role")
+
+    # Parent isolation: verifica che il figlio richiesto appartenga al genitore
+    if role == "parent":
+        child_ids = list(current_user.get("child_ids") or [])
+        legacy = current_user.get("child_id")
+        if legacy and legacy not in child_ids:
+            child_ids.append(legacy)
+        if student_id not in child_ids:
+            raise HTTPException(status_code=403, detail="Accesso negato: questo bambino non è associato al tuo account")
+
     student = await db.students.find_one({"id": student_id}, {"_id": 0})
     if not student:
         raise HTTPException(status_code=404, detail="Studente non trovato")

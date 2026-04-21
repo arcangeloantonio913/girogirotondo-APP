@@ -25,10 +25,12 @@ export default function ParentGriglia() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    if (!user?.child_id) return;
+    // Supporta sia child_ids (nuovo) sia child_id (legacy)
+    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    if (!primaryChildId) return;
     Promise.all([
-      api.get(`/griglia?student_id=${user.child_id}&date=${today}`),
-      api.get(`/students/${user.child_id}`),
+      api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
+      api.get(`/students/${primaryChildId}`),
     ]).then(([gRes, cRes]) => {
       setGriglia(gRes.data?.[0] || null);
       setChild(cRes.data);
@@ -36,12 +38,11 @@ export default function ParentGriglia() {
   }, [user, today]);
 
   const timelineItems = griglia ? [
-    { time: '08:00', label: 'Colazione', active: griglia.colazione, color: '#F4C2C2' },
-    { time: '10:00', label: 'Frutta', active: griglia.frutta, color: '#98FB98' },
-    { time: '12:00', label: 'Pranzo', active: griglia.pranzo, color: '#A7C7E7' },
-    { time: '13:30', label: 'Pisolino', active: griglia.pisolino, color: '#D4B8E0' },
-    { time: '15:30', label: 'Merenda', active: griglia.merenda, color: '#FFD699' },
-    { time: '', label: 'Cacca', active: griglia.cacca, color: '#B8D4E3' },
+    { time: '12:00', label: 'Pasta',   active: griglia.pasta,   color: '#F4C2C2' },
+    { time: '12:10', label: 'Secondo', active: griglia.secondo, color: '#A7C7E7' },
+    { time: '12:20', label: 'Pane',    active: griglia.pane,    color: '#FFD699' },
+    { time: '12:30', label: 'Frutta',  active: griglia.frutta,  color: '#98FB98' },
+    { time: '',      label: 'Pupù',    active: griglia.pupu,    color: '#D4B8E0' },
   ] : [];
 
   return (

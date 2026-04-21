@@ -14,11 +14,38 @@ router = APIRouter(tags=["diary"])
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-async def _get_diary(class_id: Optional[str], date: Optional[str]):
+async def _get_diary(class_id: Optional[str], date: Optional[str], current_user: dict):
     db = get_db()
     query: dict = {}
-    if class_id:
-        query["class_id"] = class_id
+    role = current_user.get("role")
+
+    # ── Parent isolation: il genitore vede solo il diario della classe del figlio ─
+    if role == "parent":
+        # Recupera le classi dei propri figli
+        child_ids = list(current_user.get("child_ids") or [])
+        legacy = current_user.get("child_id")
+        if legacy and legacy not in child_ids:
+            child_ids.append(legacy)
+        if not child_ids:
+            return []
+        # Trova le classi dei figli
+        students = await db.students.find(
+            {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1}
+        ).to_list(100)
+        allowed_classes = list({s["class_id"] for s in students if s.get("class_id")})
+        if not allowed_classes:
+            return []
+        # Se class_id specificato, verifica che appartenga ai figli
+        if class_id:
+            if class_id not in allowed_classes:
+                raise HTTPException(status_code=403, detail="Accesso negato")
+            query["class_id"] = class_id
+        else:
+            query["class_id"] = {"$in": allowed_classes}
+    else:
+        if class_id:
+            query["class_id"] = class_id
+
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
@@ -44,7 +71,7 @@ async def get_diary(
     date: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
 ):
-    return await _get_diary(class_id, date)
+    return await _get_diary(class_id, date, current_user)
 
 
 @router.post("/api/diary", status_code=201)

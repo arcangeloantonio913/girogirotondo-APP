@@ -14,6 +14,17 @@ router = APIRouter(prefix="/api/griglia", tags=["griglia"])
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+def _parent_child_ids(current_user: dict) -> list:
+    """Restituisce la lista di child_ids autorizzati per un genitore.
+    Supporta sia il campo child_ids (nuovo) sia child_id (legacy).
+    """
+    ids = list(current_user.get("child_ids") or [])
+    legacy = current_user.get("child_id")
+    if legacy and legacy not in ids:
+        ids.append(legacy)
+    return ids
+
+
 @router.get("")
 async def get_griglia(
     class_id: Optional[str] = None,
@@ -23,14 +34,30 @@ async def get_griglia(
 ):
     db = get_db()
     query: dict = {}
-    if class_id:
-        query["class_id"] = class_id
+    role = current_user.get("role")
+
+    # ── Parent isolation: il genitore vede solo i propri figli ───────────────
+    if role == "parent":
+        allowed = _parent_child_ids(current_user)
+        if not allowed:
+            return []
+        if student_id:
+            if student_id not in allowed:
+                raise HTTPException(status_code=403, detail="Accesso negato: questo bambino non è associato al tuo account")
+            query["student_id"] = student_id
+        else:
+            query["student_id"] = {"$in": allowed}
+    else:
+        if class_id:
+            query["class_id"] = class_id
+        if student_id:
+            query["student_id"] = student_id
+
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["date"] = date
-    if student_id:
-        query["student_id"] = student_id
+
     entries = await db.griglia.find(query, {"_id": 0}).to_list(1000)
     return entries
 
@@ -54,12 +81,11 @@ async def save_griglia(
             "class_id": entry.class_id,
             "student_id": sid,
             "date": entry.date,
-            "colazione": entry.colazione,
-            "pranzo": entry.pranzo,
+            "pasta": entry.pasta,
+            "secondo": entry.secondo,
+            "pane": entry.pane,
             "frutta": entry.frutta,
-            "merenda": entry.merenda,
-            "cacca": entry.cacca,
-            "pisolino": entry.pisolino,
+            "pupu": entry.pupu,
             "notes": entry.notes,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

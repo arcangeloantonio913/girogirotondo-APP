@@ -22,6 +22,10 @@ const AdminUsers          = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminClasses        = lazy(() => import("@/pages/admin/AdminClasses"));
 const AdminAppointments   = lazy(() => import("@/pages/admin/AdminAppointments"));
 const AdminModulistica    = lazy(() => import("@/pages/admin/AdminModulistica"));
+const AdminAvvisi         = lazy(() => import("@/pages/admin/AdminAvvisi"));
+const AdminMensa          = lazy(() => import("@/pages/admin/AdminMensa"));
+const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
+const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -116,10 +120,12 @@ function AppRoutes() {
         <Route path="/parent/gallery"       element={<ProtectedRoute allowedRoles={['parent']}><ParentGallery /></ProtectedRoute>} />
         <Route path="/parent/diario"        element={<ProtectedRoute allowedRoles={['parent']}><ParentDiario /></ProtectedRoute>} />
         <Route path="/parent/alimentazione" element={<ProtectedRoute allowedRoles={['parent']}><ParentAlimentazione /></ProtectedRoute>} />
+        <Route path="/parent/avvisi"        element={<ProtectedRoute allowedRoles={['parent']}><ParentAvvisi /></ProtectedRoute>} />
 
         {/* Teacher */}
         <Route path="/teacher"          element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
         <Route path="/teacher/griglia"  element={<ProtectedRoute allowedRoles={['teacher']}><TeacherGriglia /></ProtectedRoute>} />
+        <Route path="/teacher/avvisi"   element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAvvisi /></ProtectedRoute>} />
         <Route path="/teacher/media"    element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMedia /></ProtectedRoute>} />
         <Route path="/teacher/profile"  element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
 
@@ -129,6 +135,8 @@ function AppRoutes() {
         <Route path="/admin/classes"        element={<ProtectedRoute allowedRoles={['admin']}><AdminClasses /></ProtectedRoute>} />
         <Route path="/admin/appointments"   element={<ProtectedRoute allowedRoles={['admin']}><AdminAppointments /></ProtectedRoute>} />
         <Route path="/admin/modulistica"    element={<ProtectedRoute allowedRoles={['admin']}><AdminModulistica /></ProtectedRoute>} />
+        <Route path="/admin/avvisi"         element={<ProtectedRoute allowedRoles={['admin']}><AdminAvvisi /></ProtectedRoute>} />
+        <Route path="/admin/mensa"          element={<ProtectedRoute allowedRoles={['admin']}><AdminMensa /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

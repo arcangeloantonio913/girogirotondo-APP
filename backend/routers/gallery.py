@@ -35,6 +35,14 @@ def _refresh_signed_url(item: dict) -> dict:
     return item
 
 
+def _parent_child_ids(current_user: dict) -> list:
+    ids = list(current_user.get("child_ids") or [])
+    legacy = current_user.get("child_id")
+    if legacy and legacy not in ids:
+        ids.append(legacy)
+    return ids
+
+
 @router.get("")
 async def get_gallery(
     class_id: Optional[str] = None,
@@ -45,10 +53,25 @@ async def get_gallery(
 ):
     db = get_db()
     query: dict = {}
-    if class_id:
-        query["class_id"] = class_id
-    if student_id:
-        query["student_ids"] = student_id
+    role = current_user.get("role")
+
+    # ── Parent isolation ──────────────────────────────────────────────────────
+    if role == "parent":
+        allowed = _parent_child_ids(current_user)
+        if not allowed:
+            return []
+        if student_id:
+            if student_id not in allowed:
+                raise HTTPException(status_code=403, detail="Accesso negato")
+            query["student_ids"] = student_id
+        else:
+            query["student_ids"] = {"$in": allowed}
+    else:
+        if class_id:
+            query["class_id"] = class_id
+        if student_id:
+            query["student_ids"] = student_id
+
     if media_type:
         query["media_type"] = media_type
     if date:

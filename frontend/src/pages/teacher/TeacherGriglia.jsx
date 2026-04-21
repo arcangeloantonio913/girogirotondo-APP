@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckSquare, Save, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 
+// 4 campi pasto fissi + 1 igiene
 const ACTIVITY_COLS = [
-  { key: 'colazione', label: 'Colazione', short: 'COL', color: '#F4C2C2' },
-  { key: 'pranzo', label: 'Pranzo', short: 'PRA', color: '#A7C7E7' },
-  { key: 'frutta', label: 'Frutta', short: 'FRU', color: '#98FB98' },
-  { key: 'merenda', label: 'Merenda', short: 'MER', color: '#FFD699' },
-  { key: 'cacca', label: 'Cacca', short: 'CAC', color: '#D4B8E0' },
-  { key: 'pisolino', label: 'Pisolino', short: 'PIS', color: '#B8D4E3' },
+  { key: 'pasta',   label: 'Pasta',   short: 'PAS', color: '#F4C2C2' },
+  { key: 'secondo', label: 'Secondo', short: 'SEC', color: '#A7C7E7' },
+  { key: 'pane',    label: 'Pane',    short: 'PAN', color: '#FFD699' },
+  { key: 'frutta',  label: 'Frutta',  short: 'FRU', color: '#98FB98' },
+  { key: 'pupu',    label: 'Pupù',    short: 'PPU', color: '#D4B8E0' },
 ];
 
 export default function TeacherGriglia() {
@@ -39,7 +39,7 @@ export default function TeacherGriglia() {
         // Init grid with defaults
         const g = {};
         res.data.forEach(s => {
-          g[s.id] = { colazione: false, pranzo: false, frutta: false, merenda: false, cacca: false, pisolino: false, notes: '' };
+          g[s.id] = { pasta: false, secondo: false, pane: false, frutta: false, pupu: false, notes: '' };
         });
         setGrid(g);
       });
@@ -55,13 +55,12 @@ export default function TeacherGriglia() {
           res.data.forEach(entry => {
             if (g[entry.student_id]) {
               g[entry.student_id] = {
-                colazione: entry.colazione || false,
-                pranzo: entry.pranzo || false,
-                frutta: entry.frutta || false,
-                merenda: entry.merenda || false,
-                cacca: entry.cacca || false,
-                pisolino: entry.pisolino || false,
-                notes: entry.notes || '',
+                pasta:   entry.pasta   || false,
+                secondo: entry.secondo || false,
+                pane:    entry.pane    || false,
+                frutta:  entry.frutta  || false,
+                pupu:    entry.pupu    || false,
+                notes:   entry.notes   || '',
               };
             }
           });
@@ -145,7 +144,7 @@ export default function TeacherGriglia() {
             </button>
             <div className="text-center">
               <h3 className="text-base font-bold capitalize" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{dateDisplay}</h3>
-              <p className="text-xs text-gray-500">Registro attivita e pasti</p>
+              <p className="text-xs text-gray-500">Registro pasti e igiene</p>
             </div>
             <button onClick={() => setDateOffset(d => d + 1)} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100" data-testid="date-next">
               <ChevronRight className="w-5 h-5 text-gray-600" />

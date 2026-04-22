@@ -48,3 +48,14 @@ class UserUpdate(BaseModel):
     child_id: Optional[str] = None
     child_ids: Optional[List[str]] = None
     avatar_url: Optional[str] = None
+
+
+class IscrizioneCreate(BaseModel):
+    """Iscrizione bambino: crea studente + genitore in un solo step."""
+    bambino_nome: str
+    bambino_cognome: str
+    bambino_data_nascita: Optional[str] = None   # YYYY-MM-DD
+    class_id: str                                  # classe del bambino
+    genitore_email: EmailStr
+    genitore_nome: Optional[str] = None            # default: "Famiglia {cognome}"
+    genitore_password: Optional[str] = None        # se None, viene generata automaticamente

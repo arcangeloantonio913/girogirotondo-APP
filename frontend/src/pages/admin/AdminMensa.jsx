@@ -35,6 +35,7 @@ export default function AdminMensa() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
 
   const getDate = (offset) => {
@@ -73,6 +74,18 @@ export default function AdminMensa() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteMeal = async (mealId) => {
+    setDeletingId(mealId);
+    try {
+      await api.delete(`/meals/menu/${mealId}`);
+      loadData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -141,6 +154,17 @@ export default function AdminMensa() {
                       {getClassName(m.class_id)}
                     </span>
                   </div>
+                  <button
+                    data-testid={`delete-meal-${m.id}`}
+                    onClick={() => handleDeleteMeal(m.id)}
+                    disabled={deletingId === m.id}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                    title="Elimina menu"
+                  >
+                    {deletingId === m.id
+                      ? <span className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin inline-block" />
+                      : <Trash2 className="w-4 h-4" />}
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <MealBadge label="Primo" value={m.primo} />

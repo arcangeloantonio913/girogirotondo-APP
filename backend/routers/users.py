@@ -1,14 +1,17 @@
 """Users router — CRUD + by-class, admin-protected."""
 import uuid
 import bcrypt
+import random
+import string
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 
 from services.database import get_db
-from models.user import UserCreate, UserUpdate
+from models.user import UserCreate, UserUpdate, IscrizioneCreate
 from middleware.auth import get_current_user
+from services.email_service import send_credentials_email
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -16,6 +19,12 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 def _require_admin(current_user: dict):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono eseguire questa operazione")
+
+
+def _generate_password(length: int = 10) -> str:
+    """Genera una password casuale sicura."""
+    chars = string.ascii_letters + string.digits + "!@#$%"
+    return ''.join(random.choices(chars, k=length))
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +138,87 @@ async def update_user(
 
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     return user
+
+
+# ---------------------------------------------------------------------------
+# POST /api/users/iscrizione  — crea bambino + genitore + invia email
+# ---------------------------------------------------------------------------
+
+@router.post("/iscrizione", status_code=201)
+async def iscrizione_bambino(
+    payload: IscrizioneCreate,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Registrazione completa: crea studente + account genitore in un unico step.
+    Invia le credenziali via email a scuolagirogirotondo@libero.it → genitore.
+    Solo admin.
+    """
+    _require_admin(current_user)
+    db = get_db()
+
+    # Controlla unicità email genitore
+    existing = await db.users.find_one({"email": payload.genitore_email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email genitore già in uso")
+
+    # Password: usa quella fornita o generane una
+    password_plain = payload.genitore_password or _generate_password()
+
+    # 1. Crea il record studente
+    student_id = str(uuid.uuid4())
+    student = {
+        "id": student_id,
+        "name": payload.bambino_nome,
+        "cognome": payload.bambino_cognome,
+        "class_id": payload.class_id,
+        "date_of_birth": payload.bambino_data_nascita or "",
+        "child_code": f"GGT-{str(uuid.uuid4())[:4].upper()}",
+        "allergies": [],
+        "notes": "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.students.insert_one(student)
+
+    # 2. Crea l'account genitore
+    genitore_nome = payload.genitore_nome or f"Famiglia {payload.bambino_cognome}"
+    parent = {
+        "id": str(uuid.uuid4()),
+        "name": genitore_nome,
+        "cognome": payload.bambino_cognome,
+        "email": payload.genitore_email,
+        "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
+        "role": "parent",
+        "child_id": student_id,        # legacy compat
+        "child_ids": [student_id],
+        "class_id": None,
+        "class_ids": [],
+        "firebase_uid": None,
+        "avatar_url": None,
+        "active": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(parent)
+
+    # 3. Invia email con le credenziali al genitore
+    await send_credentials_email(
+        to_email=payload.genitore_email,
+        bambino_nome=payload.bambino_nome,
+        bambino_cognome=payload.bambino_cognome,
+        password=password_plain,
+    )
+
+    # Risposta pulita (no _id, no password hash)
+    student.pop("_id", None)
+    parent.pop("_id", None)
+    parent.pop("password", None)
+
+    return {
+        "student": student,
+        "parent": parent,
+        "email_inviata": True,
+        "genitore_email": payload.genitore_email,
+    }
 
 
 # ---------------------------------------------------------------------------

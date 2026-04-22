@@ -55,3 +55,18 @@ async def create_meal(
     if current_user.get("role") not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può creare menu")
     return await _create_meal(payload, current_user.get("id", ""))
+
+
+@router.delete("/api/meals/menu/{meal_id}", status_code=200)
+async def delete_meal(
+    meal_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """Elimina un menu — solo admin."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare menu")
+    db = get_db()
+    result = await db.meals.delete_one({"id": meal_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Menu non trovato")
+    return {"message": "Menu eliminato"}

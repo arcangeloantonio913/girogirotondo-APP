@@ -14,7 +14,9 @@ export default function TeacherMedia() {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploaded, setUploaded] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const [gallery, setGallery] = useState([]);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -22,15 +24,17 @@ export default function TeacherMedia() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (user?.class_id) {
-      Promise.all([
-        api.get(`/students?class_id=${user.class_id}`),
-        api.get(`/gallery?class_id=${user.class_id}`),
-      ]).then(([sRes, gRes]) => {
-        setStudents(sRes.data);
-        setGallery(gRes.data);
-      });
-    }
+    // Supporta class_ids (nuovo) e class_id legacy
+    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
+    if (!primaryClassId) return;
+    Promise.all([
+      // GET /students senza class_id: il backend filtra per le classi della maestra
+      api.get('/students'),
+      api.get(`/gallery?class_id=${primaryClassId}`),
+    ]).then(([sRes, gRes]) => {
+      setStudents(sRes.data);
+      setGallery(gRes.data);
+    });
   }, [user]);
 
   const toggleStudent = (id) => {
@@ -73,30 +77,56 @@ export default function TeacherMedia() {
     setPreviewUrls([]);
     setSelectedStudents([]);
     setCaption('');
+    setUploadError('');
+    setUploadProgress({ current: 0, total: 0 });
   };
 
   const handleUpload = async () => {
     if (selectedStudents.length === 0 || !caption || selectedFiles.length === 0) return;
+    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
+    if (!primaryClassId) return;
+
     setUploading(true);
-    try {
-      const mediaUrl = previewUrls[0] || 'uploaded_file';
-      const mediaType = selectedFiles[0]?.type?.startsWith('video') ? 'video' : 'photo';
-      const res = await api.post('/gallery', {
-        class_id: user.class_id,
-        student_ids: selectedStudents,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        caption,
-      });
-      setGallery([res.data, ...gallery]);
+    setUploadError('');
+    setUploadProgress({ current: 0, total: selectedFiles.length });
+
+    const newItems = [];
+    const failed = [];
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      setUploadProgress({ current: i + 1, total: selectedFiles.length });
+
+      // Usa FormData e POST /gallery/upload per caricare su Firebase Storage
+      const fd = new FormData();
+      fd.append('class_id', primaryClassId);
+      fd.append('student_ids', selectedStudents.join(','));
+      fd.append('media_type', file.type.startsWith('video') ? 'video' : 'photo');
+      fd.append('caption', caption);
+      fd.append('tags', '');
+      fd.append('file', file, file.name);
+
+      try {
+        const res = await api.post('/gallery/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        newItems.push(res.data);
+      } catch (err) {
+        console.error(`Errore upload ${file.name}:`, err);
+        failed.push(file.name);
+      }
+    }
+
+    setUploading(false);
+    if (newItems.length > 0) {
+      setGallery(prev => [...newItems, ...prev]);
       resetModal();
       setUploadModalOpen(false);
       setUploaded(true);
-      setTimeout(() => setUploaded(false), 3000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUploading(false);
+      setTimeout(() => setUploaded(false), 4000);
+    }
+    if (failed.length > 0) {
+      setUploadError(`Errore caricamento: ${failed.join(', ')}`);
     }
   };
 
@@ -274,6 +304,11 @@ export default function TeacherMedia() {
                 />
               </div>
 
+              {/* Upload Error */}
+              {uploadError && (
+                <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{uploadError}</p>
+              )}
+
               {/* Upload Button */}
               <Button
                 data-testid="modal-upload-button"
@@ -283,7 +318,9 @@ export default function TeacherMedia() {
                 style={{ backgroundColor: '#32CD32' }}
               >
                 <Upload className="w-4 h-4 mr-2" />
-                {uploading ? 'Caricamento...' : 'Carica Media'}
+                {uploading
+                  ? `Caricamento ${uploadProgress.current}/${uploadProgress.total}...`
+                  : `Carica ${selectedFiles.length > 1 ? `${selectedFiles.length} file` : 'Media'}`}
               </Button>
             </div>
           </DialogContent>

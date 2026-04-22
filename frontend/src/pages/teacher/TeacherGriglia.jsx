@@ -32,9 +32,13 @@ export default function TeacherGriglia() {
   const currentDate = getDate(dateOffset);
   const dateDisplay = new Date(currentDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // Supporta class_ids (nuovo) e class_id legacy
+  const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
+
   useEffect(() => {
-    if (user?.class_id) {
-      api.get(`/students?class_id=${user.class_id}`).then(res => {
+    if (primaryClassId) {
+      // GET /students senza class_id: il backend filtra automaticamente per le classi della maestra
+      api.get('/students').then(res => {
         setStudents(res.data);
         // Init grid with defaults
         const g = {};
@@ -44,12 +48,12 @@ export default function TeacherGriglia() {
         setGrid(g);
       });
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load existing data for the date
   useEffect(() => {
-    if (user?.class_id && students.length > 0) {
-      api.get(`/griglia?class_id=${user.class_id}&date=${currentDate}`).then(res => {
+    if (primaryClassId && students.length > 0) {
+      api.get(`/griglia?class_id=${primaryClassId}&date=${currentDate}`).then(res => {
         setGrid(prev => {
           const g = { ...prev };
           res.data.forEach(entry => {
@@ -117,7 +121,7 @@ export default function TeacherGriglia() {
       const promises = students.map(s => {
         const data = grid[s.id] || {};
         return api.post('/griglia', {
-          class_id: user.class_id,
+          class_id: primaryClassId,
           student_ids: [s.id],
           date: currentDate,
           ...data,

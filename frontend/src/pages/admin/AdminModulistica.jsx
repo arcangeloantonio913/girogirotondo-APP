@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload } from 'lucide-react';
+import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X } from 'lucide-react';
 
 export default function AdminModulistica() {
   const [documents, setDocuments] = useState([]);
@@ -13,7 +13,11 @@ export default function AdminModulistica() {
   const [parents, setParents] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState(null);
-  const [form, setForm] = useState({ title: '', description: '', file_url: '' });
+  const [form, setForm] = useState({ title: '', description: '' });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -31,16 +35,31 @@ export default function AdminModulistica() {
   };
 
   const handleCreate = async () => {
+    if (!form.title || !selectedFile) return;
+    setUploading(true);
+    setUploadError('');
     try {
-      await api.post('/documents', {
-        ...form,
-        file_url: form.file_url || 'https://example.com/docs/placeholder.pdf',
+      // Caricamento reale su Firebase Storage via multipart form
+      const fd = new FormData();
+      fd.append('title', form.title);
+      fd.append('description', form.description || '');
+      fd.append('categoria', 'modulistica');
+      fd.append('classe_id', '');
+      fd.append('scadenza', '');
+      fd.append('file', selectedFile, selectedFile.name);
+
+      await api.post('/documents/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setDialogOpen(false);
-      setForm({ title: '', description: '', file_url: '' });
+      setForm({ title: '', description: '' });
+      setSelectedFile(null);
       loadData();
     } catch (err) {
       console.error(err);
+      setUploadError(err.response?.data?.detail || 'Errore durante il caricamento');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -124,32 +143,65 @@ export default function AdminModulistica() {
         })}
 
         {/* Create Document Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          if (!open) { setUploadError(''); setSelectedFile(null); setForm({ title: '', description: '' }); }
+          setDialogOpen(open);
+        }}>
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="create-document-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>Nuovo Documento</DialogTitle>
             </DialogHeader>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              className="hidden"
+              data-testid="doc-file-input"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setSelectedFile(f); }}
+            />
             <div className="space-y-3 pt-2">
               <div>
-                <Label className="text-xs font-medium text-gray-600">Titolo</Label>
+                <Label className="text-xs font-medium text-gray-600">Titolo *</Label>
                 <Input data-testid="doc-title-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="rounded-xl mt-1" placeholder="Titolo documento" />
               </div>
               <div>
                 <Label className="text-xs font-medium text-gray-600">Descrizione</Label>
-                <Input data-testid="doc-description-input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl mt-1" placeholder="Breve descrizione" />
+                <Input data-testid="doc-description-input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="rounded-xl mt-1" placeholder="Breve descrizione (opzionale)" />
               </div>
-              <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-green-300 transition-colors">
-                <Upload className="w-8 h-8 mx-auto text-gray-300 mb-1" />
-                <p className="text-xs text-gray-500">Simulazione upload PDF</p>
-              </div>
+              {/* File picker area */}
+              {selectedFile ? (
+                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
+                  <File className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{selectedFile.name}</p>
+                    <p className="text-[10px] text-gray-500">{(selectedFile.size / 1024).toFixed(0)} KB</p>
+                  </div>
+                  <button onClick={() => setSelectedFile(null)} className="text-gray-400 hover:text-red-500">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  data-testid="doc-file-picker"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-gray-200 rounded-xl p-5 text-center hover:border-green-300 transition-colors"
+                >
+                  <Upload className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm font-semibold text-gray-500">Tocca per selezionare il file</p>
+                  <p className="text-xs text-gray-400 mt-1">PDF, Word, immagini — max 10 MB</p>
+                </button>
+              )}
+              {uploadError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{uploadError}</p>}
               <Button
                 data-testid="create-doc-submit"
                 onClick={handleCreate}
-                disabled={!form.title}
+                disabled={!form.title || !selectedFile || uploading}
                 className="w-full rounded-2xl font-bold h-11"
                 style={{ backgroundColor: '#32CD32' }}
               >
-                Pubblica Documento
+                <Upload className="w-4 h-4 mr-2" />
+                {uploading ? 'Caricamento in corso...' : 'Pubblica Documento'}
               </Button>
             </div>
           </DialogContent>

@@ -52,11 +52,86 @@ def hash_password(password: str) -> str:
 # Multi-Tenant Seed — Two sedi, two superadmins, isolated data per sede
 # ---------------------------------------------------------------------------
 
+async def ensure_superadmins():
+    """
+    Eseguito ad OGNI avvio: garantisce che Mariagrazia e Teresa
+    esistano con le email e password corrette, indipendentemente
+    dallo stato del database. Usa upsert — sicuro da chiamare più volte.
+    """
+    db = get_db()
+
+    superadmin_defs = [
+        {
+            "email": "mariucciasc@gmail.com",
+            "name": "Mariagrazia",
+            "cognome": "Direttrice",
+            "password_plain": "Mariagrazia2026!",
+        },
+        {
+            "email": "melignanoteresa@gmail.com",
+            "name": "Teresa",
+            "cognome": "Coordinatrice",
+            "password_plain": "Teresa2026!",
+        },
+    ]
+
+    for sa in superadmin_defs:
+        existing = await db.users.find_one({"email": sa["email"]})
+        new_hash = hash_password(sa["password_plain"])
+
+        if existing:
+            # Aggiorna sempre password, nome e flag superadmin
+            await db.users.update_one(
+                {"email": sa["email"]},
+                {"$set": {
+                    "name": sa["name"],
+                    "cognome": sa["cognome"],
+                    "password": new_hash,
+                    "role": "admin",
+                    "is_superadmin": True,
+                    "active": True,
+                    "sede_id": None,
+                }},
+            )
+            logger.info("[SUPERADMIN] Credenziali aggiornate per %s", sa["email"])
+        else:
+            # Crea da zero se non esiste
+            doc = {
+                "id": str(uuid.uuid4()),
+                "firebase_uid": None,
+                "name": sa["name"],
+                "cognome": sa["cognome"],
+                "email": sa["email"],
+                "password": new_hash,
+                "role": "admin",
+                "is_superadmin": True,
+                "sede_id": None,
+                "class_id": None,
+                "class_ids": [],
+                "child_id": None,
+                "child_ids": [],
+                "avatar_url": None,
+                "active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.users.insert_one(doc)
+            logger.info("[SUPERADMIN] Creato nuovo account per %s", sa["email"])
+
+    # Rimuovi eventuali vecchi account superadmin con email obsolete
+    old_emails = ["mariagrazia@girogirotondo.it", "teresa@girogirotondo.it"]
+    result = await db.users.delete_many({"email": {"$in": old_emails}})
+    if result.deleted_count:
+        logger.info("[SUPERADMIN] Rimossi %d account obsoleti", result.deleted_count)
+
+
 async def seed_database():
     db = get_db()
 
-    # Skip seed if SuperAdmin already exists (idempotent)
-    existing = await db.users.find_one({"is_superadmin": True})
+    # Aggiorna/crea sempre i SuperAdmin (email + password corrette garantite)
+    await ensure_superadmins()
+
+    # Skip il resto del seed se i dati demo esistono già
+    existing = await db.classes.find_one({})
     if existing:
         return
 

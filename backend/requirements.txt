@@ -18,3 +18,4 @@ python-jose[cryptography]>=3.3.0
 cryptography>=42.0.8
 tzdata>=2024.2
 sentry-sdk[fastapi]>=2.0.0
+resend>=2.0.0

@@ -97,7 +97,7 @@ async def seed_database():
             "firebase_uid": None,
             "name": "Mariagrazia",
             "cognome": "Direttrice",
-            "email": "mariagrazia@girogirotondo.it",
+            "email": "mariucciasc@gmail.com",
             "password": hash_password("Mariagrazia2026!"),
             "role": "admin",
             "is_superadmin": True,
@@ -115,7 +115,7 @@ async def seed_database():
             "firebase_uid": None,
             "name": "Teresa",
             "cognome": "Coordinatrice",
-            "email": "teresa@girogirotondo.it",
+            "email": "melignanoteresa@gmail.com",
             "password": hash_password("Teresa2026!"),
             "role": "admin",
             "is_superadmin": True,
@@ -602,5 +602,5 @@ async def seed_database():
     await db.calendar_events.create_index("data_inizio")
 
     logger.info("Multi-tenant database seeded successfully! Sedi: Girogirotondo + Il Magico Mondo")
-    logger.info("SuperAdmin: mariagrazia@girogirotondo.it / Mariagrazia2026!")
-    logger.info("SuperAdmin: teresa@girogirotondo.it / Teresa2026!")
+    logger.info("SuperAdmin: mariucciasc@gmail.com / Mariagrazia2026!")
+    logger.info("SuperAdmin: melignanoteresa@gmail.com / Teresa2026!")

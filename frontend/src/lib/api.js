@@ -9,23 +9,32 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach auth token on every request (Firebase ID token or backend JWT fallback)
+// Attach auth token + sede header on every request
 api.interceptors.request.use(async (config) => {
+  // 1. Auth token (Firebase o JWT fallback)
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
       const token = await currentUser.getIdToken();
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      // Fallback: use stored JWT from backend login (demo users)
       const jwtToken = localStorage.getItem('ggt_token');
       if (jwtToken) {
         config.headers.Authorization = `Bearer ${jwtToken}`;
       }
     }
   } catch {
-    // If token retrieval fails, proceed without token
+    // Se il recupero del token fallisce, procedi senza token
   }
+
+  // 2. Multi-tenant: X-Sede-Id header
+  // Inviato su tutte le richieste; il backend lo usa solo per le operazioni admin.
+  // Teacher e Parent lo ignorano completamente — sicurezza cross-tenant garantita lato server.
+  const sedeId = localStorage.getItem('ggt_sede');
+  if (sedeId) {
+    config.headers['X-Sede-Id'] = sedeId;
+  }
+
   return config;
 });
 
@@ -37,11 +46,8 @@ api.interceptors.response.use(
   async (err) => {
     if (err.response?.status === 401 && !_isLoggingOut) {
       _isLoggingOut = true;
-      // Clear all stored session data BEFORE signing out
       localStorage.removeItem('ggt_token');
       localStorage.removeItem('ggt_user');
-      // Wait for signOut to fully complete (clears Firebase IndexedDB persistence)
-      // so onAuthStateChanged doesn't re-login automatically on page load
       try {
         await auth.signOut();
       } catch {

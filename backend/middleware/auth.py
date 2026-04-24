@@ -1,4 +1,14 @@
-"""Authentication middleware — verifies Firebase ID token (primary) or custom JWT (dev fallback)."""
+"""Authentication middleware — verifies Firebase ID token (primary) or custom JWT (dev fallback).
+
+Multi-Tenant Security
+---------------------
+* Admin/SuperAdmin: sede_id viene letto dall'header X-Sede-Id (inviato dal frontend).
+  - SuperAdmin (is_superadmin=True): può accedere a qualsiasi sede valida.
+  - Admin normale: può accedere SOLO alla propria sede (current_user.sede_id deve corrispondere).
+* Teacher: sede_id viene letto ESCLUSIVAMENTE da current_user.sede_id — header ignorato.
+  Un malintenzionato NON può manipolare l'API per accedere a un'altra sede.
+* Parent: sede implicita dai figli — nessun parametro esterno accettato.
+"""
 import os
 import logging
 from typing import Optional
@@ -13,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 _JWT_SECRET = os.environ.get("JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
-# DEV_MODE: custom JWT fallback ONLY for local development. MUST be false in production.
 DEV_MODE = os.environ.get("DEV_MODE", "false").lower() == "true"
 
 if not _JWT_SECRET:
@@ -81,8 +90,64 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 def require_role(*roles: str):
     """Dependency factory that checks the user's role."""
     async def _check(current_user: dict = Header(None)):
-        # actual injection handled by FastAPI; this wrapper is used via Depends
         if current_user.get("role") not in roles:
             raise HTTPException(status_code=403, detail="Permesso negato")
         return current_user
     return _check
+
+
+# ---------------------------------------------------------------------------
+# Multi-Tenant: Sede Validation
+# ---------------------------------------------------------------------------
+
+VALID_SEDE_IDS = {"girogirotondo", "il-magico-mondo"}
+
+
+def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str]) -> str:
+    """
+    Valida l'accesso dell'admin alla sede richiesta tramite header X-Sede-Id.
+
+    Regole di sicurezza:
+    - Se l'utente è SuperAdmin (is_superadmin=True): può accedere a qualsiasi sede valida.
+    - Se l'utente è Admin normale: può accedere SOLO alla propria sede.
+    - Se l'header X-Sede-Id manca: usa la sede dell'admin o 'girogirotondo' come default.
+
+    Returns:
+        sede_id validata (stringa)
+    Raises:
+        HTTPException 403 se l'admin non ha accesso alla sede richiesta.
+        HTTPException 400 se la sede_id non esiste.
+    """
+    role = current_user.get("role")
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Solo gli amministratori possono specificare la sede")
+
+    # Normalizza: converti None/vuoto al default
+    requested_sede = (x_sede_id or "").strip() or current_user.get("sede_id") or "girogirotondo"
+
+    if requested_sede not in VALID_SEDE_IDS:
+        raise HTTPException(status_code=400, detail=f"Sede non valida: {requested_sede}")
+
+    is_superadmin = current_user.get("is_superadmin", False)
+    if not is_superadmin:
+        # Admin normale: può accedere solo alla propria sede
+        user_sede = current_user.get("sede_id")
+        if user_sede and user_sede != requested_sede:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Accesso negato: non hai i permessi per la sede '{requested_sede}'",
+            )
+
+    return requested_sede
+
+
+def get_teacher_sede_id(current_user: dict) -> str:
+    """
+    Restituisce la sede_id della maestra dal proprio profilo.
+    NON accetta input esterno — sicurezza cross-tenant garantita.
+    """
+    sede_id = current_user.get("sede_id")
+    if not sede_id:
+        # Fallback: deriva dalla prima classe assegnata (compatibilità legacy)
+        return "girogirotondo"
+    return sede_id

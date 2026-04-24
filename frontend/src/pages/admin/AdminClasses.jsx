@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -9,25 +10,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { BookOpen, Plus, Trash2, Users } from 'lucide-react';
 
 export default function AdminClasses() {
+  const { sede, sedeInfo } = useAuth();
   const [classes, setClasses] = useState([]);
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', teacher_id: '' });
 
+  // Ricarica quando cambia la sede
   useEffect(() => {
     loadData();
-  }, []);
+  }, [sede]);
 
   const loadData = async () => {
-    const [cRes, uRes, sRes] = await Promise.all([
-      api.get('/classes'),
-      api.get('/users'),
-      api.get('/students'),
-    ]);
-    setClasses(cRes.data);
-    setUsers(uRes.data);
-    setStudents(sRes.data);
+    try {
+      const [cRes, uRes, sRes] = await Promise.all([
+        api.get('/classes'),
+        api.get('/users'),
+        api.get('/students'),
+      ]);
+      setClasses(cRes.data);
+      setUsers(uRes.data);
+      setStudents(sRes.data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleCreate = async () => {
@@ -56,10 +63,16 @@ export default function AdminClasses() {
   return (
     <AppLayout title="Gestione Classi" showBack>
       <div className="max-w-2xl mx-auto space-y-4" data-testid="admin-classes-page">
+
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5" style={{ color: '#FF69B4' }} />
             <span className="text-sm font-bold text-gray-700">{classes.length} classi</span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
+              style={{ backgroundColor: sedeInfo?.color }}>
+              {sedeInfo?.label}
+            </span>
           </div>
           <Button
             data-testid="add-class-button"
@@ -73,17 +86,26 @@ export default function AdminClasses() {
         </div>
 
         {/* Classes List */}
+        {classes.length === 0 && (
+          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8 text-center">
+            <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+            <p className="text-sm text-gray-400">Nessuna classe per la sede <strong>{sedeInfo?.label}</strong></p>
+          </div>
+        )}
+
         {classes.map((cls, idx) => {
           const teacher = users.find(u => u.id === cls.teacher_id);
           const classStudents = students.filter(s => s.class_id === cls.id);
           const color = classColors[idx % classColors.length];
 
           return (
-            <div key={cls.id} data-testid={`class-card-${cls.id}`} className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div key={cls.id} data-testid={`class-card-${cls.id}`}
+              className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
               <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: color }}>
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm"
+                      style={{ backgroundColor: color }}>
                       {cls.name.charAt(0)}
                     </div>
                     <div>
@@ -123,12 +145,17 @@ export default function AdminClasses() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="create-class-dialog">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>Nuova Classe</DialogTitle>
+              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>
+                Nuova Classe
+                <span className="text-sm font-normal text-gray-400 ml-2">— {sedeInfo?.label}</span>
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 pt-2">
               <div>
                 <Label className="text-xs font-medium text-gray-600">Nome Classe</Label>
-                <Input data-testid="class-name-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="rounded-xl mt-1" placeholder="Es. Farfalle" />
+                <Input data-testid="class-name-input" value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="rounded-xl mt-1" placeholder="Es. Farfalle" />
               </div>
               <div>
                 <Label className="text-xs font-medium text-gray-600">Maestra Assegnata</Label>

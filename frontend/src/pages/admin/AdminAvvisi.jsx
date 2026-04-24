@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -10,15 +11,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Bell, Plus, Trash2, Globe, BookOpen } from 'lucide-react';
 
 export default function AdminAvvisi() {
+  const { sede } = useAuth();
   const [avvisi, setAvvisi] = useState([]);
   const [classes, setClasses] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ titolo: '', testo: '', target: 'global', class_id: '' });
   const [loading, setLoading] = useState(false);
 
+  // Ricarica quando cambia la sede attiva
   useEffect(() => {
     loadData();
-  }, []);
+  }, [sede]);
 
   const loadData = async () => {
     const [aRes, cRes] = await Promise.all([

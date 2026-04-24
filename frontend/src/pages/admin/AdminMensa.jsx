@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ function MealBadge({ label, value }) {
 }
 
 export default function AdminMensa() {
+  const { sede } = useAuth();
   const [meals, setMeals] = useState([]);
   const [classes, setClasses] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,13 +48,14 @@ export default function AdminMensa() {
   const currentDate = getDate(dateOffset);
   const dateDisplay = new Date(currentDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // Ricarica quando cambia la sede attiva o la data
   useEffect(() => {
     loadData();
-  }, [currentDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentDate, sede]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     api.get('/classes').then(res => setClasses(res.data)).catch(() => {});
-  }, []);
+  }, [sede]);
 
   const loadData = async () => {
     try {

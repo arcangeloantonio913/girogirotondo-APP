@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ const EMPTY_ISCRIZIONE = {
 };
 
 export default function AdminUsers() {
+  const { sede, sedeInfo } = useAuth();
   const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,7 +68,8 @@ export default function AdminUsers() {
   const [iscError, setIscError] = useState('');
   const [iscSuccess, setIscSuccess] = useState(null); // { genitore_email, bambino_nome }
 
-  useEffect(() => { loadData(); }, []);
+  // Ricarica dati quando cambia la sede attiva
+  useEffect(() => { loadData(); }, [sede]);
 
   const loadData = async () => {
     const [uRes, cRes] = await Promise.all([api.get('/users'), api.get('/classes')]);
@@ -125,6 +128,7 @@ export default function AdminUsers() {
     try {
       const payload = {
         ...iscForm,
+        sede_id: sede,                        // sede attiva obbligatoria
         genitore_password: autogenPwd ? undefined : iscForm.genitore_password,
       };
       const res = await api.post('/users/iscrizione', payload);
@@ -170,7 +174,7 @@ export default function AdminUsers() {
     (autogenPwd || iscForm.genitore_password.length >= 6);
 
   return (
-    <AppLayout title="Gestione Utenti" showBack>
+    <AppLayout title={`Utenti — ${sedeInfo?.label || ''}`} showBack>
       <div className="max-w-2xl mx-auto space-y-4" data-testid="admin-users-page">
 
         {/* Header con due pulsanti */}

@@ -1,8 +1,13 @@
-"""Email service — invio credenziali via SMTP Libero.it"""
+"""Email service — invio credenziali via SMTP Libero.it.
+
+Returns True se l'email è stata inviata, False altrimenti.
+NON solleva eccezioni: i fallimenti SMTP vengono loggati ma non bloccano la registrazione.
+"""
 import os
 import smtplib
 import asyncio
 import logging
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from functools import partial
@@ -14,8 +19,14 @@ SMTP_PORT = 587
 SMTP_USER = "scuolagirogirotondo@libero.it"
 SMTP_PASS = os.environ.get("EMAIL_PASSWORD", "")
 
+# Nome display della scuola mittente
+SCHOOL_DISPLAY_NAMES = {
+    "girogirotondo": "Girogirotondo — Scuola dell'Infanzia",
+    "il-magico-mondo": "Il Magico Mondo — Scuola dell'Infanzia",
+}
 
-def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str = ""):
+
+def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str = "") -> None:
     """Invio sincrono da eseguire in executor (smtplib è bloccante)."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -38,19 +49,28 @@ async def send_credentials_email(
     bambino_nome: str,
     bambino_cognome: str,
     password: str,
-):
-    """Invia email di benvenuto con le credenziali di accesso al genitore."""
+    sede_name: str = "girogirotondo",
+) -> bool:
+    """
+    Invia email di benvenuto con le credenziali di accesso al genitore.
+
+    Returns:
+        True se l'email è stata inviata con successo.
+        False se SMTP non è configurato o l'invio fallisce.
+    """
+    year = datetime.now().year
+    school_name = SCHOOL_DISPLAY_NAMES.get(sede_name, "Girogirotondo — Scuola dell'Infanzia")
     subject = f"Benvenuto su Girogirotondo — Credenziali per {bambino_nome} {bambino_cognome}"
 
     plain_body = (
         f"Gentile Famiglia {bambino_cognome},\n\n"
-        f"Benvenuti nel portale Girogirotondo!\n\n"
+        f"Benvenuti nel portale {school_name}!\n\n"
         f"Credenziali per {bambino_nome} {bambino_cognome}:\n"
         f"  Email: {to_email}\n"
         f"  Password: {password}\n\n"
         f"Vi consigliamo di cambiare la password al primo accesso.\n\n"
         f"Per assistenza: scuolagirogirotondo@libero.it\n\n"
-        f"Girogirotondo — Scuola dell'Infanzia"
+        f"{school_name}"
     )
 
     html_body = f"""
@@ -64,14 +84,14 @@ async def send_credentials_email(
                style="background:white;border-radius:16px;padding:32px;
                       box-shadow:0 4px 24px rgba(0,0,0,0.08);">
 
-          <!-- Logo / Header -->
+          <!-- Header -->
           <tr>
             <td align="center" style="padding-bottom:24px;
                 border-bottom:1px solid #F0F0F0;">
               <h1 style="margin:0;font-size:22px;color:#4169E1;
                          font-weight:800;">&#127897; Girogirotondo</h1>
               <p style="margin:4px 0 0;font-size:12px;color:#888;">
-                Scuola dell'Infanzia
+                {school_name}
               </p>
             </td>
           </tr>
@@ -83,7 +103,7 @@ async def send_credentials_email(
                 Gentile <strong>Famiglia {bambino_cognome}</strong>,
               </p>
               <p style="margin:0;font-size:14px;color:#555;line-height:1.7;">
-                Siamo lieti di darvi il benvenuto nel portale Girogirotondo!<br>
+                Siamo lieti di darvi il benvenuto nel portale!<br>
                 Di seguito le credenziali di accesso per il profilo di
                 <strong>{bambino_nome} {bambino_cognome}</strong>.
               </p>
@@ -136,9 +156,8 @@ async def send_credentials_email(
             <td align="center"
                 style="border-top:1px solid #F0F0F0;padding-top:20px;">
               <p style="margin:0;font-size:11px;color:#bbb;">
-                &copy; {bambino_nome[:4] if bambino_nome else '2024'[:4]}
-                Girogirotondo — Scuola dell'Infanzia<br>
-                Messaggio generato automaticamente, non rispondere.
+                &copy; {year} {school_name}<br>
+                Messaggio generato automaticamente, non rispondere a questa email.
               </p>
             </td>
           </tr>
@@ -152,13 +171,12 @@ async def send_credentials_email(
 """
 
     if not SMTP_PASS:
-        # Configurazione email mancante — logga le credenziali in chiaro (solo dev)
         logger.warning(
             "[EMAIL] EMAIL_PASSWORD non configurata. "
             "Credenziali per %s: email=%s password=%s",
             to_email, to_email, password,
         )
-        return
+        return False
 
     loop = asyncio.get_event_loop()
     try:
@@ -167,6 +185,13 @@ async def send_credentials_email(
             partial(_send_sync, to_email, subject, html_body, plain_body),
         )
         logger.info("[EMAIL] Credenziali inviate con successo a %s", to_email)
+        return True
+    except smtplib.SMTPAuthenticationError as exc:
+        logger.error("[EMAIL] Autenticazione SMTP fallita — verifica EMAIL_PASSWORD: %s", exc)
+        return False
+    except smtplib.SMTPException as exc:
+        logger.error("[EMAIL] Errore SMTP durante invio a %s: %s", to_email, exc)
+        return False
     except Exception as exc:
-        # L'errore email non blocca la registrazione, ma lo logghiamo
-        logger.error("[EMAIL] Invio fallito a %s: %s", to_email, exc)
+        logger.error("[EMAIL] Errore generico durante invio a %s: %s", to_email, exc)
+        return False

@@ -6,10 +6,11 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Users, BookOpen, Calendar, FileText, ChevronRight, TrendingUp, UtensilsCrossed, Megaphone } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, sede, sedeInfo } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ users: 0, classes: 0, students: 0, appointments: 0 });
 
+  // Ricarica i dati ogni volta che cambia la sede attiva
   useEffect(() => {
     const load = async () => {
       try {
@@ -30,39 +31,42 @@ export default function AdminDashboard() {
       }
     };
     load();
-  }, []);
+  }, [sede]); // ← dipendenza su sede: ricarica automaticamente al cambio
 
   const statCards = [
-    { label: 'Utenti', value: stats.users, color: '#4169E1', bg: '#EBF0FF', icon: Users },
-    { label: 'Classi', value: stats.classes, color: '#FF69B4', bg: '#FFF0F7', icon: BookOpen },
-    { label: 'Alunni', value: stats.students, color: '#32CD32', bg: '#F0FFF0', icon: TrendingUp },
-    { label: 'Appuntamenti', value: stats.appointments, color: '#F59E0B', bg: '#FFFBEB', icon: Calendar },
+    { label: 'Utenti',        value: stats.users,        color: '#4169E1', bg: '#EBF0FF', icon: Users },
+    { label: 'Classi',        value: stats.classes,      color: '#FF69B4', bg: '#FFF0F7', icon: BookOpen },
+    { label: 'Alunni',        value: stats.students,     color: '#32CD32', bg: '#F0FFF0', icon: TrendingUp },
+    { label: 'Appuntamenti',  value: stats.appointments, color: '#F59E0B', bg: '#FFFBEB', icon: Calendar },
   ];
 
   const navCards = [
-    { id: 'users', icon: Users, color: '#4169E1', bg: '#EBF0FF', title: 'Gestione Utenti', subtitle: 'Crea e gestisci account', path: '/admin/users' },
-    { id: 'classes', icon: BookOpen, color: '#FF69B4', bg: '#FFF0F7', title: 'Gestione Classi', subtitle: 'Organizza le classi', path: '/admin/classes' },
-    { id: 'appointments', icon: Calendar, color: '#F59E0B', bg: '#FFFBEB', title: 'Appuntamenti', subtitle: 'Visualizza prenotazioni', path: '/admin/appointments' },
-    { id: 'modulistica', icon: FileText, color: '#32CD32', bg: '#F0FFF0', title: 'Modulistica', subtitle: 'Documenti e prese visione', path: '/admin/modulistica' },
-    { id: 'mensa', icon: UtensilsCrossed, color: '#4169E1', bg: '#EBF0FF', title: 'Menu della Mensa', subtitle: 'Gestisci i menu giornalieri', path: '/admin/mensa' },
-    { id: 'avvisi', icon: Megaphone, color: '#8B5CF6', bg: '#F5F3FF', title: 'Avvisi e Comunicazioni', subtitle: 'Pubblica comunicazioni ai genitori', path: '/admin/avvisi' },
+    { id: 'users',       icon: Users,          color: '#4169E1', bg: '#EBF0FF', title: 'Gestione Utenti',         subtitle: 'Crea e gestisci account',            path: '/admin/users' },
+    { id: 'classes',     icon: BookOpen,       color: '#FF69B4', bg: '#FFF0F7', title: 'Gestione Classi',         subtitle: 'Organizza le classi',                path: '/admin/classes' },
+    { id: 'appointments',icon: Calendar,       color: '#F59E0B', bg: '#FFFBEB', title: 'Appuntamenti',            subtitle: 'Visualizza prenotazioni',            path: '/admin/appointments' },
+    { id: 'modulistica', icon: FileText,       color: '#32CD32', bg: '#F0FFF0', title: 'Modulistica',             subtitle: 'Documenti e prese visione',          path: '/admin/modulistica' },
+    { id: 'mensa',       icon: UtensilsCrossed,color: '#4169E1', bg: '#EBF0FF', title: 'Menu della Mensa',        subtitle: 'Gestisci i menu giornalieri',        path: '/admin/mensa' },
+    { id: 'avvisi',      icon: Megaphone,      color: '#8B5CF6', bg: '#F5F3FF', title: 'Avvisi e Comunicazioni',  subtitle: 'Pubblica comunicazioni ai genitori', path: '/admin/avvisi' },
   ];
 
   return (
     <AppLayout>
       <div data-testid="admin-dashboard">
-        {/* Header */}
+        {/* Header con indicatore sede */}
         <div className="mb-6">
-          <p className="text-sm text-gray-500 font-medium">Pannello di Controllo</p>
+          <p className="text-sm font-medium" style={{ color: sedeInfo?.color }}>
+            {sedeInfo?.label}
+          </p>
           <h2 className="text-2xl font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
             {user?.name}
           </h2>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats */}
         <div className="grid grid-cols-2 gap-3 mb-6" data-testid="admin-stats-grid">
           {statCards.map((stat) => (
-            <div key={stat.label} data-testid={`stat-card-${stat.label.toLowerCase()}`} className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <div key={stat.label} data-testid={`stat-card-${stat.label.toLowerCase()}`}
+              className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.bg }}>
                   <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
@@ -74,7 +78,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Navigation Cards */}
+        {/* Nav Cards */}
         <div className="space-y-3" data-testid="admin-nav-cards">
           {navCards.map((card) => (
             <button

@@ -1,4 +1,4 @@
-"""Users router — CRUD + by-class, admin-protected."""
+"""Users router — CRUD + iscrizione bambino — multi-tenant."""
 import uuid
 import bcrypt
 import random
@@ -6,11 +6,11 @@ import string
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 
 from services.database import get_db
 from models.user import UserCreate, UserUpdate, IscrizioneCreate
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, validate_admin_sede_access
 from services.email_service import send_credentials_email
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -28,14 +28,27 @@ def _generate_password(length: int = 10) -> str:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/users  (admin only)
+# GET /api/users  (admin only — filtrato per sede)
 # ---------------------------------------------------------------------------
 
 @router.get("")
-async def get_users(current_user: dict = Depends(get_current_user)):
+async def get_users(
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
     _require_admin(current_user)
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
-    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+
+    # SuperAdmin che non ha sede_id fissa — filtra per header
+    # Admin normale — filtra per la propria sede
+    query: dict = {"sede_id": sede_id}
+
+    # Includi anche i superadmin nella lista (sede_id=None)
+    if current_user.get("is_superadmin"):
+        query = {"$or": [{"sede_id": sede_id}, {"is_superadmin": True}]}
+
+    users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(1000)
     return users
 
 
@@ -60,7 +73,6 @@ async def get_users_by_class(class_id: str, current_user: dict = Depends(get_cur
 
 @router.get("/{user_id}")
 async def get_user(user_id: str, current_user: dict = Depends(get_current_user)):
-    # User can fetch their own profile; admin can fetch any
     if current_user.get("role") != "admin" and current_user.get("id") != user_id:
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
@@ -75,8 +87,13 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
 # ---------------------------------------------------------------------------
 
 @router.post("", status_code=201)
-async def create_user(payload: UserCreate, current_user: dict = Depends(get_current_user)):
+async def create_user(
+    payload: UserCreate,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
     _require_admin(current_user)
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     existing = await db.users.find_one({"email": payload.email})
@@ -89,19 +106,23 @@ async def create_user(payload: UserCreate, current_user: dict = Depends(get_curr
     user_dict["cognome"] = payload.cognome or ""
     user_dict["avatar_url"] = None
     user_dict["active"] = True
+    user_dict["is_superadmin"] = False
     user_dict["created_at"] = datetime.now(timezone.utc).isoformat()
     user_dict["password"] = bcrypt.hashpw(
         payload.password.encode(), bcrypt.gensalt()
     ).decode()
 
-    # Normalizza class_ids: se passato class_id legacy, aggiungilo a class_ids
+    # Assegna sede (usa quella del payload se fornita, altrimenti quella attiva)
+    user_dict["sede_id"] = payload.sede_id or sede_id
+
+    # Normalizza class_ids
     class_ids = list(payload.class_ids or [])
     if payload.class_id and payload.class_id not in class_ids:
         class_ids.append(payload.class_id)
     user_dict["class_ids"] = class_ids
     user_dict["class_id"] = class_ids[0] if class_ids else None
 
-    # Normalizza child_ids: se passato child_id legacy, aggiungilo a child_ids
+    # Normalizza child_ids
     child_ids = list(payload.child_ids or [])
     if payload.child_id and payload.child_id not in child_ids:
         child_ids.append(payload.child_id)
@@ -148,21 +169,32 @@ async def update_user(
 async def iscrizione_bambino(
     payload: IscrizioneCreate,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     """
     Registrazione completa: crea studente + account genitore in un unico step.
-    Invia le credenziali via email a scuolagirogirotondo@libero.it → genitore.
-    Solo admin.
+    Invia le credenziali via email. Solo admin.
     """
     _require_admin(current_user)
+
+    # Valida sede: usa sede_id dal payload, verificando che l'admin abbia accesso
+    sede_id = validate_admin_sede_access(current_user, payload.sede_id or x_sede_id)
+
     db = get_db()
+
+    # Verifica che la classe appartenga alla sede
+    cls = await db.classes.find_one({"id": payload.class_id, "sede_id": sede_id})
+    if not cls:
+        raise HTTPException(
+            status_code=400,
+            detail=f"La classe selezionata non appartiene alla sede '{sede_id}'"
+        )
 
     # Controlla unicità email genitore
     existing = await db.users.find_one({"email": payload.genitore_email})
     if existing:
         raise HTTPException(status_code=400, detail="Email genitore già in uso")
 
-    # Password: usa quella fornita o generane una
     password_plain = payload.genitore_password or _generate_password()
 
     # 1. Crea il record studente
@@ -172,6 +204,7 @@ async def iscrizione_bambino(
         "name": payload.bambino_nome,
         "cognome": payload.bambino_cognome,
         "class_id": payload.class_id,
+        "sede_id": sede_id,
         "date_of_birth": payload.bambino_data_nascita or "",
         "child_code": f"GGT-{str(uuid.uuid4())[:4].upper()}",
         "allergies": [],
@@ -189,7 +222,9 @@ async def iscrizione_bambino(
         "email": payload.genitore_email,
         "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
         "role": "parent",
-        "child_id": student_id,        # legacy compat
+        "is_superadmin": False,
+        "sede_id": sede_id,
+        "child_id": student_id,
         "child_ids": [student_id],
         "class_id": None,
         "class_ids": [],
@@ -200,15 +235,15 @@ async def iscrizione_bambino(
     }
     await db.users.insert_one(parent)
 
-    # 3. Invia email con le credenziali al genitore
-    await send_credentials_email(
+    # 3. Invia email credenziali — gestisce errori SMTP senza crashare
+    email_inviata = await send_credentials_email(
         to_email=payload.genitore_email,
         bambino_nome=payload.bambino_nome,
         bambino_cognome=payload.bambino_cognome,
         password=password_plain,
+        sede_name=cls.get("sede_id", sede_id),
     )
 
-    # Risposta pulita (no _id, no password hash)
     student.pop("_id", None)
     parent.pop("_id", None)
     parent.pop("password", None)
@@ -216,25 +251,39 @@ async def iscrizione_bambino(
     return {
         "student": student,
         "parent": parent,
-        "email_inviata": True,
+        "email_inviata": email_inviata,
         "genitore_email": payload.genitore_email,
     }
 
 
 # ---------------------------------------------------------------------------
-# DELETE /api/users/{user_id}  — hard delete (admin only, cannot delete self)
+# DELETE /api/users/{user_id}  — hard delete (admin only)
 # ---------------------------------------------------------------------------
 
 @router.delete("/{user_id}")
-async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
     _require_admin(current_user)
-    # Prevent admin from deleting their own account
     if current_user.get("id") == user_id:
         raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo account")
+
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
+
+    # Verifica che l'utente appartenga alla sede (SuperAdmin esclusi)
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if target.get("is_superadmin"):
+        raise HTTPException(status_code=403, detail="Non puoi eliminare un SuperAmministratore")
+    if not current_user.get("is_superadmin") and target.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Utente non appartiene alla sede selezionata")
+
     result = await db.users.delete_one({"id": user_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Utente non trovato")
-    # Clean up related data
     await db.push_tokens.delete_many({"user_id": user_id})
     return {"message": "Utente eliminato"}

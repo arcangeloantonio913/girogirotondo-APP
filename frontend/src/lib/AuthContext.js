@@ -9,7 +9,7 @@ const AuthContext = createContext(null);
 const VALID_ROLES = ['admin', 'teacher', 'parent'];
 
 export const SEDI = [
-  { id: 'girogirotondo', label: 'Girogirotondo', color: '#4169E1' },
+  { id: 'girogirotondo',  label: 'Girogirotondo',    color: '#4169E1' },
   { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
 ];
 
@@ -24,7 +24,6 @@ function buildUserFromProfile(fbUser, data) {
   };
 }
 
-// JWT-based login against backend (fallback when Firebase user doesn't exist)
 async function loginWithBackend(email, password) {
   const res = await axios.post(`${BACKEND_URL}/api/auth/login`, { email, password });
   const token = res.data.token || res.data.access_token;
@@ -38,7 +37,6 @@ async function loginWithBackend(email, password) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    // Restore session immediately (JWT or cached Firebase user) to avoid loading flash
     const storedUser = localStorage.getItem('ggt_user');
     if (storedUser) {
       try { return JSON.parse(storedUser); } catch {
@@ -48,18 +46,16 @@ export function AuthProvider({ children }) {
     }
     return null;
   });
-  // Start loading=false if we have any cached session — prevents spinner flash
-  const [loading, setLoading] = useState(() => {
-    return !localStorage.getItem('ggt_user');
-  });
+  const [loading, setLoading] = useState(() => !localStorage.getItem('ggt_user'));
+
+  // Sede attiva: default "girogirotondo"
   const [sede, setSede] = useState(
-    () => localStorage.getItem('ggt_sede') || 'il-magico-mondo'
+    () => localStorage.getItem('ggt_sede') || 'girogirotondo'
   );
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
-        // Don't clear user if we have a backend JWT session
         const hasJwtSession = localStorage.getItem('ggt_token');
         if (!hasJwtSession) {
           localStorage.removeItem('ggt_user');
@@ -70,7 +66,6 @@ export function AuthProvider({ children }) {
       }
       try {
         const snap = await getDoc(doc(db, 'users', fbUser.uid));
-        // snap.exists is a function in Firebase v9 SDK
         if (!snap.exists()) {
           await signOut(auth);
           localStorage.removeItem('ggt_user');
@@ -87,11 +82,9 @@ export function AuthProvider({ children }) {
           return;
         }
         const userData = buildUserFromProfile(fbUser, data);
-        // Cache Firebase user in localStorage to prevent flash on next load
         localStorage.setItem('ggt_user', JSON.stringify(userData));
         setUser(userData);
       } catch {
-        // Network/Firestore error: keep existing cached session, don't log out
         setLoading(false);
       } finally {
         setLoading(false);
@@ -101,7 +94,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    // Try Firebase first
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const snap = await getDoc(doc(db, 'users', cred.user.uid));
@@ -115,29 +107,37 @@ export function AuthProvider({ children }) {
         throw new Error('INVALID_ROLE');
       }
       const userData = buildUserFromProfile(cred.user, data);
-      // Cache immediately → no flicker on next page load
       localStorage.setItem('ggt_user', JSON.stringify(userData));
       setUser(userData);
+
+      // Imposta sede di default dal profilo utente (admin non-superadmin)
+      if (data.role === 'admin' && data.sede_id && !data.is_superadmin) {
+        updateSede(data.sede_id);
+      }
+
       return userData;
     } catch (firebaseErr) {
-      // Firebase user not found or wrong password — try backend JWT fallback
       const firebaseCodes = ['auth/user-not-found', 'auth/invalid-credential', 'auth/wrong-password'];
       const isFirebaseNotFound =
         firebaseCodes.includes(firebaseErr?.code) ||
         firebaseErr?.message === 'NO_PROFILE';
 
-      if (!isFirebaseNotFound) throw firebaseErr; // re-throw real errors (network, etc.)
+      if (!isFirebaseNotFound) throw firebaseErr;
 
       try {
         const userData = await loginWithBackend(email, password);
         setLoading(false);
         setUser(userData);
+
+        // Imposta sede di default dal profilo
+        if (userData.role === 'admin' && userData.sede_id && !userData.is_superadmin) {
+          updateSede(userData.sede_id);
+        }
+
         return userData;
       } catch (backendErr) {
-        // Clear any stale JWT
         localStorage.removeItem('ggt_token');
         localStorage.removeItem('ggt_user');
-        // Throw a Firebase-style error so the UI shows the right message
         const err = new Error('Email o password non corretti.');
         err.code = 'auth/invalid-credential';
         throw err;
@@ -157,10 +157,22 @@ export function AuthProvider({ children }) {
     setSede(sedeId);
   };
 
-  const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[1];
+  const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[0];
+
+  // SuperAdmin: può accedere a entrambe le sedi
+  const isSuperAdmin = user?.is_superadmin === true;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, sede, sedeInfo, updateSede }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      loading,
+      sede,
+      sedeInfo,
+      updateSede,
+      isSuperAdmin,
+    }}>
       {children}
     </AuthContext.Provider>
   );

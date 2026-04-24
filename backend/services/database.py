@@ -117,11 +117,22 @@ async def ensure_superadmins():
             await db.users.insert_one(doc)
             logger.info("[SUPERADMIN] Creato nuovo account per %s", sa["email"])
 
-    # Rimuovi eventuali vecchi account superadmin con email obsolete
+    # Rimuovi vecchi account con email obsolete
     old_emails = ["mariagrazia@girogirotondo.it", "teresa@girogirotondo.it"]
     result = await db.users.delete_many({"email": {"$in": old_emails}})
     if result.deleted_count:
         logger.info("[SUPERADMIN] Rimossi %d account obsoleti", result.deleted_count)
+
+    # ── Deduplicazione: rimuove eventuali doppioni con la stessa email ────────
+    sa_emails = [sa["email"] for sa in superadmin_defs]
+    for email in sa_emails:
+        dupes = await db.users.find({"email": email}).to_list(20)
+        if len(dupes) > 1:
+            # Tieni solo il primo trovato, cancella gli altri
+            ids_to_remove = [d["id"] for d in dupes[1:] if "id" in d]
+            if ids_to_remove:
+                await db.users.delete_many({"id": {"$in": ids_to_remove}})
+                logger.info("[SUPERADMIN] Rimossi %d doppioni per %s", len(ids_to_remove), email)
 
 
 async def seed_database():
@@ -446,7 +457,9 @@ async def seed_database():
 
     # ── 5. INSERT ALL USERS, CLASSES, STUDENTS ────────────────────────────────
 
-    all_users = superadmins + [admin_ggt] + teachers_ggt + parents_ggt + teachers_mm + parents_mm
+    # I SuperAdmin (Mariagrazia e Teresa) sono già gestiti da ensure_superadmins()
+    # Non li includiamo qui per evitare doppioni se il seed viene eseguito più volte
+    all_users = [admin_ggt] + teachers_ggt + parents_ggt + teachers_mm + parents_mm
     all_classes = classes_ggt + classes_mm
     all_students = students_ggt + students_mm
 

@@ -12,6 +12,7 @@ import {
   AlertTriangle, Eye, EyeOff, CheckCircle, Mail, RefreshCw,
   Pencil, BookOpen, Key,
 } from 'lucide-react';
+import StudentDetailDialog from '@/components/StudentDetailDialog';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function getRoleIcon(role) {
@@ -45,6 +46,9 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
+
+  // student detail dialog
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   // dialogs
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -307,13 +311,15 @@ export default function AdminUsers() {
               const cls = classes.find(c => c.id === s.class_id);
               const parent = users.find(u => (u.child_ids || []).includes(s.id) || u.child_id === s.id);
               return (
-                <div key={s.id} data-testid={`student-row-${s.id}`} className="px-4 py-3 flex items-center gap-3">
+                <button key={s.id} data-testid={`student-row-${s.id}`}
+                  onClick={() => setSelectedStudent(s)}
+                  className="px-4 py-3 flex items-center gap-3 w-full text-left hover:bg-blue-50 transition-colors">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                     style={{ backgroundColor: '#4169E1' }}>
                     {s.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{s.name} {s.cognome || ''}</p>
                     <div className="flex gap-2 mt-0.5 flex-wrap">
                       {cls && (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -322,13 +328,12 @@ export default function AdminUsers() {
                         </span>
                       )}
                       {parent && (
-                        <span className="text-[10px] text-gray-400 truncate">
-                          Genitore: {parent.name}
-                        </span>
+                        <span className="text-[10px] text-gray-400 truncate">Genitore: {parent.name}</span>
                       )}
                     </div>
                   </div>
-                </div>
+                  <Pencil className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                </button>
               );
             })}
             {students.length === 0 && (
@@ -629,6 +634,24 @@ export default function AdminUsers() {
         </Dialog>
 
       </div>
+
+      {/* Student Detail Dialog */}
+      <StudentDetailDialog
+        student={selectedStudent}
+        classes={classes}
+        users={users}
+        role="admin"
+        onClose={() => setSelectedStudent(null)}
+        onSaved={(updated) => {
+          setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+          setSelectedStudent(updated);
+        }}
+        onDeleted={(id) => {
+          setStudents(prev => prev.filter(s => s.id !== id));
+          setSelectedStudent(null);
+          loadData();
+        }}
+      />
     </AppLayout>
   );
 }

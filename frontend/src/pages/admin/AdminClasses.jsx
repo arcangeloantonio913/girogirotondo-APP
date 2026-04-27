@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BookOpen, Plus, Trash2, Users, ChevronRight, X, GraduationCap, Baby, Activity } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Users, ChevronRight, X, GraduationCap, Baby, Activity, Pencil } from 'lucide-react';
+import StudentDetailDialog from '@/components/StudentDetailDialog';
 
 export default function AdminClasses() {
   const { sede, sedeInfo } = useAuth();
@@ -18,6 +19,7 @@ export default function AdminClasses() {
   const [form, setForm] = useState({ name: '', teacher_id: '' });
   // Classe selezionata per il dettaglio
   const [detailClass, setDetailClass] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => { loadData(); }, [sede]);
 
@@ -141,13 +143,15 @@ export default function AdminClasses() {
                   {detailStudents.map(s => {
                     const parent = getParentOfStudent(s.id);
                     return (
-                      <div key={s.id} className="flex items-center gap-3 py-1.5 px-3 rounded-xl bg-gray-50">
+                      <button key={s.id}
+                        onClick={() => setSelectedStudent(s)}
+                        className="flex items-center gap-3 py-1.5 px-3 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors w-full text-left">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                           style={{ backgroundColor: '#4169E1' }}>
                           {s.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">{s.name}</p>
+                          <p className="text-sm font-semibold text-gray-900">{s.name} {s.cognome || ''}</p>
                           {s.date_of_birth && (
                             <p className="text-[10px] text-gray-400">
                               Nato il {new Date(s.date_of_birth + 'T12:00:00').toLocaleDateString('it-IT')}
@@ -157,8 +161,8 @@ export default function AdminClasses() {
                             <p className="text-[10px] text-gray-400">Genitore: {parent.name}</p>
                           )}
                         </div>
-                        <span className="text-[10px] font-mono text-gray-300">{s.child_code}</span>
-                      </div>
+                        <Pencil className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                      </button>
                     );
                   })}
                 </div>
@@ -241,6 +245,24 @@ export default function AdminClasses() {
             </div>
           );
         })}
+
+        {/* Student Detail Dialog */}
+        <StudentDetailDialog
+          student={selectedStudent}
+          classes={classes}
+          users={users}
+          role="admin"
+          onClose={() => setSelectedStudent(null)}
+          onSaved={(updated) => {
+            setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+            setSelectedStudent(updated);
+          }}
+          onDeleted={(id) => {
+            setStudents(prev => prev.filter(s => s.id !== id));
+            setSelectedStudent(null);
+            loadData();
+          }}
+        />
 
         {/* ── Dialog Nuova Classe ──────────────────────────────────────────── */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

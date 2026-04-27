@@ -135,11 +135,36 @@ async def ensure_superadmins():
                 logger.info("[SUPERADMIN] Rimossi %d doppioni per %s", len(ids_to_remove), email)
 
 
+async def _deduplicate_students(db):
+    """Rimuove studenti duplicati (stesso name + class_id). Tieni il più vecchio."""
+    pipeline = [
+        {"$group": {
+            "_id": {"name": "$name", "class_id": "$class_id"},
+            "ids": {"$push": "$id"},
+            "count": {"$sum": 1}
+        }},
+        {"$match": {"count": {"$gt": 1}}}
+    ]
+    dupes = await db.students.aggregate(pipeline).to_list(200)
+    removed = 0
+    for group in dupes:
+        # Tieni il primo ID, elimina gli altri
+        ids_to_remove = group["ids"][1:]
+        if ids_to_remove:
+            await db.students.delete_many({"id": {"$in": ids_to_remove}})
+            removed += len(ids_to_remove)
+    if removed:
+        logger.info("[SEED] Rimossi %d studenti duplicati", removed)
+
+
 async def seed_database():
     db = get_db()
 
     # Aggiorna/crea sempre i SuperAdmin (email + password corrette garantite)
     await ensure_superadmins()
+
+    # Rimuovi eventuali studenti duplicati dal DB
+    await _deduplicate_students(db)
 
     # Skip il resto del seed se i dati demo esistono già
     existing = await db.classes.find_one({})

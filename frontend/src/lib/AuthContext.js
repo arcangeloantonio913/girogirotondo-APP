@@ -3,7 +3,14 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import axios from 'axios';
-import { requestPushPermission } from './pushNotifications';
+
+// Import dinamico — evita crash se firebase/messaging non è disponibile
+const requestPushPermission = async () => {
+  try {
+    const mod = await import('./pushNotifications');
+    return mod.requestPushPermission();
+  } catch { return false; }
+};
 
 const AuthContext = createContext(null);
 

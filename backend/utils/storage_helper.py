@@ -37,7 +37,13 @@ async def upload_file(
     _check_size(file_bytes, media_type)
 
     if not is_initialized():
-        raise RuntimeError("Firebase Storage non configurato")
+        # Fallback: salva come data URL base64 (funziona senza Firebase configurato)
+        import base64
+        b64 = base64.b64encode(file_bytes).decode()
+        ct = content_type or mimetypes.guess_type(destination_path)[0] or "application/octet-stream"
+        data_url = f"data:{ct};base64,{b64}"
+        logger.warning("[STORAGE] Firebase non configurato — file salvato come data URL")
+        return data_url, destination_path
 
     bucket = get_bucket()
     blob = bucket.blob(destination_path)

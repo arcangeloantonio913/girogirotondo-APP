@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import axios from 'axios';
+import { requestPushPermission } from './pushNotifications';
 
 const AuthContext = createContext(null);
 
@@ -115,6 +116,9 @@ export function AuthProvider({ children }) {
         updateSede(data.sede_id);
       }
 
+      // Richiedi permesso notifiche push (non bloccante)
+      requestPushPermission().catch(() => {});
+
       return userData;
     } catch (firebaseErr) {
       const firebaseCodes = ['auth/user-not-found', 'auth/invalid-credential', 'auth/wrong-password'];
@@ -133,6 +137,9 @@ export function AuthProvider({ children }) {
         if (userData.role === 'admin' && userData.sede_id && !userData.is_superadmin) {
           updateSede(userData.sede_id);
         }
+
+        // Richiedi permesso notifiche push (non bloccante)
+        requestPushPermission().catch(() => {});
 
         return userData;
       } catch (backendErr) {

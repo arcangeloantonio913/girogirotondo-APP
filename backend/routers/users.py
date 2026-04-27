@@ -257,6 +257,50 @@ async def iscrizione_bambino(
 
 
 # ---------------------------------------------------------------------------
+# PUT /api/users/{user_id}/credentials  — modifica email e/o password (admin only)
+# ---------------------------------------------------------------------------
+
+@router.put("/{user_id}/credentials")
+async def update_user_credentials(
+    user_id: str,
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Aggiorna email e/o password di un utente. Solo admin."""
+    _require_admin(current_user)
+    db = get_db()
+
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if target.get("is_superadmin") and not current_user.get("is_superadmin"):
+        raise HTTPException(status_code=403, detail="Non puoi modificare un SuperAmministratore")
+
+    updates = {}
+    new_email = payload.get("email", "").strip()
+    new_password = payload.get("password", "").strip()
+
+    if new_email:
+        # Verifica unicità email
+        existing = await db.users.find_one({"email": new_email, "id": {"$ne": user_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Email già in uso da un altro account")
+        updates["email"] = new_email
+
+    if new_password:
+        if len(new_password) < 6:
+            raise HTTPException(status_code=400, detail="La password deve essere di almeno 6 caratteri")
+        updates["password"] = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+
+    await db.users.update_one({"id": user_id}, {"$set": updates})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return user
+
+
+# ---------------------------------------------------------------------------
 # DELETE /api/users/{user_id}  — hard delete (admin only)
 # ---------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Home, User, FileText, Calendar, Camera, Grid3X3, LogOut,
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
-  Megaphone, ChevronDown, Building2,
+  Megaphone, ChevronDown, Building2, BookMarked,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -17,10 +17,15 @@ const FOOTER_TEXT = "\u00A9 2026 Omnia - Piattaforma Istituzionale Girogirotondo
 function getNavItems(role) {
   if (role === 'parent') {
     return [
+      // ── Bottom nav (first 5) ─────────────────────────────────────────────
       { path: '/parent',              icon: Home,           label: 'Home' },
+      { path: '/parent/gallery',      icon: Camera,         label: 'Foto' },
+      { path: '/parent/griglia',      icon: Grid3X3,        label: 'Griglia' },
+      { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
       { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
-      { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },
+      // ── Solo sidebar ────────────────────────────────────────────────────
       { path: '/parent/alimentazione',icon: UtensilsCrossed,label: 'Dieta' },
+      { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },
       { path: '/parent/profile',      icon: User,           label: 'Profilo' },
     ];
   }

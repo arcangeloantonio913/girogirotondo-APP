@@ -93,11 +93,20 @@ export default function ParentDashboard() {
     load();
   }, [user, today]);
 
+  // Slot di default mostrati sempre (anche offline)
+  const DEFAULT_SLOTS = [
+    '09:00','09:30','10:00','10:30','11:00','11:30',
+    '14:00','14:30','15:00','15:30','16:00',
+  ];
+
   useEffect(() => {
     if (bookingDate) {
-      api.get(`/appointment-slots?date=${bookingDate}`).then(res => {
-        setAvailableSlots(res.data.available_slots || []);
-      });
+      // Carica gli slot disponibili (esclude quelli già prenotati)
+      api.get(`/appointments/slots?date=${bookingDate}`)
+        .then(res => setAvailableSlots(res.data.available_slots || DEFAULT_SLOTS))
+        .catch(() => setAvailableSlots(DEFAULT_SLOTS));   // fallback: mostra tutti gli slot
+    } else {
+      setAvailableSlots([]);
     }
   }, [bookingDate]);
 
@@ -318,21 +327,44 @@ export default function ParentDashboard() {
                 className="rounded-xl"
               />
             </div>
-            {availableSlots.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Orario</Label>
-                <Select value={bookingSlot} onValueChange={setBookingSlot}>
-                  <SelectTrigger className="rounded-xl" data-testid="booking-slot-select">
-                    <SelectValue placeholder="Seleziona orario" />
-                  </SelectTrigger>
-                  <SelectContent>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Orario {bookingDate && availableSlots.length === 0 && (
+                  <span className="text-xs text-amber-500 ml-1">(nessuno slot disponibile)</span>
+                )}
+              </Label>
+              {/* Griglia orari — sempre visibile dopo aver selezionato la data */}
+              {bookingDate ? (
+                availableSlots.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2" data-testid="booking-slots-grid">
                     {availableSlots.map(slot => (
-                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setBookingSlot(slot)}
+                        className={`py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
+                          bookingSlot === slot
+                            ? 'text-white border-transparent'
+                            : 'border-gray-200 text-gray-600 hover:border-blue-200'
+                        }`}
+                        style={bookingSlot === slot ? { backgroundColor: '#A7C7E7', borderColor: '#A7C7E7' } : {}}
+                        data-testid={`slot-${slot}`}
+                      >
+                        {slot}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 text-center py-3 bg-gray-50 rounded-xl">
+                    Nessun orario disponibile per questa data
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-gray-400 bg-gray-50 rounded-xl px-3 py-2">
+                  Seleziona prima una data per vedere gli orari disponibili
+                </p>
+              )}
+            </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">Motivo</Label>
               <Input

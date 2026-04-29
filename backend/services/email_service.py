@@ -20,7 +20,7 @@ SCHOOL_DISPLAY_NAMES = {
 # FROM: usa onboarding@resend.dev (funziona senza verifica dominio su piano free Resend)
 # Per usare scuola@girogirotondowebapp.it: verifica il dominio su resend.com/domains
 FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Girogirotondo <onboarding@resend.dev>")
-REPLY_TO   = "scuolagirogirotondo@libero.it"
+REPLY_TO   = "girogirotondo@libero.it"
 
 
 def _build_html(bambino_nome, bambino_cognome, to_email, password, school_name, year):
@@ -136,14 +136,14 @@ async def _send_via_smtp(to_email, subject, html_body, plain_body) -> bool:
     def _send():
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"]    = f"Girogirotondo Scuola dell'Infanzia <scuolagirogirotondo@libero.it>"
+        msg["From"]    = f"Girogirotondo Scuola dell'Infanzia <girogirotondo@libero.it>"
         msg["To"]      = to_email
         msg.attach(MIMEText(plain_body, "plain", "utf-8"))
         msg.attach(MIMEText(html_body, "html",  "utf-8"))
         with smtplib.SMTP("smtp.libero.it", 587, timeout=15) as srv:
             srv.ehlo(); srv.starttls()
-            srv.login("scuolagirogirotondo@libero.it", smtp_pass)
-            srv.sendmail("scuolagirogirotondo@libero.it", [to_email], msg.as_string())
+            srv.login("girogirotondo@libero.it", smtp_pass)
+            srv.sendmail("girogirotondo@libero.it", [to_email], msg.as_string())
 
     try:
         loop = asyncio.get_event_loop()

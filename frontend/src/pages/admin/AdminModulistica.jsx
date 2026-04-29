@@ -1,16 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X } from 'lucide-react';
+import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X, BookOpen } from 'lucide-react';
 
 export default function AdminModulistica() {
+  const { sede } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [parents, setParents] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState(null);
   const [form, setForm] = useState({ title: '', description: '' });
@@ -19,20 +23,42 @@ export default function AdminModulistica() {
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, [sede]);
 
   const loadData = async () => {
-    const [dRes, rRes, uRes] = await Promise.all([
+    const [dRes, rRes, uRes, cRes, sRes] = await Promise.all([
       api.get('/documents'),
       api.get('/read-receipts'),
       api.get('/users'),
+      api.get('/classes'),
+      api.get('/students'),
     ]);
     setDocuments(dRes.data);
     setReceipts(rRes.data);
     setParents(uRes.data.filter(u => u.role === 'parent'));
+    setClasses(cRes.data);
+    setStudents(sRes.data);
   };
+
+  // Raggruppa genitori per classe
+  const parentsByClass = useMemo(() => {
+    const map = {};
+    classes.forEach(cls => {
+      const classStudents = students.filter(s => s.class_id === cls.id);
+      const classParentIds = new Set(
+        classStudents.flatMap(s => {
+          const p = parents.find(p => (p.child_ids || []).includes(s.id) || p.child_id === s.id);
+          return p ? [p.id] : [];
+        })
+      );
+      map[cls.id] = { className: cls.name, parents: parents.filter(p => classParentIds.has(p.id)) };
+    });
+    // Genitori senza classe
+    const withClass = new Set(Object.values(map).flatMap(v => v.parents.map(p => p.id)));
+    const noClass = parents.filter(p => !withClass.has(p.id));
+    if (noClass.length > 0) map['__no_class__'] = { className: 'Senza classe', parents: noClass };
+    return map;
+  }, [classes, students, parents]);
 
   const handleCreate = async () => {
     if (!form.title || !selectedFile) return;
@@ -207,30 +233,54 @@ export default function AdminModulistica() {
           </DialogContent>
         </Dialog>
 
-        {/* Receipt Detail Dialog */}
+        {/* Receipt Detail Dialog — per classe */}
         <Dialog open={!!detailDoc} onOpenChange={() => setDetailDoc(null)}>
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="receipt-detail-dialog">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>Stato Prese Visione</DialogTitle>
-            </DialogHeader>
+              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>
+                Prese Visione — {detailDoc?.title}
+              </DialogTitle>
             {detailDoc && (
-              <div className="space-y-2 pt-2">
-                <p className="text-sm font-semibold text-gray-800 mb-3">{detailDoc.title}</p>
-                {parents.map((parent) => {
-                  const read = hasRead(detailDoc.id, parent.id);
+              <div className="space-y-3 pt-2 max-h-[65vh] overflow-y-auto pr-1">
+                {/* Riepilogo totale */}
+                {(() => {
+                  const total = parents.length;
+                  const readCount = parents.filter(p => hasRead(detailDoc.id, p.id)).length;
+                  const pct = total > 0 ? Math.round(readCount / total * 100) : 0;
                   return (
-                    <div key={parent.id} data-testid={`receipt-row-${parent.id}`} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: read ? '#32CD32' : '#CBD5E0' }}>
-                          {parent.name.charAt(0)}
-                        </div>
-                        <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <span className="font-bold text-gray-700">Totale: {readCount}/{total}</span>
+                      <span className="font-bold" style={{ color: pct === 100 ? '#32CD32' : '#4169E1' }}>{pct}%</span>
+                    </div>
+                  );
+                })()}
+                {/* Per classe */}
+                {Object.entries(parentsByClass).map(([classId, { className, parents: clsParents }]) => {
+                  if (!clsParents.length) return null;
+                  const readCnt = clsParents.filter(p => hasRead(detailDoc.id, p.id)).length;
+                  return (
+                    <div key={classId}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{className}</span>
+                        <span className="text-[10px] text-gray-400 ml-auto">{readCnt}/{clsParents.length}</span>
                       </div>
-                      {read ? (
-                        <CheckCircle2 className="w-5 h-5" style={{ color: '#32CD32' }} />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-gray-300" />
-                      )}
+                      {clsParents.map((parent) => {
+                        const read = hasRead(detailDoc.id, parent.id);
+                        return (
+                          <div key={parent.id} data-testid={`receipt-row-${parent.id}`}
+                            className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 mb-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                                style={{ backgroundColor: read ? '#32CD32' : '#CBD5E0' }}>
+                                {parent.name.charAt(0)}
+                              </div>
+                              <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
+                            </div>
+                            }
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}

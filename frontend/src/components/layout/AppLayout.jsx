@@ -5,7 +5,6 @@ import {
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
   Megaphone, ChevronDown, Building2, BookMarked,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 
 const SEDE_LOGOS = {
@@ -25,6 +24,7 @@ function getNavItems(role) {
       { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
       { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
       // ── Solo sidebar ────────────────────────────────────────────────────
+      { path: '/parent/appuntamenti', icon: Calendar,       label: 'Prenotazioni' },
       { path: '/parent/alimentazione',icon: UtensilsCrossed,label: 'Dieta' },
       { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },
       { path: '/parent/profile',      icon: User,           label: 'Profilo' },

@@ -267,3 +267,82 @@ async def send_reset_password_email(to_email: str, user_name: str, token: str) -
         return True
     logger.warning("[RESET EMAIL] Impossibile inviare reset a %s — link: %s", to_email, reset_link)
     return False
+
+
+async def send_appointment_email(
+    to_email: str,
+    parent_name: str,
+    date: str,
+    time_slot: str,
+    reason: str,
+    status: str = "pending",
+) -> bool:
+    """
+    Invia notifica email per prenotazione o conferma appuntamento.
+    status: 'pending' (nuova prenotazione) | 'confirmed' (confermata) | 'cancelled' (annullata)
+    """
+    year = datetime.now().year
+    status_labels = {
+        "pending":   ("Nuova prenotazione ricevuta", "#F59E0B"),
+        "confirmed": ("Appuntamento confermato ✅",  "#32CD32"),
+        "cancelled": ("Appuntamento annullato",       "#EF4444"),
+    }
+    label, color = status_labels.get(status, ("Aggiornamento appuntamento", "#4169E1"))
+
+    try:
+        date_fmt = datetime.strptime(date, "%Y-%m-%d").strftime("%-d %B %Y")
+    except Exception:
+        date_fmt = date
+
+    subject = f"Girogirotondo — {label}"
+    plain = (
+        f"Gentile {parent_name},\n\n"
+        f"{label}\n\n"
+        f"Data:    {date_fmt}\n"
+        f"Orario:  {time_slot}\n"
+        f"Motivo:  {reason}\n\n"
+        f"Per informazioni: {REPLY_TO}\n\n"
+        f"Girogirotondo — Scuola dell'Infanzia"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td align="center" style="padding-bottom:20px;border-bottom:1px solid #F0F0F0;">
+            <h1 style="margin:0;font-size:22px;color:#4169E1;font-weight:800;">&#127897; Girogirotondo</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 0 12px;">
+            <p style="font-size:15px;color:#1A202C;">Gentile <strong>{parent_name}</strong>,</p>
+            <p style="font-size:14px;color:{color};font-weight:bold;">{label}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:24px;">
+            <table width="100%" style="background:#F9FAFB;border-radius:12px;padding:16px;" cellpadding="8">
+              <tr><td style="font-size:13px;color:#666;width:100px;">Data</td>
+                  <td style="font-size:13px;color:#1A202C;font-weight:bold;">{date_fmt}</td></tr>
+              <tr><td style="font-size:13px;color:#666;">Orario</td>
+                  <td style="font-size:13px;color:#1A202C;font-weight:bold;">{time_slot}</td></tr>
+              <tr><td style="font-size:13px;color:#666;">Motivo</td>
+                  <td style="font-size:13px;color:#1A202C;">{reason}</td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="border-top:1px solid #F0F0F0;padding-top:16px;">
+            <p style="font-size:11px;color:#bbb;">&copy; {year} Girogirotondo — Scuola dell'Infanzia</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    if await _send_via_resend(to_email, subject, html, plain):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain)

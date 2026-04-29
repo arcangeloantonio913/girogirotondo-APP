@@ -25,9 +25,11 @@ const AdminModulistica    = lazy(() => import("@/pages/admin/AdminModulistica"))
 const AdminAvvisi         = lazy(() => import("@/pages/admin/AdminAvvisi"));
 const AdminMensa          = lazy(() => import("@/pages/admin/AdminMensa"));
 const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
+const TeacherDiario       = lazy(() => import("@/pages/teacher/TeacherDiario"));
 const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
 const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
 const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
+const ParentNotifiche     = lazy(() => import("@/pages/parent/ParentNotifiche"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -123,12 +125,14 @@ function AppRoutes() {
         <Route path="/parent/diario"        element={<ProtectedRoute allowedRoles={['parent']}><ParentDiario /></ProtectedRoute>} />
         <Route path="/parent/alimentazione" element={<ProtectedRoute allowedRoles={['parent']}><ParentAlimentazione /></ProtectedRoute>} />
         <Route path="/parent/avvisi"        element={<ProtectedRoute allowedRoles={['parent']}><ParentAvvisi /></ProtectedRoute>} />
+        <Route path="/parent/notifiche"    element={<ProtectedRoute allowedRoles={['parent']}><ParentNotifiche /></ProtectedRoute>} />
 
         {/* Teacher */}
         <Route path="/teacher"          element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
         <Route path="/teacher/griglia"  element={<ProtectedRoute allowedRoles={['teacher']}><TeacherGriglia /></ProtectedRoute>} />
         <Route path="/teacher/avvisi"   element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAvvisi /></ProtectedRoute>} />
         <Route path="/teacher/media"    element={<ProtectedRoute allowedRoles={['teacher']}><TeacherMedia /></ProtectedRoute>} />
+        <Route path="/teacher/diario"  element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDiario /></ProtectedRoute>} />
         <Route path="/teacher/profile"  element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
 
         {/* Admin */}

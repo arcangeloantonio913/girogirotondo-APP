@@ -114,9 +114,20 @@ async def upload_file(
         content_type, _ = mimetypes.guess_type(destination_path)
         content_type = content_type or "application/octet-stream"
 
-    blob.upload_from_file(io.BytesIO(file_bytes), content_type=content_type, size=len(file_bytes))
-    signed_url = get_signed_url(destination_path)
-    return signed_url, destination_path
+    try:
+        blob.upload_from_file(io.BytesIO(file_bytes), content_type=content_type, size=len(file_bytes))
+        signed_url = get_signed_url(destination_path)
+        return signed_url, destination_path
+    except Exception as exc:
+        logger.error("[STORAGE] Firebase upload fallito (%s) — uso fallback base64", exc)
+        # Fallback: comprimi e salva come base64
+        is_image = (content_type or "").startswith("image/")
+        if is_image and len(file_bytes) > MAX_BASE64_BYTES:
+            file_bytes = _compress_image(file_bytes)
+        import base64
+        b64 = base64.b64encode(file_bytes).decode()
+        ct  = "image/jpeg" if is_image else content_type
+        return f"data:{ct};base64,{b64}", destination_path
 
 
 def get_signed_url(storage_path: str, expiry_days: int = 7) -> str:

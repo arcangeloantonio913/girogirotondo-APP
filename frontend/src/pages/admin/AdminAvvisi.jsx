@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Bell, Plus, Trash2, Globe, BookOpen, Users, GraduationCap,
-  Building2, Check, ChevronDown, ChevronUp,
+  Building2, Check, ChevronDown, ChevronUp, Pencil,
 } from 'lucide-react';
 
 // ── Chip multi-select ─────────────────────────────────────────────────────────
@@ -57,6 +57,11 @@ export default function AdminAvvisi() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showParentPicker, setShowParentPicker] = useState(false);
+
+  // Edit avviso
+  const [editDialog, setEditDialog] = useState({ open: false, avviso: null });
+  const [editForm, setEditForm]     = useState({ titolo: '', testo: '' });
+  const [editLoading, setEditLoading] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -165,6 +170,22 @@ export default function AdminAvvisi() {
     catch (err) { console.error(err); }
   };
 
+  const openEdit = (a) => {
+    setEditForm({ titolo: a.titolo, testo: a.testo });
+    setEditDialog({ open: true, avviso: a });
+  };
+
+  const handleEdit = async () => {
+    if (!editDialog.avviso) return;
+    setEditLoading(true);
+    try {
+      await api.put(`/avvisi/${editDialog.avviso.id}`, editForm);
+      setEditDialog({ open: false, avviso: null });
+      loadData();
+    } catch (err) { console.error(err); }
+    finally { setEditLoading(false); }
+  };
+
   const getClassName  = id => classes.find(c => c.id === id)?.name || id;
   const getSedeLabel  = id => SEDI.find(s => s.id === id)?.label || id;
   const getTargetBadge = (a) => {
@@ -236,16 +257,53 @@ export default function AdminAvvisi() {
                         {' · '}{a.author_name}
                       </p>
                     </div>
-                    <button data-testid={`delete-avviso-${a.id}`} onClick={() => handleDelete(a.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button data-testid={`edit-avviso-${a.id}`} onClick={() => openEdit(a)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-50 text-gray-300 hover:text-blue-500 transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button data-testid={`delete-avviso-${a.id}`} onClick={() => handleDelete(a.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* ── Dialog modifica avviso ──────────────────────────────────────── */}
+        <Dialog open={editDialog.open} onOpenChange={(o) => !o && setEditDialog({ open: false, avviso: null })}>
+          <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="edit-avviso-dialog">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>
+                Modifica Avviso
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-1">
+              <div>
+                <Label className="text-xs font-medium text-gray-600">Titolo</Label>
+                <input value={editForm.titolo} onChange={e => setEditForm({ ...editForm, titolo: e.target.value })}
+                  className="w-full rounded-xl mt-1 border border-gray-200 px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-gray-600">Messaggio</Label>
+                <textarea value={editForm.testo} onChange={e => setEditForm({ ...editForm, testo: e.target.value })}
+                  rows={4} className="w-full rounded-xl mt-1 border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setEditDialog({ open: false, avviso: null })}
+                  className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
+                <Button onClick={handleEdit} disabled={editLoading || !editForm.titolo || !editForm.testo}
+                  className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: '#4169E1' }}>
+                  {editLoading ? 'Salvataggio...' : 'Salva'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ── Dialog nuovo avviso ──────────────────────────────────────────── */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

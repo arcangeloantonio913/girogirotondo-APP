@@ -5,6 +5,7 @@ import {
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
   Megaphone, ChevronDown, Building2, BookMarked,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 
 const SEDE_LOGOS = {
@@ -31,11 +32,13 @@ function getNavItems(role) {
   }
   if (role === 'teacher') {
     return [
-      { path: '/teacher',         icon: Home,           label: 'Home' },
-      { path: '/teacher/griglia', icon: Grid3X3,        label: 'Griglia' },
-      { path: '/teacher/avvisi',  icon: Megaphone,      label: 'Avvisi' },
-      { path: '/teacher/media',   icon: Camera,         label: 'Media' },
-      { path: '/teacher/profile', icon: User,           label: 'Profilo' },
+      { path: '/teacher',          icon: Home,       label: 'Home' },
+      { path: '/teacher/griglia',  icon: Grid3X3,    label: 'Griglia' },
+      { path: '/teacher/diario',   icon: BookMarked, label: 'Diario' },
+      { path: '/teacher/media',    icon: Camera,     label: 'Media' },
+      { path: '/teacher/avvisi',   icon: Megaphone,  label: 'Avvisi' },
+      // ── Solo sidebar ─────────────────────────────────────────────────
+      { path: '/teacher/profile',  icon: User,       label: 'Profilo' },
     ];
   }
   if (role === 'admin') {
@@ -155,13 +158,16 @@ export default function AppLayout({ children, title, showBack }) {
                 <ChevronLeft className="w-5 h-5 text-gray-700" />
               </button>
             ) : (
-              <button
-                data-testid="notification-bell"
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors relative"
-              >
-                <Bell className="w-5 h-5 text-gray-700" />
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#F4C2C2' }}>3</span>
-              </button>
+              /* Badge notifiche — solo per genitori */
+              user?.role === 'parent' ? (
+                <Link to="/parent/notifiche"
+                  data-testid="notification-bell"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors relative">
+                  <Bell className="w-5 h-5 text-gray-700" />
+                </Link>
+              ) : (
+                <div className="w-9 h-9" />
+              )
             )}
           </div>
 
@@ -210,15 +216,21 @@ export default function AppLayout({ children, title, showBack }) {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: roleColor }}>
-                  {user?.name?.charAt(0) || 'U'}
+              {/* Avatar cliccabile → profilo */}
+              <Link to={`/${user?.role}/profile`} onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
+                  style={{ backgroundColor: roleColor }}>
+                  {user?.avatar_url
+                    ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                    : user?.name?.charAt(0) || 'U'}
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-gray-900 truncate" style={{ fontFamily: 'Nunito' }}>{user?.name}</p>
                   <p className="text-xs font-medium" style={{ color: roleColor }}>{getRoleLabel(user?.role)}</p>
+                  <p className="text-[10px] text-gray-400">Tocca per il profilo</p>
                 </div>
-              </div>
+              </Link>
             </div>
 
             {/* Sede Switcher — solo per admin */}

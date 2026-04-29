@@ -206,6 +206,39 @@ async def create_avviso(
 
 
 # ---------------------------------------------------------------------------
+# PUT /api/avvisi/{avviso_id}  — modifica titolo/testo (autore o admin)
+# ---------------------------------------------------------------------------
+
+@router.put("/{avviso_id}")
+async def update_avviso(
+    avviso_id: str,
+    payload: AvvisoUpdate,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    role = current_user.get("role")
+    db = get_db()
+    avviso = await db.avvisi.find_one({"id": avviso_id}, {"_id": 0})
+    if not avviso:
+        raise HTTPException(status_code=404, detail="Avviso non trovato")
+
+    # Solo admin o l'autore possono modificare
+    if role == "admin":
+        validate_admin_sede_access(current_user, x_sede_id)
+    elif avviso.get("author_id") != current_user.get("id"):
+        raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
+
+    updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+
+    await db.avvisi.update_one({"id": avviso_id}, {"$set": updates})
+    updated = await db.avvisi.find_one({"id": avviso_id}, {"_id": 0})
+    return updated
+
+
+# ---------------------------------------------------------------------------
 # DELETE /api/avvisi/{avviso_id}
 # ---------------------------------------------------------------------------
 

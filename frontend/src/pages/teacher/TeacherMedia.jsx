@@ -108,7 +108,7 @@ export default function TeacherMedia() {
 
       try {
         const res = await api.post('/gallery/upload', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          // Content-Type omesso: axios lo imposta automaticamente con il boundary corretto
         });
         newItems.push(res.data);
       } catch (err) {

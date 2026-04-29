@@ -49,7 +49,7 @@ export default function AdminModulistica() {
       fd.append('file', selectedFile, selectedFile.name);
 
       await api.post('/documents/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        // Content-Type omesso: axios lo imposta automaticamente con il boundary corretto
       });
       setDialogOpen(false);
       setForm({ title: '', description: '' });

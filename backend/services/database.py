@@ -157,11 +157,65 @@ async def _deduplicate_students(db):
         logger.info("[SEED] Rimossi %d studenti duplicati", removed)
 
 
+async def ensure_demo_accounts():
+    """
+    Garantisce che gli account demo (maestre e genitori del seed) esistano sempre
+    con le password corrette. Eseguita ad ogni avvio, sicura da chiamare più volte.
+    """
+    db = get_db()
+
+    demo_users = [
+        # ── Girogirotondo ──────────────────────────────────────────────────
+        {"email": "giulia@girogirotondo.it",  "name": "Giulia Bianchi",    "role": "teacher", "sede_id": "girogirotondo",  "password": "teacher123"},
+        {"email": "anna@girogirotondo.it",    "name": "Anna Verdi",         "role": "teacher", "sede_id": "girogirotondo",  "password": "teacher123"},
+        {"email": "paolo@famiglia.it",        "name": "Paolo Marino",       "role": "parent",  "sede_id": "girogirotondo",  "password": "parent123"},
+        {"email": "laura@famiglia.it",        "name": "Laura Ferrari",      "role": "parent",  "sede_id": "girogirotondo",  "password": "parent123"},
+        {"email": "andrea@famiglia.it",       "name": "Andrea Colombo",     "role": "parent",  "sede_id": "girogirotondo",  "password": "parent123"},
+        # ── Il Magico Mondo ────────────────────────────────────────────────
+        {"email": "carla@magicomondo.it",     "name": "Carla Rossi",        "role": "teacher", "sede_id": "il-magico-mondo", "password": "teacher123"},
+        {"email": "marta@magicomondo.it",     "name": "Marta Verde",        "role": "teacher", "sede_id": "il-magico-mondo", "password": "teacher123"},
+        {"email": "francesca@famiglia.it",    "name": "Francesca Fontana",  "role": "parent",  "sede_id": "il-magico-mondo", "password": "parent123"},
+        {"email": "riccardo@famiglia.it",     "name": "Riccardo Mancini",   "role": "parent",  "sede_id": "il-magico-mondo", "password": "parent123"},
+    ]
+
+    for u in demo_users:
+        existing = await db.users.find_one({"email": u["email"]})
+        new_hash = hash_password(u["password"])
+        if existing:
+            # Aggiorna solo la password (non sovrascrivere class_ids/child_ids)
+            await db.users.update_one(
+                {"email": u["email"]},
+                {"$set": {"password": new_hash, "active": True}},
+            )
+        else:
+            # Crea account minimale — le classi/figli vengono linkati dal seed completo
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()),
+                "firebase_uid": None,
+                "name": u["name"],
+                "cognome": u["name"].split()[-1] if " " in u["name"] else "",
+                "email": u["email"],
+                "password": new_hash,
+                "role": u["role"],
+                "is_superadmin": False,
+                "sede_id": u["sede_id"],
+                "class_id": None, "class_ids": [],
+                "child_id": None, "child_ids": [],
+                "avatar_url": None,
+                "active": True,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            logger.info("[DEMO] Account creato: %s (%s)", u["email"], u["role"])
+
+
 async def seed_database():
     db = get_db()
 
     # Aggiorna/crea sempre i SuperAdmin (email + password corrette garantite)
     await ensure_superadmins()
+
+    # Aggiorna/crea sempre gli account demo (maestre e genitori)
+    await ensure_demo_accounts()
 
     # Rimuovi eventuali studenti duplicati dal DB
     await _deduplicate_students(db)

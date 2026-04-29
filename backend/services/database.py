@@ -135,6 +135,28 @@ async def ensure_superadmins():
                 logger.info("[SUPERADMIN] Rimossi %d doppioni per %s", len(ids_to_remove), email)
 
 
+async def _deduplicate_users(db):
+    """Rimuove utenti con la stessa email (tieni il più recente). Eseguita ad ogni avvio."""
+    pipeline = [
+        {"$group": {
+            "_id": "$email",
+            "ids": {"$push": "$id"},
+            "count": {"$sum": 1}
+        }},
+        {"$match": {"count": {"$gt": 1}}}
+    ]
+    dupes = await db.users.aggregate(pipeline).to_list(200)
+    removed = 0
+    for group in dupes:
+        # Tieni il primo, rimuovi i duplicati
+        ids_to_remove = group["ids"][1:]
+        if ids_to_remove:
+            await db.users.delete_many({"id": {"$in": ids_to_remove}})
+            removed += len(ids_to_remove)
+    if removed:
+        logger.info("[SEED] Rimossi %d utenti duplicati", removed)
+
+
 async def _deduplicate_students(db):
     """Rimuove studenti duplicati (stesso name + class_id). Tieni il più vecchio."""
     pipeline = [
@@ -217,7 +239,8 @@ async def seed_database():
     # Aggiorna/crea sempre gli account demo (maestre e genitori)
     await ensure_demo_accounts()
 
-    # Rimuovi eventuali studenti duplicati dal DB
+    # Rimuovi duplicati utenti e studenti
+    await _deduplicate_users(db)
     await _deduplicate_students(db)
 
     # Skip il resto del seed se i dati demo esistono già

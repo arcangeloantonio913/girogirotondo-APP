@@ -26,6 +26,7 @@ const AdminAvvisi         = lazy(() => import("@/pages/admin/AdminAvvisi"));
 const AdminMensa          = lazy(() => import("@/pages/admin/AdminMensa"));
 const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
 const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
+const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -137,6 +138,9 @@ function AppRoutes() {
         <Route path="/admin/modulistica"    element={<ProtectedRoute allowedRoles={['admin']}><AdminModulistica /></ProtectedRoute>} />
         <Route path="/admin/avvisi"         element={<ProtectedRoute allowedRoles={['admin']}><AdminAvvisi /></ProtectedRoute>} />
         <Route path="/admin/mensa"          element={<ProtectedRoute allowedRoles={['admin']}><AdminMensa /></ProtectedRoute>} />
+
+        {/* Pagina pubblica — nessuna autenticazione richiesta */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

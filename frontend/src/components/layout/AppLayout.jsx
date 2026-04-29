@@ -269,6 +269,9 @@ export default function AppLayout({ children, title, showBack }) {
         <p className="text-[10px] text-gray-400 leading-relaxed">
           {FOOTER_TEXT}
         </p>
+        <a href="/privacy" className="text-[10px] text-blue-400 underline mt-1 inline-block">
+          Informativa Privacy & GDPR
+        </a>
       </footer>
 
       {/* Bottom Nav (Mobile) */}

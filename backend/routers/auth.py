@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+import secrets
 import bcrypt
 import jwt
 from fastapi import APIRouter, HTTPException, Header, Depends, Request
@@ -14,6 +15,7 @@ from models.user import UserRegister
 from middleware.auth import get_current_user
 from middleware.rate_limiter import limiter
 from utils.firebase_client import get_auth, is_initialized
+from services.email_service import send_reset_password_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -114,6 +116,73 @@ async def login(request: Request, payload: dict):
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k != "password"}
     return {"token": token, "user": safe_user}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/auth/forgot-password  — reset password per account JWT (non Firebase)
+# ---------------------------------------------------------------------------
+
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, payload: dict):
+    """
+    Invia un link di reset password per gli account JWT (demo/seed).
+    Per gli account Firebase usare il reset nativo di Firebase.
+    """
+    from datetime import timedelta
+    email = payload.get("email", "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email obbligatoria")
+
+    db = get_db()
+    user = await db.users.find_one({"email": email, "active": True})
+
+    # Non rivela se l'account esiste (sicurezza)
+    if not user:
+        return {"message": "Se l'email esiste, riceverai le istruzioni a breve"}
+
+    # Genera token reset (valido 1 ora)
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+    await db.password_resets.update_one(
+        {"email": email},
+        {"$set": {"token": token, "expires": expires, "used": False}},
+        upsert=True,
+    )
+
+    # Invia email con il token
+    sent = await send_reset_password_email(email, user.get("name", ""), token)
+    logger.info("[RESET] Token reset generato per %s, email inviata: %s", email, sent)
+    return {"message": "Se l'email esiste, riceverai le istruzioni a breve"}
+
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, payload: dict):
+    """Conferma il reset della password tramite token."""
+    token    = payload.get("token", "").strip()
+    new_pass = payload.get("password", "").strip()
+
+    if not token or not new_pass:
+        raise HTTPException(status_code=400, detail="Token e nuova password obbligatori")
+    if len(new_pass) < 6:
+        raise HTTPException(status_code=400, detail="La password deve essere di almeno 6 caratteri")
+
+    db = get_db()
+    from datetime import timezone as tz
+    record = await db.password_resets.find_one({"token": token, "used": False})
+    if not record:
+        raise HTTPException(status_code=400, detail="Token non valido o già utilizzato")
+
+    expires = datetime.fromisoformat(record["expires"])
+    if datetime.now(tz.utc) > expires:
+        raise HTTPException(status_code=400, detail="Token scaduto. Richiedi un nuovo link di reset")
+
+    # Aggiorna la password
+    new_hash = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
+    await db.users.update_one({"email": record["email"]}, {"$set": {"password": new_hash}})
+    await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
+    return {"message": "Password aggiornata con successo"}
 
 
 # ---------------------------------------------------------------------------

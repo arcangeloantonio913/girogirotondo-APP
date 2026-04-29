@@ -47,17 +47,30 @@ export default function LoginPage() {
     setResetLoading(true);
     setResetMessage('');
     try {
-      const { sendPasswordResetEmail } = await import('firebase/auth');
-      const { auth } = await import('@/lib/firebase');
-      await sendPasswordResetEmail(auth, resetEmail);
-      setResetMessage('Email di reimpostazione inviata! Controlla la tua casella di posta.');
+      // 1. Prova Firebase (account registrati via Firebase Auth)
+      try {
+        const { sendPasswordResetEmail } = await import('firebase/auth');
+        const { auth } = await import('@/lib/firebase');
+        await sendPasswordResetEmail(auth, resetEmail);
+        setResetMessage('✅ Email inviata! Controlla la tua casella (controlla anche Spam).');
+        return;
+      } catch (fbErr) {
+        // Se Firebase non trova l'utente, prova il backend JWT
+        const notFound = ['auth/user-not-found', 'auth/invalid-credential'];
+        if (!notFound.includes(fbErr?.code)) throw fbErr;
+      }
+
+      // 2. Fallback: backend JWT (account demo/seed)
+      const axios = (await import('axios')).default;
+      const BACKEND = process.env.REACT_APP_BACKEND_URL || '';
+      await axios.post(`${BACKEND}/api/auth/forgot-password`, { email: resetEmail });
+      setResetMessage('✅ Email inviata! Controlla la tua casella (controlla anche Spam).');
     } catch (err) {
-      if (err?.code === 'auth/user-not-found') {
-        setResetMessage('Nessun account trovato. Contatta la direzione.');
-      } else if (err?.code === 'auth/invalid-email') {
-        setResetMessage('Indirizzo email non valido.');
+      if (err?.code === 'auth/invalid-email') {
+        setResetMessage('⚠️ Indirizzo email non valido.');
       } else {
-        setResetMessage("Errore nell'invio. Contatta la direzione.");
+        // Non rivelare se l'account esiste
+        setResetMessage('✅ Se l\'account esiste, riceverai le istruzioni a breve.');
       }
     } finally {
       setResetLoading(false);

@@ -27,6 +27,7 @@ const AdminMensa          = lazy(() => import("@/pages/admin/AdminMensa"));
 const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
 const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
 const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
+const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -141,6 +142,7 @@ function AppRoutes() {
 
         {/* Pagina pubblica — nessuna autenticazione richiesta */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

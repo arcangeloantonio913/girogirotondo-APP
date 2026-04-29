@@ -15,6 +15,11 @@ class ClassCreate(BaseModel):
     teacher_id: Optional[str] = None
 
 
+class ClassUpdate(BaseModel):
+    name: Optional[str] = None
+    teacher_id: Optional[str] = None   # None = non cambiare, "" = rimuovi maestra
+
+
 @router.get("")
 async def get_classes(
     current_user: dict = Depends(get_current_user),
@@ -79,6 +84,52 @@ async def create_class(
     await db.classes.insert_one(class_dict)
     class_dict.pop("_id", None)
     return class_dict
+
+
+@router.patch("/{class_id}")
+async def update_class(
+    class_id: str,
+    payload: ClassUpdate,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    """Modifica nome e/o maestra assegnata. Solo admin."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    db = get_db()
+
+    cls = await db.classes.find_one({"id": class_id})
+    if not cls:
+        raise HTTPException(status_code=404, detail="Classe non trovata")
+    if cls.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Classe non appartiene alla sede selezionata")
+
+    updates = {}
+    if payload.name is not None:
+        updates["name"] = payload.name.strip()
+    if payload.teacher_id is not None:
+        if payload.teacher_id == "":
+            updates["teacher_id"] = None   # rimuovi maestra
+        else:
+            # Verifica che la maestra esista e appartenga alla sede
+            teacher = await db.users.find_one({"id": payload.teacher_id, "role": "teacher"})
+            if not teacher:
+                raise HTTPException(status_code=400, detail="Maestra non trovata")
+            updates["teacher_id"] = payload.teacher_id
+            # Aggiorna anche class_ids sulla maestra
+            await db.users.update_one(
+                {"id": payload.teacher_id},
+                {"$addToSet": {"class_ids": class_id}, "$set": {"class_id": class_id}}
+            )
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+
+    await db.classes.update_one({"id": class_id}, {"$set": updates})
+    updated = await db.classes.find_one({"id": class_id}, {"_id": 0})
+    return updated
 
 
 @router.delete("/{class_id}")

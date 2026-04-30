@@ -105,16 +105,17 @@ async def _send_via_resend(to_email, subject, html_body, plain_body) -> bool:
     try:
         import resend
         resend.api_key = api_key
-        params = resend.Emails.SendParams(
-            from_=FROM_EMAIL,
-            to=[to_email],
-            reply_to=REPLY_TO,
-            subject=subject,
-            html=html_body,
-            text=plain_body,
-        )
-        email = resend.Emails.send(params)
-        logger.info("[EMAIL] Inviata via Resend a %s — id: %s", to_email, email.get("id", "?"))
+        # Usa dict esplicito — evita problemi con 'from' (keyword Python riservata)
+        email = resend.Emails.send({
+            "from": FROM_EMAIL,
+            "to": [to_email],
+            "reply_to": REPLY_TO,
+            "subject": subject,
+            "html": html_body,
+            "text": plain_body,
+        })
+        email_id = email.get("id") if isinstance(email, dict) else getattr(email, "id", "?")
+        logger.info("[EMAIL] Inviata via Resend a %s — id: %s", to_email, email_id)
         return True
     except Exception as exc:
         logger.error("[EMAIL] Errore Resend per %s: %s", to_email, exc)

@@ -1,4 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+// Comprime immagini lato client prima dell'upload (max 1024px, JPEG q0.82)
+// Riduce foto iPhone da 10MB → ~200-400KB, eliminando errori di dimensione
+async function compressImage(file) {
+  if (!file.type.startsWith('image/')) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1024;
+      let { width: w, height: h } = img;
+      if (w > h && w > MAX) { h = Math.round((h / w) * MAX); w = MAX; }
+      else if (h > MAX)       { w = Math.round((w / h) * MAX); h = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })),
+        'image/jpeg', 0.82
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -97,14 +123,17 @@ export default function TeacherMedia() {
       const file = selectedFiles[i];
       setUploadProgress({ current: i + 1, total: selectedFiles.length });
 
-      // Usa FormData e POST /gallery/upload per caricare su Firebase Storage
+      // Comprimi l'immagine prima dell'upload (riduce 10MB → 200-400KB)
+      const isPhoto = file.type.startsWith('image/');
+      const fileToUpload = isPhoto ? await compressImage(file) : file;
+
       const fd = new FormData();
       fd.append('class_id', primaryClassId);
       fd.append('student_ids', selectedStudents.join(','));
       fd.append('media_type', file.type.startsWith('video') ? 'video' : 'photo');
       fd.append('caption', caption);
       fd.append('tags', '');
-      fd.append('file', file, file.name);
+      fd.append('file', fileToUpload, fileToUpload.name);
 
       try {
         const res = await api.post('/gallery/upload', fd, {
@@ -112,8 +141,9 @@ export default function TeacherMedia() {
         });
         newItems.push(res.data);
       } catch (err) {
-        console.error(`Errore upload ${file.name}:`, err);
-        failed.push(file.name);
+        const msg = err.response?.data?.detail || err.message || 'Errore sconosciuto';
+        console.error(`Errore upload ${file.name}: [${err.response?.status}] ${msg}`);
+        failed.push(`${file.name} (${msg})`);
       }
     }
 

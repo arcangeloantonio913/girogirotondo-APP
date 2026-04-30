@@ -1,4 +1,29 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+
+// Compressione PDF non necessaria, ma comprimi immagini caricate come documenti
+async function compressIfImage(file) {
+  if (!file.type.startsWith('image/')) return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1600;
+      let { width: w, height: h } = img;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })),
+        'image/jpeg', 0.85
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -66,13 +91,14 @@ export default function AdminModulistica() {
     setUploadError('');
     try {
       // Caricamento reale su Firebase Storage via multipart form
+      const fileToUpload = await compressIfImage(selectedFile);
       const fd = new FormData();
       fd.append('title', form.title);
       fd.append('description', form.description || '');
       fd.append('categoria', 'modulistica');
       fd.append('classe_id', '');
       fd.append('scadenza', '');
-      fd.append('file', selectedFile, selectedFile.name);
+      fd.append('file', fileToUpload, fileToUpload.name);
 
       await api.post('/documents/upload', fd, {
         // Content-Type omesso: axios lo imposta automaticamente con il boundary corretto

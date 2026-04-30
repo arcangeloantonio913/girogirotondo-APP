@@ -70,7 +70,7 @@ async def get_document(doc_id: str, current_user: dict = Depends(get_current_use
 # ---------------------------------------------------------------------------
 
 @router.post("/upload", status_code=201)
-@limiter.limit("20/minute")
+@limiter.limit("100/minute")
 async def upload_document_file(
     request: Request,
     title: str = Form(...),

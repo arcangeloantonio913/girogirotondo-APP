@@ -97,7 +97,7 @@ async def get_media(media_id: str, current_user: dict = Depends(get_current_user
 # ---------------------------------------------------------------------------
 
 @router.post("/upload", status_code=201)
-@limiter.limit("10/minute")
+@limiter.limit("100/minute")
 async def upload_media_file(
     request: Request,
     class_id: str = Form(...),

@@ -53,13 +53,25 @@ async def get_students(
         return await db.students.find(query, {"_id": 0}).to_list(1000)
 
     else:
+        # Admin: filtra per classi della sede attiva (non solo per sede_id sul bambino,
+        # per garantire coerenza con teacher che filtra per class_id)
         sede_id = validate_admin_sede_access(current_user, x_sede_id)
-        query["sede_id"] = sede_id
         if class_id:
             cls = await db.classes.find_one({"id": class_id, "sede_id": sede_id})
             if not cls:
                 raise HTTPException(status_code=403, detail="Classe non appartiene alla sede selezionata")
             query["class_id"] = class_id
+        else:
+            # Ottieni tutti gli ID delle classi di questa sede
+            sede_classes = await db.classes.find(
+                {"sede_id": sede_id}, {"_id": 0, "id": 1}
+            ).to_list(200)
+            sede_class_ids = [c["id"] for c in sede_classes]
+            if not sede_class_ids:
+                return []
+            # Mostra studenti nelle classi della sede (indipendentemente dal campo sede_id
+            # dello studente, che potrebbe mancare su record vecchi)
+            query["class_id"] = {"$in": sede_class_ids}
         return await db.students.find(query, {"_id": 0}).to_list(1000)
 
 

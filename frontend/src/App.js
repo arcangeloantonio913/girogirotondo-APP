@@ -24,6 +24,7 @@ const AdminAppointments   = lazy(() => import("@/pages/admin/AdminAppointments")
 const AdminModulistica    = lazy(() => import("@/pages/admin/AdminModulistica"));
 const AdminAvvisi         = lazy(() => import("@/pages/admin/AdminAvvisi"));
 const AdminMensa          = lazy(() => import("@/pages/admin/AdminMensa"));
+const AdminProfile        = lazy(() => import("@/pages/admin/AdminProfile"));
 const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
 const TeacherDiario       = lazy(() => import("@/pages/teacher/TeacherDiario"));
 const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
@@ -145,6 +146,7 @@ function AppRoutes() {
         <Route path="/admin/modulistica"    element={<ProtectedRoute allowedRoles={['admin']}><AdminModulistica /></ProtectedRoute>} />
         <Route path="/admin/avvisi"         element={<ProtectedRoute allowedRoles={['admin']}><AdminAvvisi /></ProtectedRoute>} />
         <Route path="/admin/mensa"          element={<ProtectedRoute allowedRoles={['admin']}><AdminMensa /></ProtectedRoute>} />
+        <Route path="/admin/profile"        element={<ProtectedRoute allowedRoles={['admin']}><AdminProfile /></ProtectedRoute>} />
 
         {/* Pagina pubblica — nessuna autenticazione richiesta */}
         <Route path="/privacy" element={<PrivacyPolicy />} />

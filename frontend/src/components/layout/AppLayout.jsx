@@ -43,11 +43,16 @@ function getNavItems(role) {
   }
   if (role === 'admin') {
     return [
-      { path: '/admin',             icon: Home,           label: 'Home' },
-      { path: '/admin/users',       icon: Users,          label: 'Utenti' },
-      { path: '/admin/classes',     icon: BookOpen,       label: 'Classi' },
-      { path: '/admin/avvisi',      icon: Megaphone,      label: 'Avvisi' },
-      { path: '/admin/mensa',       icon: UtensilsCrossed,label: 'Mensa' },
+      // ── Bottom nav (first 5) ──────────────────────────────────────────────
+      { path: '/admin',               icon: Home,           label: 'Home' },
+      { path: '/admin/users',         icon: Users,          label: 'Utenti' },
+      { path: '/admin/classes',       icon: BookOpen,       label: 'Classi' },
+      { path: '/admin/avvisi',        icon: Megaphone,      label: 'Avvisi' },
+      { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
+      // ── Solo sidebar ──────────────────────────────────────────────────────
+      { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },
+      { path: '/admin/modulistica',   icon: FileText,       label: 'Modulistica' },
+      { path: '/admin/profile',       icon: User,           label: 'Profilo' },
     ];
   }
   return [];
@@ -217,7 +222,9 @@ export default function AppLayout({ children, title, showBack }) {
                 </button>
               </div>
               {/* Avatar cliccabile → profilo */}
-              <Link to={`/${user?.role}/profile`} onClick={() => setSidebarOpen(false)}
+              <Link
+                to={user?.role === 'admin' ? '/admin/profile' : user?.role === 'teacher' ? '/teacher/profile' : '/parent/profile'}
+                onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden"
                   style={{ backgroundColor: roleColor }}>

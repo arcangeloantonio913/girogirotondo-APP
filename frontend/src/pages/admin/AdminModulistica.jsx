@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useAuth } from '@/lib/AuthContext';
+import api from '@/lib/api';
+import AppLayout from '@/components/layout/AppLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X, BookOpen } from 'lucide-react';
 
-// Compressione PDF non necessaria, ma comprimi immagini caricate come documenti
+// Comprimi immagini prima dell'upload — gli import DEVONO stare in cima
 async function compressIfImage(file) {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
@@ -24,14 +32,6 @@ async function compressIfImage(file) {
     img.src = url;
   });
 }
-import { useAuth } from '@/lib/AuthContext';
-import api from '@/lib/api';
-import AppLayout from '@/components/layout/AppLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X, BookOpen } from 'lucide-react';
 
 export default function AdminModulistica() {
   const { sede } = useAuth();

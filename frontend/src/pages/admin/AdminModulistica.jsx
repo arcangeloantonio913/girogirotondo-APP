@@ -238,8 +238,9 @@ export default function AdminModulistica() {
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="receipt-detail-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>
-                Prese Visione — {detailDoc?.title}
+                Prese Visione
               </DialogTitle>
+            </DialogHeader>
             {detailDoc && (
               <div className="space-y-3 pt-2 max-h-[65vh] overflow-y-auto pr-1">
                 {/* Riepilogo totale */}
@@ -248,9 +249,11 @@ export default function AdminModulistica() {
                   const readCount = parents.filter(p => hasRead(detailDoc.id, p.id)).length;
                   const pct = total > 0 ? Math.round(readCount / total * 100) : 0;
                   return (
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-bold text-gray-700">Totale: {readCount}/{total}</span>
-                      <span className="font-bold" style={{ color: pct === 100 ? '#32CD32' : '#4169E1' }}>{pct}%</span>
+                    <div className="flex items-center justify-between text-xs mb-1 px-1">
+                      <span className="font-bold text-gray-700">{detailDoc.title}</span>
+                      <span className="font-bold" style={{ color: pct === 100 ? '#32CD32' : '#4169E1' }}>
+                        {readCount}/{total} ({pct}%)
+                      </span>
                     </div>
                   );
                 })()}
@@ -260,7 +263,7 @@ export default function AdminModulistica() {
                   const readCnt = clsParents.filter(p => hasRead(detailDoc.id, p.id)).length;
                   return (
                     <div key={classId}>
-                      <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1.5 mt-2">
                         <BookOpen className="w-3.5 h-3.5 text-gray-400" />
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{className}</span>
                         <span className="text-[10px] text-gray-400 ml-auto">{readCnt}/{clsParents.length}</span>
@@ -277,7 +280,9 @@ export default function AdminModulistica() {
                               </div>
                               <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
                             </div>
-                            }
+                            {read
+                              ? <CheckCircle2 className="w-5 h-5" style={{ color: '#32CD32' }} />
+                              : <XCircle className="w-5 h-5 text-gray-300" />}
                           </div>
                         );
                       })}

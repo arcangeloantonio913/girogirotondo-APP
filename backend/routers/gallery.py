@@ -185,6 +185,13 @@ async def upload_media_base64(
     if not media_url or not class_id:
         raise HTTPException(status_code=400, detail="media_url e class_id obbligatori")
 
+    # Limite dimensione: data URL max 12MB (MongoDB document limit 16MB)
+    if len(media_url) > 12 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="File troppo grande (max ~9MB). Usa una foto più piccola."
+        )
+
     # student_ids può arrivare come lista o stringa CSV
     if isinstance(student_ids, str):
         student_ids = [s.strip() for s in student_ids.split(",") if s.strip()]

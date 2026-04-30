@@ -1,27 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Comprime immagini lato client prima dell'upload (max 1024px, JPEG q0.82)
-// Riduce foto iPhone da 10MB → ~200-400KB, eliminando errori di dimensione
-async function compressImage(file) {
-  if (!file.type.startsWith('image/')) return file;
-  return new Promise((resolve) => {
+// Comprime + converte in base64 in un unico passaggio (più veloce)
+// max 720px JPEG q0.65 → foto iPhone 10MB → ~60-120KB → upload veloce
+async function prepareImageBase64(file) {
+  if (!file.type.startsWith('image/')) {
+    // Per video/altri file: converti direttamente in base64 senza canvas
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve({ b64: r.result.split(',')[1], type: file.type });
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1024;
+      const MAX = 720; // ridotto da 1024 → upload ~3x più veloce
       let { width: w, height: h } = img;
       if (w > h && w > MAX) { h = Math.round((h / w) * MAX); w = MAX; }
-      else if (h > MAX)       { w = Math.round((w / h) * MAX); h = MAX; }
+      else if (h > MAX)      { w = Math.round((w / h) * MAX); h = MAX; }
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       canvas.toBlob(
-        (blob) => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })),
-        'image/jpeg', 0.82
+        (blob) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve({ b64: r.result.split(',')[1], type: 'image/jpeg' });
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        },
+        'image/jpeg', 0.65 // qualità ridotta da 0.82 → file più piccoli
       );
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
     img.src = url;
   });
 }
@@ -116,38 +129,45 @@ export default function TeacherMedia() {
     setUploadError('');
     setUploadProgress({ current: 0, total: selectedFiles.length });
 
+    // FASE 1: comprimi tutte le immagini in parallelo
+    const prepared = await Promise.allSettled(
+      selectedFiles.map(f => prepareImageBase64(f))
+    );
+
+    setUploadProgress({ current: 0, total: selectedFiles.length });
+
+    // FASE 2: carica tutte in parallelo (massimo 3 alla volta per non sovraccaricare)
+    const BATCH = 3;
     const newItems = [];
-    const failed = [];
+    const failed   = [];
+    let done = 0;
 
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      setUploadProgress({ current: i + 1, total: selectedFiles.length });
-
-      // Comprimi e converti in base64 — bypassa multipart (nessun problema CORS/parsing)
-      const isPhoto = file.type.startsWith('image/');
-      const fileToUpload = isPhoto ? await compressImage(file) : file;
-
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.onerror   = reject;
-        reader.readAsDataURL(fileToUpload);
+    for (let i = 0; i < prepared.length; i += BATCH) {
+      const batch = prepared.slice(i, i + BATCH);
+      const results = await Promise.allSettled(
+        batch.map(async (prep, bIdx) => {
+          const file = selectedFiles[i + bIdx];
+          if (prep.status === 'rejected') throw new Error('Compressione fallita');
+          const { b64, type } = prep.value;
+          const res = await api.post('/gallery/upload-b64', {
+            class_id:    primaryClassId,
+            student_ids: selectedStudents,
+            media_type:  file.type.startsWith('video') ? 'video' : 'photo',
+            caption,
+            media_url:   `data:${type};base64,${b64}`,
+          });
+          return res.data;
+        })
+      );
+      results.forEach((r, bIdx) => {
+        done++;
+        setUploadProgress({ current: done, total: selectedFiles.length });
+        if (r.status === 'fulfilled') newItems.push(r.value);
+        else {
+          const file = selectedFiles[i + bIdx];
+          failed.push(file?.name || 'file');
+        }
       });
-
-      try {
-        const res = await api.post('/gallery/upload-b64', {
-          class_id:    primaryClassId,
-          student_ids: selectedStudents,
-          media_type:  file.type.startsWith('video') ? 'video' : 'photo',
-          caption:     caption,
-          media_url:   `data:image/jpeg;base64,${base64}`,
-        });
-        newItems.push(res.data);
-      } catch (err) {
-        const msg = err.response?.data?.detail || err.message || 'Errore';
-        console.error(`Upload error ${file.name}:`, err.response?.status, msg);
-        failed.push(`${file.name} (${msg})`);
-      }
     }
 
     setUploading(false);

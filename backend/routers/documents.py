@@ -127,6 +127,53 @@ async def upload_document_file(
 
 
 # ---------------------------------------------------------------------------
+# POST /api/documents/upload-b64  — upload JSON+base64 (bypassa multipart)
+# ---------------------------------------------------------------------------
+
+@router.post("/upload-b64", status_code=201)
+async def upload_document_base64(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Alternativa a /upload. Accetta JSON con:
+      file_b64: string base64 del file
+      file_type: MIME type (es. "application/pdf")
+      title, description, categoria, classe_id, scadenza
+    """
+    if current_user.get("role") not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    file_b64  = payload.get("file_b64", "")
+    file_type = payload.get("file_type", "application/octet-stream")
+    title     = payload.get("title", "").strip()
+
+    if not file_b64 or not title:
+        raise HTTPException(status_code=400, detail="file_b64 e title obbligatori")
+
+    # Costruisci data URL
+    file_url = f"data:{file_type};base64,{file_b64}"
+
+    db = get_db()
+    doc_id = str(uuid.uuid4())
+    doc = {
+        "id":          doc_id,
+        "title":       title,
+        "description": payload.get("description", ""),
+        "file_url":    file_url,
+        "storage_path":None,
+        "categoria":   payload.get("categoria", "modulistica"),
+        "classe_id":   payload.get("classe_id") or None,
+        "uploader_id": current_user["id"],
+        "scadenza":    payload.get("scadenza") or None,
+        "created_at":  datetime.now(timezone.utc).isoformat(),
+    }
+    await db.documents.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+# ---------------------------------------------------------------------------
 # POST /api/documents  — backward-compat: save URL directly
 # ---------------------------------------------------------------------------
 

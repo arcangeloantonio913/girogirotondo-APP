@@ -123,26 +123,29 @@ export default function TeacherMedia() {
       const file = selectedFiles[i];
       setUploadProgress({ current: i + 1, total: selectedFiles.length });
 
-      // Comprimi l'immagine prima dell'upload (riduce 10MB → 200-400KB)
+      // Comprimi e converti in base64 — bypassa multipart (nessun problema CORS/parsing)
       const isPhoto = file.type.startsWith('image/');
       const fileToUpload = isPhoto ? await compressImage(file) : file;
 
-      const fd = new FormData();
-      fd.append('class_id', primaryClassId);
-      fd.append('student_ids', selectedStudents.join(','));
-      fd.append('media_type', file.type.startsWith('video') ? 'video' : 'photo');
-      fd.append('caption', caption);
-      fd.append('tags', '');
-      fd.append('file', fileToUpload, fileToUpload.name);
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror   = reject;
+        reader.readAsDataURL(fileToUpload);
+      });
 
       try {
-        const res = await api.post('/gallery/upload', fd, {
-          // Content-Type omesso: axios lo imposta automaticamente con il boundary corretto
+        const res = await api.post('/gallery/upload-b64', {
+          class_id:    primaryClassId,
+          student_ids: selectedStudents,
+          media_type:  file.type.startsWith('video') ? 'video' : 'photo',
+          caption:     caption,
+          media_url:   `data:image/jpeg;base64,${base64}`,
         });
         newItems.push(res.data);
       } catch (err) {
-        const msg = err.response?.data?.detail || err.message || 'Errore sconosciuto';
-        console.error(`Errore upload ${file.name}: [${err.response?.status}] ${msg}`);
+        const msg = err.response?.data?.detail || err.message || 'Errore';
+        console.error(`Upload error ${file.name}:`, err.response?.status, msg);
         failed.push(`${file.name} (${msg})`);
       }
     }

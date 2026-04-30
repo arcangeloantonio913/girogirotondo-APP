@@ -90,18 +90,21 @@ export default function AdminModulistica() {
     setUploading(true);
     setUploadError('');
     try {
-      // Caricamento reale su Firebase Storage via multipart form
+      // Converti in base64 — bypassa multipart (elimina problemi CORS/parsing)
       const fileToUpload = await compressIfImage(selectedFile);
-      const fd = new FormData();
-      fd.append('title', form.title);
-      fd.append('description', form.description || '');
-      fd.append('categoria', 'modulistica');
-      fd.append('classe_id', '');
-      fd.append('scadenza', '');
-      fd.append('file', fileToUpload, fileToUpload.name);
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror   = reject;
+        reader.readAsDataURL(fileToUpload);
+      });
 
-      await api.post('/documents/upload', fd, {
-        // Content-Type omesso: axios lo imposta automaticamente con il boundary corretto
+      await api.post('/documents/upload-b64', {
+        title:       form.title,
+        description: form.description || '',
+        categoria:   'modulistica',
+        file_b64:    base64,
+        file_type:   fileToUpload.type || 'application/octet-stream',
       });
       setDialogOpen(false);
       setForm({ title: '', description: '' });

@@ -7,7 +7,10 @@ Returns True se l'email è stata inviata, False altrimenti.
 NON solleva eccezioni: i fallimenti vengono loggati ma non bloccano la registrazione.
 """
 import os
+import json as _json
 import logging
+import urllib.request
+import urllib.error
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -96,29 +99,56 @@ def _build_html(bambino_nome, bambino_cognome, to_email, password, school_name, 
 </html>"""
 
 
-async def _send_via_resend(to_email, subject, html_body, plain_body) -> bool:
-    """Invio tramite Resend API — funziona da Railway e qualsiasi cloud provider."""
-    api_key = os.environ.get("RESEND_API_KEY", "")
-    if not api_key:
-        logger.debug("[EMAIL] RESEND_API_KEY non configurata, salto Resend")
-        return False
+def _resend_http_sync(api_key: str, payload: dict):
+    """Chiama Resend API via urllib (stdlib) — zero dipendenze esterne."""
+    data = _json.dumps(payload).encode("utf-8")
+    req  = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type":  "application/json",
+        },
+        method="POST",
+    )
     try:
-        import resend
-        resend.api_key = api_key
-        # Usa dict esplicito — evita problemi con 'from' (keyword Python riservata)
-        email = resend.Emails.send({
-            "from": FROM_EMAIL,
-            "to": [to_email],
-            "reply_to": REPLY_TO,
-            "subject": subject,
-            "html": html_body,
-            "text": plain_body,
-        })
-        email_id = email.get("id") if isinstance(email, dict) else getattr(email, "id", "?")
-        logger.info("[EMAIL] Inviata via Resend a %s — id: %s", to_email, email_id)
-        return True
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.status, resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode("utf-8")
+
+
+async def _send_via_resend(to_email, subject, html_body, plain_body) -> bool:
+    """Invio tramite Resend API HTTP diretta — nessun SDK, solo stdlib Python."""
+    import asyncio
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key:
+        logger.warning("[EMAIL] RESEND_API_KEY non trovata nelle env vars di Railway!")
+        return False
+    payload = {
+        "from":     FROM_EMAIL,
+        "to":       [to_email],
+        "reply_to": REPLY_TO,
+        "subject":  subject,
+        "html":     html_body,
+        "text":     plain_body,
+    }
+    try:
+        loop = asyncio.get_event_loop()
+        status, body = await loop.run_in_executor(
+            None, lambda: _resend_http_sync(api_key, payload)
+        )
+        if status in (200, 201):
+            try:
+                resp_id = _json.loads(body).get("id", "?")
+            except Exception:
+                resp_id = "?"
+            logger.info("[EMAIL] ✅ Resend OK → %s  id=%s", to_email, resp_id)
+            return True
+        logger.error("[EMAIL] ❌ Resend %d → %s", status, body[:400])
+        return False
     except Exception as exc:
-        logger.error("[EMAIL] Errore Resend per %s: %s", to_email, exc)
+        logger.error("[EMAIL] ❌ Resend exception → %s", exc)
         return False
 
 

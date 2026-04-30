@@ -159,6 +159,66 @@ async def upload_media_file(
 
 
 # ---------------------------------------------------------------------------
+# POST /api/gallery/upload-b64  — upload JSON+base64 (bypassa multipart)
+# ---------------------------------------------------------------------------
+
+@router.post("/upload-b64", status_code=201)
+async def upload_media_base64(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Endpoint alternativo a /upload. Accetta JSON con:
+      media_url: string base64 data URL (es. "data:image/jpeg;base64,...")
+      class_id, student_ids (list), media_type, caption
+    Non richiede multipart — elimina problemi CORS/parsing.
+    """
+    if current_user.get("role") not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    media_url   = payload.get("media_url", "")
+    class_id    = payload.get("class_id", "")
+    student_ids = payload.get("student_ids", [])
+    media_type  = payload.get("media_type", "photo")
+    caption     = payload.get("caption", "")
+
+    if not media_url or not class_id:
+        raise HTTPException(status_code=400, detail="media_url e class_id obbligatori")
+
+    # student_ids può arrivare come lista o stringa CSV
+    if isinstance(student_ids, str):
+        student_ids = [s.strip() for s in student_ids.split(",") if s.strip()]
+
+    db = get_db()
+    media_id = str(uuid.uuid4())
+    doc = {
+        "id":            media_id,
+        "class_id":      class_id,
+        "student_ids":   student_ids,
+        "media_url":     media_url,
+        "thumbnail_url": None,
+        "storage_path":  None,
+        "thumbnail_path":None,
+        "media_type":    media_type,
+        "caption":       caption,
+        "tags":          [],
+        "uploaded_by":   current_user["id"],
+        "published":     True,
+        "created_at":    datetime.now(timezone.utc).isoformat(),
+    }
+    await db.gallery.insert_one(doc)
+    doc.pop("_id", None)
+
+    await notify_class(
+        db, class_id, ["parent"],
+        title="Nuova foto pubblicata!",
+        body=caption or "La maestra ha pubblicato una nuova foto.",
+        data={"type": "gallery", "media_id": media_id},
+    )
+    return doc
+
+
+# ---------------------------------------------------------------------------
 # POST /api/gallery  — backward-compat: save URL directly (no file upload)
 # ---------------------------------------------------------------------------
 

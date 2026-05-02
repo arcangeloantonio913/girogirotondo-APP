@@ -35,7 +35,9 @@ function generatePassword(len = 10) {
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-const EMPTY_STAFF = { name: '', email: '', password: '', role: '', class_ids: [] };
+// Staff: password auto-generata + ruolo default maestra
+const makeEmptyStaff = () => ({ name: '', email: '', password: generatePassword(), role: 'teacher', class_ids: [] });
+const EMPTY_STAFF = makeEmptyStaff();
 const EMPTY_ISCRIZIONE = {
   bambino_nome: '', bambino_cognome: '', bambino_data_nascita: '',
   class_id: '', genitore_email: '', genitore_nome: '', genitore_password: '',
@@ -95,9 +97,9 @@ export default function AdminUsers() {
 
   // ── apertura dialog staff ────────────────────────────────────────────────
   const openStaffDialog = () => {
-    setStaffForm(EMPTY_STAFF);
+    setStaffForm(makeEmptyStaff());   // password già generata, ruolo=teacher
     setStaffError('');
-    setShowStaffPwd(false);
+    setShowStaffPwd(true);            // mostra subito la password auto-generata
     setDialogType('staff');
     setDialogOpen(true);
   };
@@ -153,13 +155,14 @@ export default function AdminUsers() {
       const payload = {
         ...iscForm,
         sede_id: sede,
-        genitore_password: autogenPwd ? undefined : iscForm.genitore_password,
+        genitore_password: iscForm.genitore_password || undefined,
       };
       const res = await api.post('/users/iscrizione', payload);
       setIscSuccess({
         genitore_email: res.data.genitore_email,
         bambino_nome: `${iscForm.bambino_nome} ${iscForm.bambino_cognome}`,
         email_inviata: res.data.email_inviata,
+        generatedPwd: iscForm.genitore_password,  // salva password per mostrarla
       });
       loadData();
     } catch (err) {
@@ -203,8 +206,9 @@ export default function AdminUsers() {
   };
 
   const iscrizioneValid =
-    iscForm.bambino_nome && iscForm.bambino_cognome && iscForm.class_id &&
-    iscForm.genitore_email && (autogenPwd || iscForm.genitore_password.length >= 6);
+    iscForm.bambino_nome.trim() && iscForm.bambino_cognome.trim() &&
+    iscForm.class_id && iscForm.genitore_email.trim() &&
+    iscForm.genitore_password.length >= 6;
 
   const getClassName = (classId) => classes.find(c => c.id === classId)?.name || '—';
   const getStudentsForParent = (parentId) =>
@@ -447,16 +451,19 @@ export default function AdminUsers() {
                     className="rounded-xl mt-1" placeholder="email@esempio.it" />
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-gray-600">Password</Label>
-                  <div className="relative mt-1">
-                    <Input data-testid="staff-password-input"
-                      type={showStaffPwd ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      value={staffForm.password}
-                      onChange={e => setStaffForm({ ...staffForm, password: e.target.value })}
-                      className="rounded-xl pr-10" placeholder="Password" />
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-xs font-medium text-gray-600">Password</Label>
+                    <button type="button"
+                      onClick={() => setStaffForm(f => ({ ...f, password: generatePassword() }))}
+                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>
+                      <RefreshCw className="w-3 h-3" />Rigenera
+                    </button>
+                  </div>
+                  {/* Mostra password auto-generata — selezionabile per copiare */}
+                  <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
+                    <span className="flex-1 text-sm font-mono font-bold text-blue-700 select-all">{staffForm.password}</span>
                     <button type="button" onClick={() => setShowStaffPwd(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      className="text-gray-400">
                       {showStaffPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -508,38 +515,53 @@ export default function AdminUsers() {
             </DialogHeader>
 
             {iscSuccess ? (
-              <div className="pt-2 space-y-4">
-                <div className="flex flex-col items-center gap-3 py-4 text-center">
-                  <CheckCircle className="w-12 h-12" style={{ color: '#32CD32' }} />
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center gap-3 py-2">
+                  <CheckCircle className="w-9 h-9 flex-shrink-0" style={{ color: '#32CD32' }} />
                   <div>
-                    <p className="text-base font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>Iscrizione completata!</p>
-                    <p className="text-sm text-gray-500 mt-1">{iscSuccess.bambino_nome} è stato registrato.</p>
-                  </div>
-                </div>
-                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-bold text-blue-700">
-                      {iscSuccess.email_inviata ? '✅ Email inviata' : '⚠️ Email non inviata (configura RESEND_API_KEY su Railway)'}
+                    <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
+                      {iscSuccess.bambino_nome} registrato ✓
                     </p>
-                    <p className="text-xs text-blue-600 mt-0.5">
-                      Credenziali per: <strong>{iscSuccess.genitore_email}</strong>
+                    <p className="text-xs text-gray-400">
+                      {iscSuccess.email_inviata ? '📧 Email inviata' : '📧 Email non inviata — credenziali da consegnare manualmente'}
                     </p>
                   </div>
                 </div>
-                <Button onClick={() => { setDialogOpen(false); setIscSuccess(null); }}
-                  className="w-full rounded-2xl font-bold h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+                {/* Credenziali sempre visibili per consegna manuale */}
+                <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
+                  <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{iscSuccess.genitore_email}</strong></p>
+                  <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{iscSuccess.generatedPwd}</strong></p>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => {
+                    // Iscrivi un altro — riapri il form vuoto mantenendo la classe
+                    const lastClassId = iscForm.class_id;
+                    const pwd = generatePassword();
+                    setIscForm({ ...EMPTY_ISCRIZIONE, genitore_password: pwd, class_id: lastClassId });
+                    setAutogenPwd(true);
+                    setIscSuccess(null);
+                  }}
+                    className="flex-1 h-10 rounded-xl font-bold text-sm" style={{ backgroundColor: '#4169E1' }}>
+                    + Iscrivi un altro
+                  </Button>
+                  <Button onClick={() => { setDialogOpen(false); setIscSuccess(null); }}
+                    variant="outline" className="flex-1 h-10 rounded-xl text-sm">
+                    Chiudi
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3 pt-2 max-h-[72vh] overflow-y-auto pr-1">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Dati del Bambino</p>
+              {/* FORM VELOCE: 3 campi essenziali */}
+              <div className="space-y-3 pt-2">
+                {/* Nome + Cognome inline */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs font-medium text-gray-600">Nome *</Label>
                     <Input data-testid="bambino-nome-input" autoComplete="off"
                       value={iscForm.bambino_nome}
                       onChange={e => setIscForm({ ...iscForm, bambino_nome: e.target.value })}
-                      className="rounded-xl mt-1" placeholder="Nome" />
+                      className="rounded-xl mt-1" placeholder="Nome"
+                      onKeyDown={e => e.key === 'Enter' && document.querySelector('[data-testid="bambino-cognome-input"]')?.focus()} />
                   </div>
                   <div>
                     <Label className="text-xs font-medium text-gray-600">Cognome *</Label>
@@ -549,84 +571,43 @@ export default function AdminUsers() {
                       className="rounded-xl mt-1" placeholder="Cognome" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs font-medium text-gray-600">Data di nascita</Label>
-                    <Input data-testid="bambino-dob-input" type="date"
-                      value={iscForm.bambino_data_nascita}
-                      onChange={e => setIscForm({ ...iscForm, bambino_data_nascita: e.target.value })}
-                      className="rounded-xl mt-1" />
-                  </div>
-                  <div>
-                    <Label className="text-xs font-medium text-gray-600">Classe *</Label>
-                    <Select value={iscForm.class_id} onValueChange={v => setIscForm({ ...iscForm, class_id: v })}>
-                      <SelectTrigger className="rounded-xl mt-1" data-testid="bambino-class-select">
-                        <SelectValue placeholder="Classe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+                {/* Classe */}
+                <div>
+                  <Label className="text-xs font-medium text-gray-600">Classe *</Label>
+                  <Select value={iscForm.class_id} onValueChange={v => setIscForm({ ...iscForm, class_id: v })}>
+                    <SelectTrigger className="rounded-xl mt-1" data-testid="bambino-class-select">
+                      <SelectValue placeholder="Seleziona classe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="border-t border-gray-100 pt-1">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Credenziali Genitore</p>
-                </div>
+                {/* Email genitore */}
                 <div>
                   <Label className="text-xs font-medium text-gray-600">Email Genitore *</Label>
                   <Input data-testid="genitore-email-input" type="email" autoComplete="off"
                     value={iscForm.genitore_email}
                     onChange={e => setIscForm({ ...iscForm, genitore_email: e.target.value })}
                     className="rounded-xl mt-1" placeholder="genitore@esempio.it" />
-                  <p className="text-[10px] text-gray-400 mt-0.5">Le credenziali verranno inviate a questo indirizzo</p>
                 </div>
-                <div>
-                  <Label className="text-xs font-medium text-gray-600">Nome Genitore</Label>
-                  <Input data-testid="genitore-nome-input" autoComplete="off"
-                    value={iscForm.genitore_nome}
-                    onChange={e => setIscForm({ ...iscForm, genitore_nome: e.target.value })}
-                    className="rounded-xl mt-1"
-                    placeholder={iscForm.bambino_cognome ? `Famiglia ${iscForm.bambino_cognome}` : 'Lascia vuoto'} />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-gray-600">Password</Label>
-                    <button type="button"
-                      onClick={() => setAutogenPwd(v => { if (!v) setIscForm(f => ({ ...f, genitore_password: generatePassword() })); return !v; })}
-                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>
-                      <RefreshCw className="w-3 h-3" />
-                      {autogenPwd ? 'Imposta manualmente' : 'Genera automaticamente'}
-                    </button>
-                  </div>
-                  {autogenPwd ? (
-                    <div className="mt-1 flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
-                      <span className="flex-1 text-sm font-mono font-bold text-blue-700">{iscForm.genitore_password}</span>
-                      <button type="button" onClick={() => setIscForm(f => ({ ...f, genitore_password: generatePassword() }))} className="text-blue-400 hover:text-blue-600">
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="relative mt-1">
-                      <Input data-testid="genitore-password-input" autoComplete="new-password"
-                        type={showIscPwd ? 'text' : 'password'}
-                        value={iscForm.genitore_password}
-                        onChange={e => setIscForm({ ...iscForm, genitore_password: e.target.value })}
-                        className="rounded-xl pr-10" placeholder="Minimo 6 caratteri" />
-                      <button type="button" onClick={() => setShowIscPwd(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        {showIscPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  )}
+                {/* Password auto-generata — sempre visibile, rigenerabile */}
+                <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
+                  <span className="text-[10px] text-gray-400 font-medium">PWD:</span>
+                  <span className="flex-1 text-sm font-mono font-bold text-blue-700 select-all">{iscForm.genitore_password}</span>
+                  <button type="button" onClick={() => setIscForm(f => ({ ...f, genitore_password: generatePassword() }))}
+                    className="text-blue-400 hover:text-blue-600 flex-shrink-0" title="Rigenera password">
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
                 </div>
 
                 {iscError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{iscError}</p>}
                 <Button data-testid="create-iscrizione-submit" onClick={handleIscrizione}
                   disabled={iscLoading || !iscrizioneValid}
-                  className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#32CD32' }}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  {iscLoading ? 'Iscrizione in corso...' : 'Iscrivi e Invia Credenziali'}
+                  className="w-full rounded-2xl font-bold h-12 text-base" style={{ backgroundColor: '#32CD32' }}>
+                  {iscLoading ? 'Iscrizione...' : '✓ Iscrivi'}
                 </Button>
               </div>
             )}

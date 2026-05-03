@@ -22,7 +22,11 @@ SCHOOL_DISPLAY_NAMES = {
 
 # FROM: usa onboarding@resend.dev (funziona senza verifica dominio su piano free Resend)
 # Per usare scuola@girogirotondowebapp.it: verifica il dominio su resend.com/domains
-FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Girogirotondo <onboarding@resend.dev>")
+# FROM_EMAIL letto a runtime — garantisce che Railway lo aggiorni ad ogni chiamata
+def _get_from_email():
+    return os.environ.get("RESEND_FROM_EMAIL", "Girogirotondo <noreply@girogirotondowebapp.it>").strip()
+
+FROM_EMAIL = _get_from_email()  # compatibilità backward
 REPLY_TO   = "girogirotondo@libero.it"
 
 
@@ -126,7 +130,7 @@ async def _send_via_resend(to_email, subject, html_body, plain_body) -> bool:
         logger.warning("[EMAIL] RESEND_API_KEY non trovata nelle env vars di Railway!")
         return False
     payload = {
-        "from":     FROM_EMAIL,
+        "from":     _get_from_email(),
         "to":       [to_email],
         "reply_to": REPLY_TO,
         "subject":  subject,

@@ -6,7 +6,7 @@ import string
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 
 from services.database import get_db
 from models.user import UserCreate, UserUpdate, IscrizioneCreate
@@ -168,6 +168,7 @@ async def update_user(
 @router.post("/iscrizione", status_code=201)
 async def iscrizione_bambino(
     payload: IscrizioneCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     x_sede_id: Optional[str] = Header(None),
 ):
@@ -235,14 +236,16 @@ async def iscrizione_bambino(
     }
     await db.users.insert_one(parent)
 
-    # 3. Invia email credenziali — gestisce errori SMTP senza crashare
-    email_inviata = await send_credentials_email(
-        to_email=payload.genitore_email,
-        bambino_nome=payload.bambino_nome,
-        bambino_cognome=payload.bambino_cognome,
-        password=password_plain,
-        sede_name=cls.get("sede_id", sede_id),
+    # 3. Email in background — non blocca la risposta (risposta immediata ~0.3s)
+    background_tasks.add_task(
+        send_credentials_email,
+        payload.genitore_email,
+        payload.bambino_nome,
+        payload.bambino_cognome,
+        password_plain,
+        cls.get("sede_id", sede_id),
     )
+    email_inviata = True  # verrà inviata in background
 
     student.pop("_id", None)
     parent.pop("_id", None)

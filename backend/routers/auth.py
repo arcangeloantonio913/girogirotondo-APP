@@ -186,6 +186,68 @@ async def reset_password(request: Request, payload: dict):
 
 
 # ---------------------------------------------------------------------------
+# POST /api/auth/test-email  — diagnostica email (solo admin)
+# ---------------------------------------------------------------------------
+
+@router.post("/test-email")
+async def test_email(payload: dict, current_user: dict = Depends(get_current_user)):
+    """
+    Testa l'invio email e restituisce il risultato dettagliato.
+    Uso: POST /api/auth/test-email {"to": "tua@email.com"}
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo admin")
+
+    import os, json as _json, urllib.request, urllib.error
+
+    to_email  = payload.get("to", current_user.get("email", "test@test.com"))
+    api_key   = os.environ.get("RESEND_API_KEY", "").strip()
+    from_email = os.environ.get("RESEND_FROM_EMAIL", "Girogirotondo <onboarding@resend.dev>")
+
+    diagnostics = {
+        "resend_api_key_set": bool(api_key),
+        "resend_api_key_prefix": api_key[:8] + "..." if api_key else "NOT SET",
+        "from_email": from_email,
+        "to_email": to_email,
+        "resend_response": None,
+        "resend_status": None,
+        "error": None,
+    }
+
+    if not api_key:
+        diagnostics["error"] = "RESEND_API_KEY non trovata in Railway Variables"
+        return diagnostics
+
+    try:
+        data = _json.dumps({
+            "from": from_email,
+            "to": [to_email],
+            "subject": "Test email Girogirotondo",
+            "html": "<p>Test funzionante ✅</p>",
+            "text": "Test funzionante",
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=data,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            diagnostics["resend_status"] = resp.status
+            diagnostics["resend_response"] = _json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8")
+        diagnostics["resend_status"] = exc.code
+        diagnostics["resend_response"] = body
+        diagnostics["error"] = f"HTTP {exc.code}: {body[:300]}"
+    except Exception as exc:
+        diagnostics["error"] = str(exc)
+
+    return diagnostics
+
+
+# ---------------------------------------------------------------------------
 # GET /api/auth/me
 # ---------------------------------------------------------------------------
 

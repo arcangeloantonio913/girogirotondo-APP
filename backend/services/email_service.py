@@ -111,6 +111,7 @@ def _resend_http_sync(api_key: str, payload: dict):
         data=data,
         headers={
             "Authorization": f"Bearer {api_key}",
+            "User-Agent":     "girogirotondo-app/1.0",
             "Content-Type":  "application/json",
         },
         method="POST",

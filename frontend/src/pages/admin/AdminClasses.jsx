@@ -105,11 +105,25 @@ export default function AdminClasses() {
     setTeacherValue(cls.teacher_id || '');
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const teachers      = users.filter(u => u.role === 'teacher');
   const detailStudents= detailClass ? students.filter(s => s.class_id === detailClass.id) : [];
   const detailTeacher = detailClass ? users.find(u => u.id === detailClass.teacher_id) : null;
   const getParentOfStudent = (studentId) =>
     users.find(u => (u.child_ids || []).includes(studentId) || u.child_id === studentId);
+
+  // Filtra classi per ricerca — cerca per nome classe, maestra o alunni
+  const filteredClasses = searchQuery
+    ? classes.filter(cls => {
+        const teacher = users.find(u => u.id === cls.teacher_id);
+        const classStudents = students.filter(s => s.class_id === cls.id);
+        const q = searchQuery.toLowerCase();
+        return cls.name?.toLowerCase().includes(q) ||
+               teacher?.name?.toLowerCase().includes(q) ||
+               classStudents.some(s => s.name?.toLowerCase().includes(q) || s.cognome?.toLowerCase().includes(q));
+      })
+    : classes;
 
   const classColors = ['#4169E1', '#FF69B4', '#32CD32', '#F59E0B', '#8B5CF6'];
 
@@ -121,7 +135,9 @@ export default function AdminClasses() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5" style={{ color: '#FF69B4' }} />
-            <span className="text-sm font-bold text-gray-700">{classes.length} classi</span>
+            <span className="text-sm font-bold text-gray-700">
+              {searchQuery ? filteredClasses.length : classes.length} classi
+            </span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
               style={{ backgroundColor: sedeInfo?.color }}>
               {sedeInfo?.label}
@@ -132,6 +148,40 @@ export default function AdminClasses() {
             <Plus className="w-4 h-4 mr-1" />Nuova Classe
           </Button>
         </div>
+
+        {/* ── Barra di ricerca ─────────────────────────────────────────────── */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cerca per nome classe, maestra o alunno..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-2xl border border-gray-200 bg-white text-sm
+                       focus:outline-none focus:ring-2 focus:ring-pink-200 focus:border-pink-300
+                       shadow-sm transition-all"
+            autoComplete="off"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="text-xs text-gray-400 -mt-1 px-1">
+            {filteredClasses.length} classi trovate per "<strong>{searchQuery}</strong>"
+          </p>
+        )}
 
         {/* ── Pannello dettaglio classe ──────────────────────────────────────── */}
         {detailClass && (
@@ -294,14 +344,14 @@ export default function AdminClasses() {
         )}
 
         {/* ── Lista classi ─────────────────────────────────────────────────────── */}
-        {classes.length === 0 && (
+        {filteredClasses.length === 0 && (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8 text-center">
             <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
             <p className="text-sm text-gray-400">Nessuna classe per <strong>{sedeInfo?.label}</strong></p>
           </div>
         )}
 
-        {classes.map((cls, idx) => {
+        {filteredClasses.map((cls, idx) => {
           const teacher       = users.find(u => u.id === cls.teacher_id);
           const classStudents = students.filter(s => s.class_id === cls.id);
           const color         = classColors[idx % classColors.length];

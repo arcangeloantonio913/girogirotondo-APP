@@ -230,7 +230,7 @@ async def test_email(payload: dict, current_user: dict = Depends(get_current_use
         req = urllib.request.Request(
             "https://api.resend.com/emails",
             data=data,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "girogirotondo-app/1.0"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=30) as resp:

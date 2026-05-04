@@ -31,71 +31,155 @@ REPLY_TO   = "girogirotondo@libero.it"
 
 
 def _build_html(bambino_nome, bambino_cognome, to_email, password, school_name, year):
+    # Header: solo il nome della sede (es. "Girogirotondo" o "Il Magico Mondo")
+    school_header = school_name.split("—")[0].strip()
+    header_color  = "#FF69B4" if "Magico" in school_header else "#4169E1"
+
     return f"""<!DOCTYPE html>
 <html lang="it">
 <body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
     <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0"
-             style="background:white;border-radius:16px;padding:32px;
-                    box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;overflow:hidden;
+                    box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+        <!-- HEADER COLORATO -->
         <tr>
-          <td align="center" style="padding-bottom:24px;border-bottom:1px solid #F0F0F0;">
-            <h1 style="margin:0;font-size:22px;color:#4169E1;font-weight:800;">&#127897; Girogirotondo</h1>
-            <p style="margin:4px 0 0;font-size:12px;color:#888;">{school_name}</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px 0 0;">
-            <p style="margin:0 0 12px;font-size:15px;color:#1A202C;">
-              Gentile <strong>Famiglia {bambino_cognome}</strong>,
-            </p>
-            <p style="margin:0;font-size:14px;color:#555;line-height:1.7;">
-              Siamo lieti di darvi il benvenuto nel portale!<br>
-              Di seguito le credenziali di accesso per il profilo di
-              <strong>{bambino_nome} {bambino_cognome}</strong>.
+          <td align="center"
+              style="background:{header_color};padding:28px 32px 24px;">
+            <h1 style="margin:0;font-size:26px;color:white;font-weight:900;
+                        letter-spacing:-0.5px;">&#127897; {school_header}</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">
+              Scuola dell'Infanzia — Portale Famiglie
             </p>
           </td>
         </tr>
+
+        <!-- CORPO -->
         <tr>
-          <td style="padding:20px 0;">
+          <td style="padding:32px 32px 0;">
+
+            <!-- Saluto -->
+            <p style="margin:0 0 8px;font-size:16px;color:#1A202C;font-weight:700;">
+              Benvenuta Famiglia {bambino_cognome}! 👋
+            </p>
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.75;">
+              Siamo lieti di comunicarvi che <strong>{bambino_nome} {bambino_cognome}</strong>
+              è stato registrato con successo nel portale digitale della scuola.<br>
+              Di seguito trovate le credenziali personali per accedere.
+            </p>
+
+            <!-- Box credenziali -->
             <table width="100%" cellpadding="0" cellspacing="0"
-                   style="background:#EBF0FF;border-radius:12px;padding:20px;">
+                   style="background:#EBF0FF;border-radius:12px;padding:20px;margin-bottom:24px;">
               <tr><td>
-                <p style="margin:0 0 12px;font-size:11px;color:#666;font-weight:700;
-                           letter-spacing:.5px;text-transform:uppercase;">
-                  Credenziali di accesso
+                <p style="margin:0 0 14px;font-size:11px;color:#4169E1;font-weight:800;
+                           letter-spacing:.8px;text-transform:uppercase;">
+                  🔑 Le tue credenziali di accesso
                 </p>
-                <p style="margin:0 0 6px;font-size:14px;color:#1A202C;">
-                  <strong>Email:&nbsp;</strong>{to_email}
+                <table width="100%" cellpadding="6">
+                  <tr>
+                    <td style="font-size:13px;color:#555;width:90px;">Email</td>
+                    <td style="font-size:14px;color:#1A202C;font-weight:700;">{to_email}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;color:#555;">Password</td>
+                    <td>
+                      <code style="background:white;padding:4px 12px;border-radius:8px;
+                                   color:{header_color};font-size:15px;font-weight:800;
+                                   border:1px solid #E2E8F0;">{password}</code>
+                    </td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+
+            <!-- Come accedere -->
+            <p style="margin:0 0 12px;font-size:14px;color:#1A202C;font-weight:700;">
+              📱 Come accedere al portale
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#F8F9FA;border-radius:12px;padding:16px;margin-bottom:24px;">
+              <tr><td>
+                <p style="margin:0 0 8px;font-size:13px;color:#374151;line-height:1.6;">
+                  <strong>Passo 1.</strong> Apri il browser sul tuo smartphone o computer
                 </p>
-                <p style="margin:0;font-size:14px;color:#1A202C;">
-                  <strong>Password:&nbsp;</strong>
-                  <code style="background:white;padding:2px 8px;border-radius:6px;
-                               color:#4169E1;font-size:14px;">{password}</code>
+                <p style="margin:0 0 8px;font-size:13px;color:#374151;line-height:1.6;">
+                  <strong>Passo 2.</strong> Vai all'indirizzo:
+                  <a href="https://www.girogirotondowebapp.it"
+                     style="color:{header_color};font-weight:700;text-decoration:none;">
+                    www.girogirotondowebapp.it
+                  </a>
+                </p>
+                <p style="margin:0;font-size:13px;color:#374151;line-height:1.6;">
+                  <strong>Passo 3.</strong> Inserisci l'email e la password indicata sopra
                 </p>
               </td></tr>
             </table>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding-bottom:24px;">
-            <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">
-              &#128274;&nbsp;Vi consigliamo di modificare la password al primo accesso.<br>
-              Per assistenza:
-              <a href="mailto:{REPLY_TO}"
-                 style="color:#4169E1;text-decoration:none;font-weight:600;">{REPLY_TO}</a>
+
+            <!-- Pulsante accesso -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr>
+                <td align="center">
+                  <a href="https://www.girogirotondowebapp.it"
+                     style="display:inline-block;background:{header_color};color:white;
+                            text-decoration:none;padding:14px 40px;border-radius:12px;
+                            font-weight:800;font-size:15px;letter-spacing:0.3px;">
+                    Accedi al Portale →
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Nota sicurezza -->
+            <p style="margin:0;font-size:12px;color:#9CA3AF;line-height:1.6;
+                       padding-bottom:24px;border-bottom:1px solid #F0F0F0;">
+              🔒 Per sicurezza vi consigliamo di cambiare la password al primo accesso.<br>
+              Le credenziali sono personali e non vanno condivise con altri.
             </p>
           </td>
         </tr>
+
+        <!-- FOOTER CONTATTI -->
         <tr>
-          <td align="center" style="border-top:1px solid #F0F0F0;padding-top:20px;">
-            <p style="margin:0;font-size:11px;color:#bbb;">
-              &copy; {year} {school_name}<br>
-              Messaggio generato automaticamente, non rispondere a questa email.
+          <td style="padding:20px 32px 28px;background:#FAFAFA;">
+            <p style="margin:0 0 10px;font-size:12px;color:#6B7280;font-weight:700;
+                       text-transform:uppercase;letter-spacing:.5px;">
+              Contatti Scuola
+            </p>
+            <table width="100%" cellpadding="4">
+              <tr>
+                <td style="font-size:12px;color:#374151;">
+                  🏫 <strong>{school_header}</strong> — Scuola dell'Infanzia
+                </td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;color:#374151;">
+                  📧
+                  <a href="mailto:girogirotondo@libero.it"
+                     style="color:{header_color};text-decoration:none;font-weight:600;">
+                    girogirotondo@libero.it
+                  </a>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;color:#374151;">
+                  🌐
+                  <a href="https://www.girogirotondowebapp.it"
+                     style="color:{header_color};text-decoration:none;font-weight:600;">
+                    www.girogirotondowebapp.it
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:14px 0 0;font-size:10px;color:#D1D5DB;text-align:center;">
+              &copy; {year} {school_name} &nbsp;|&nbsp;
+              Messaggio automatico — non rispondere a questa email
             </p>
           </td>
         </tr>
+
       </table>
     </td></tr>
   </table>

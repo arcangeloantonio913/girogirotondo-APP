@@ -199,10 +199,26 @@ export default function AdminUsers() {
     finally { setDeleteLoading(false); }
   };
 
+  // ── Ricerca utenti ───────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const matchesSearch = (text) =>
+    !searchQuery || text?.toLowerCase().includes(searchQuery.toLowerCase());
+
+  const filterUsers = (list) => list.filter(u =>
+    matchesSearch(u.name) || matchesSearch(u.email) || matchesSearch(u.cognome)
+  );
+
+  const filterStudents = (list) => list.filter(s => {
+    const parent = users.find(u => (u.child_ids || []).includes(s.id) || u.child_id === s.id);
+    return matchesSearch(s.name) || matchesSearch(s.cognome) ||
+           matchesSearch(parent?.name) || matchesSearch(parent?.email);
+  });
+
   const grouped = {
-    admin:   users.filter(u => u.role === 'admin'),
-    teacher: users.filter(u => u.role === 'teacher'),
-    parent:  users.filter(u => u.role === 'parent'),
+    admin:   filterUsers(users.filter(u => u.role === 'admin')),
+    teacher: filterUsers(users.filter(u => u.role === 'teacher')),
+    parent:  filterUsers(users.filter(u => u.role === 'parent')),
   };
 
   const iscrizioneValid =
@@ -236,6 +252,42 @@ export default function AdminUsers() {
             </Button>
           </div>
         </div>
+
+        {/* ── Barra di ricerca ─────────────────────────────────────────────── */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Cerca per nome, cognome o email..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-2xl border border-gray-200 bg-white text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300
+                       shadow-sm transition-all"
+            autoComplete="off"
+            data-testid="users-search-input"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {searchQuery && (
+          <p className="text-xs text-gray-400 -mt-1 px-1">
+            {grouped.admin.length + grouped.teacher.length + grouped.parent.length} utenti ·{' '}
+            {filterStudents(students).length} alunni trovati per "<strong>{searchQuery}</strong>"
+          </p>
+        )}
 
         {/* ── Lista utenti per ruolo ───────────────────────────────────────── */}
         {['admin', 'teacher', 'parent'].map((role) => (
@@ -307,11 +359,11 @@ export default function AdminUsers() {
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2" style={{ backgroundColor: '#4169E108' }}>
             <Baby className="w-4 h-4" style={{ color: '#4169E1' }} />
             <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#4169E1' }}>
-              Alunni ({students.length})
+              Alunni ({searchQuery ? filterStudents(students).length : students.length})
             </span>
           </div>
           <div className="divide-y divide-gray-50">
-            {students.map((s) => {
+            {(searchQuery ? filterStudents(students) : students).map((s) => {
               const cls = classes.find(c => c.id === s.class_id);
               const parent = users.find(u => (u.child_ids || []).includes(s.id) || u.child_id === s.id);
               return (

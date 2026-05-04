@@ -571,17 +571,26 @@ export default function AdminUsers() {
                   </div>
                 </div>
 
-                {/* Classe */}
-                <div>
-                  <Label className="text-xs font-medium text-gray-600">Classe *</Label>
-                  <Select value={iscForm.class_id} onValueChange={v => setIscForm({ ...iscForm, class_id: v })}>
-                    <SelectTrigger className="rounded-xl mt-1" data-testid="bambino-class-select">
-                      <SelectValue placeholder="Seleziona classe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                {/* Data di nascita + Classe inline */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Data di nascita</Label>
+                    <Input data-testid="bambino-dob-input" type="date"
+                      value={iscForm.bambino_data_nascita}
+                      onChange={e => setIscForm({ ...iscForm, bambino_data_nascita: e.target.value })}
+                      className="rounded-xl mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Classe *</Label>
+                    <Select value={iscForm.class_id} onValueChange={v => setIscForm({ ...iscForm, class_id: v })}>
+                      <SelectTrigger className="rounded-xl mt-1" data-testid="bambino-class-select">
+                        <SelectValue placeholder="Classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Email genitore */}

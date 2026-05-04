@@ -24,7 +24,7 @@ SCHOOL_DISPLAY_NAMES = {
 # Per usare scuola@girogirotondowebapp.it: verifica il dominio su resend.com/domains
 # FROM_EMAIL letto a runtime — garantisce che Railway lo aggiorni ad ogni chiamata
 def _get_from_email():
-    return os.environ.get("RESEND_FROM_EMAIL", "Girogirotondo <noreply@girogirotondowebapp.it>").strip()
+    return os.environ.get("RESEND_FROM_EMAIL", "noreply@girogirotondowebapp.it").strip()
 
 FROM_EMAIL = _get_from_email()  # compatibilità backward
 REPLY_TO   = "girogirotondo@libero.it"

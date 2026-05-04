@@ -5,13 +5,13 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Image, Play } from 'lucide-react';
 
 export default function ParentGallery() {
-  const { user } = useAuth();
+  const { user, activeChildId } = useAuth();
   const [items, setItems] = useState([]);
   const [selectedImg, setSelectedImg] = useState(null);
 
   useEffect(() => {
     // Supporta child_ids (nuovo) e child_id legacy
-    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    const primaryChildId = (activeChildId) || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (primaryChildId) {
       api.get(`/gallery?student_id=${primaryChildId}`).then(res => setItems(res.data));
     }

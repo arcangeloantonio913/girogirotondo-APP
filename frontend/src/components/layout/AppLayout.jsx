@@ -134,6 +134,48 @@ function SedeSwitcher() {
   );
 }
 
+// ── ChildSwitcher — visibile solo se il genitore ha più figli ────────────────
+function ChildSwitcher({ students }) {
+  const { activeChildId, setActiveChildId, childIds } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  if (childIds.length <= 1 || !students?.length) return null;
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const activeChild = students.find(s => s.id === activeChildId) || students[0];
+  return (
+    <div ref={ref} className="relative" data-testid="child-switcher">
+      <button onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-green-50 border border-green-200 text-xs font-semibold text-green-700 hover:bg-green-100 transition-colors">
+        <span>{activeChild?.name?.split(' ')[0] || '?'}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50 min-w-[140px]">
+          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">I tuoi figli</p>
+          {students.filter(s => childIds.includes(s.id)).map(s => (
+            <button key={s.id} onClick={() => { setActiveChildId(s.id); setOpen(false); }}
+              className={`flex items-center gap-2 w-full px-3 py-2 text-xs font-semibold text-left transition-colors
+                ${s.id === activeChildId ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                style={{ backgroundColor: '#32CD32' }}>
+                {s.name?.charAt(0)}
+              </div>
+              {s.name?.split(' ')[0]}
+              {s.id === activeChildId && <span className="ml-auto text-green-500">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AppLayout({ children, title, showBack }) {
   const { user, logout, sede, sedeInfo } = useAuth();
   const navigate = useNavigate();
@@ -142,6 +184,16 @@ export default function AppLayout({ children, title, showBack }) {
 
   const navItems = getNavItems(user?.role);
   const roleColor = getRoleColor(user?.role);
+  const [childrenList, setChildrenList] = useState([]);
+
+  // Carica figli del genitore (per ChildSwitcher)
+  useEffect(() => {
+    if (user?.role === 'parent') {
+      import('@/lib/api').then(({ default: api }) => {
+        api.get('/students').then(r => setChildrenList(r.data || [])).catch(() => {});
+      });
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -176,7 +228,11 @@ export default function AppLayout({ children, title, showBack }) {
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-0">
+          <div className="flex flex-col items-center gap-0.5">
+            {/* Switcher figlio attivo — solo per genitori con più figli */}
+            {user?.role === 'parent' && !title && (
+              <ChildSwitcher students={childrenList} />
+            )}
             {title ? (
               <h1 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{title}</h1>
             ) : (

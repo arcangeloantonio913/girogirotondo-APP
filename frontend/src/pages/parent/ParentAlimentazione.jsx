@@ -8,7 +8,7 @@ const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
                    'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
 export default function ParentAlimentazione() {
-  const { user } = useAuth();
+  const { user, activeChildId } = useAuth();
   const [meal, setMeal]         = useState(null);
   const [loading, setLoading]   = useState(false);
   const [dateOffset, setDateOffset] = useState(0);
@@ -31,7 +31,7 @@ export default function ParentAlimentazione() {
       setMeal(null);
       try {
         // Trova la classe del figlio
-        const childId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+        const childId = (activeChildId) || (user?.child_ids && user.child_ids[0]) || user?.child_id;
         if (!childId) return;
         const sRes = await api.get(`/students/${childId}`);
         const classId = sRes.data?.class_id;

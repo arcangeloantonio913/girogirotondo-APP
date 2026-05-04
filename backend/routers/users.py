@@ -191,11 +191,6 @@ async def iscrizione_bambino(
             detail=f"La classe selezionata non appartiene alla sede '{sede_id}'"
         )
 
-    # Controlla unicità email genitore
-    existing = await db.users.find_one({"email": payload.genitore_email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email genitore già in uso")
-
     password_plain = payload.genitore_password or _generate_password()
 
     # 1. Crea il record studente
@@ -214,27 +209,52 @@ async def iscrizione_bambino(
     }
     await db.students.insert_one(student)
 
-    # 2. Crea l'account genitore
-    genitore_nome = payload.genitore_nome or f"Famiglia {payload.bambino_cognome}"
-    parent = {
-        "id": str(uuid.uuid4()),
-        "name": genitore_nome,
-        "cognome": payload.bambino_cognome,
-        "email": payload.genitore_email,
-        "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
-        "role": "parent",
-        "is_superadmin": False,
-        "sede_id": sede_id,
-        "child_id": student_id,
-        "child_ids": [student_id],
-        "class_id": None,
-        "class_ids": [],
-        "firebase_uid": None,
-        "avatar_url": None,
-        "active": True,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.users.insert_one(parent)
+    # 2a. Genitore già esistente? Aggiungi figlio all'account esistente (gemelli/fratelli)
+    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+    sibling_mode = False  # True = aggiornato account esistente
+
+    if existing_parent and existing_parent.get("role") == "parent":
+        sibling_mode = True
+        await db.users.update_one(
+            {"email": payload.genitore_email},
+            {
+                "$addToSet": {"child_ids": student_id},
+                "$set":      {"child_id": student_id},  # aggiorna anche il legacy field
+            }
+        )
+        # Ricarica il parent aggiornato
+        parent = await db.users.find_one(
+            {"email": payload.genitore_email}, {"_id": 0, "password": 0}
+        )
+    elif existing_parent:
+        # Email usata da un account non-parent (admin/teacher) — rifiuta
+        raise HTTPException(
+            status_code=400,
+            detail="Email già in uso da un account staff. Usare un'email diversa per il genitore."
+        )
+    else:
+        # 2b. Nessun account esistente → crea account genitore nuovo
+        genitore_nome = payload.genitore_nome or f"Famiglia {payload.bambino_cognome}"
+        parent_doc = {
+            "id": str(uuid.uuid4()),
+            "name": genitore_nome,
+            "cognome": payload.bambino_cognome,
+            "email": payload.genitore_email,
+            "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
+            "role": "parent",
+            "is_superadmin": False,
+            "sede_id": sede_id,
+            "child_id": student_id,
+            "child_ids": [student_id],
+            "class_id": None,
+            "class_ids": [],
+            "firebase_uid": None,
+            "avatar_url": None,
+            "active": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(parent_doc)
+        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
 
     # 3. Email in background — non blocca la risposta (risposta immediata ~0.3s)
     background_tasks.add_task(
@@ -248,14 +268,16 @@ async def iscrizione_bambino(
     email_inviata = True  # verrà inviata in background
 
     student.pop("_id", None)
-    parent.pop("_id", None)
-    parent.pop("password", None)
+    if isinstance(parent, dict):
+        parent.pop("_id", None)
+        parent.pop("password", None)
 
     return {
         "student": student,
         "parent": parent,
         "email_inviata": email_inviata,
         "genitore_email": payload.genitore_email,
+        "sibling_added": sibling_mode,  # True se aggiunto a genitore esistente
     }
 
 

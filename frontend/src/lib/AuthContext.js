@@ -61,6 +61,11 @@ export function AuthProvider({ children }) {
     () => localStorage.getItem('ggt_sede') || 'girogirotondo'
   );
 
+  // Bambino attivo (per famiglie con più figli)
+  const [activeChildId, setActiveChildIdState] = useState(
+    () => localStorage.getItem('ggt_active_child') || null
+  );
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
@@ -171,6 +176,18 @@ export function AuthProvider({ children }) {
     setSede(sedeId);
   };
 
+  const setActiveChildId = (childId) => {
+    localStorage.setItem('ggt_active_child', childId || '');
+    setActiveChildIdState(childId);
+  };
+
+  // Calcola il bambino attivo: usa quello salvato se valido, altrimenti il primo
+  const childIds = user?.child_ids?.length ? user.child_ids
+    : user?.child_id ? [user.child_id] : [];
+  const resolvedActiveChildId = childIds.includes(activeChildId)
+    ? activeChildId
+    : childIds[0] || null;
+
   const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[0];
 
   // SuperAdmin: può accedere a entrambe le sedi
@@ -186,6 +203,9 @@ export function AuthProvider({ children }) {
       sedeInfo,
       updateSede,
       isSuperAdmin,
+      activeChildId: resolvedActiveChildId,
+      setActiveChildId,
+      childIds,
     }}>
       {children}
     </AuthContext.Provider>

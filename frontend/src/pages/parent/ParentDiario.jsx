@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { BookOpen, Calendar } from 'lucide-react';
 
 export default function ParentDiario() {
-  const { user } = useAuth();
+  const { user, activeChildId } = useAuth();
   const [entries, setEntries] = useState([]);
   const today = new Date().toISOString().split('T')[0];
 

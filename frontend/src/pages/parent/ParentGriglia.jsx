@@ -19,14 +19,14 @@ const EmptyBearTimeline = () => (
 );
 
 export default function ParentGriglia() {
-  const { user } = useAuth();
+  const { user, activeChildId } = useAuth();
   const [griglia, setGriglia] = useState(null);
   const [child, setChild] = useState(null);
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     // Supporta sia child_ids (nuovo) sia child_id (legacy)
-    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    const primaryChildId = (activeChildId) || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (!primaryChildId) return;
     Promise.all([
       api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),

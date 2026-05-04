@@ -45,7 +45,7 @@ const MOCK_GALLERY = [
 ];
 
 export default function ParentDashboard() {
-  const { user } = useAuth();
+  const { user, activeChildId } = useAuth();
   const navigate = useNavigate();
   const [child, setChild] = useState(null);
   const [diary, setDiary] = useState(null);
@@ -65,7 +65,7 @@ export default function ParentDashboard() {
 
   useEffect(() => {
     // Supporta sia child_ids (nuovo) sia child_id (legacy)
-    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    const primaryChildId = activeChildId || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (!primaryChildId) return;
     const load = async () => {
       try {
@@ -91,7 +91,7 @@ export default function ParentDashboard() {
       }
     };
     load();
-  }, [user, today]);
+  }, [user, today, activeChildId]);
 
   // Slot di default mostrati sempre (anche offline)
   const DEFAULT_SLOTS = [

@@ -139,13 +139,15 @@ function ChildSwitcher({ students }) {
   const { activeChildId, setActiveChildId, childIds } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  if (childIds.length <= 1 || !students?.length) return null;
 
+  // useEffect PRIMA dell'early return — regola React: hooks sempre prima di qualsiasi return
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
+
+  if (childIds.length <= 1 || !students?.length) return null;
 
   const activeChild = students.find(s => s.id === activeChildId) || students[0];
   return (

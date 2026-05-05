@@ -170,11 +170,16 @@ export default function AdminUsers() {
     } finally { setIscLoading(false); }
   };
 
+  // ── stato reinvio credenziali ─────────────────────────────────────────────
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendResult, setResendResult]   = useState(null); // { email, new_password }
+
   // ── submit modifica credenziali ──────────────────────────────────────────
   const handleSaveCred = async () => {
     setCredLoading(true);
     setCredError('');
     setCredSuccess(false);
+    setResendResult(null);
     try {
       await api.put(`/users/${credDialog.user.id}/credentials`, {
         email: credForm.email !== credDialog.user.email ? credForm.email : undefined,
@@ -185,6 +190,24 @@ export default function AdminUsers() {
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante la modifica');
     } finally { setCredLoading(false); }
+  };
+
+  // ── reinvia credenziali (genera nuova password + email) ───────────────────
+  const handleResendCred = async () => {
+    if (!credDialog.user) return;
+    setResendLoading(true);
+    setCredError('');
+    setResendResult(null);
+    try {
+      // Se c'è una password nel form, usala; altrimenti genera automaticamente
+      const res = await api.post(`/users/${credDialog.user.id}/resend-credentials`, {
+        password: credForm.password || undefined,
+      });
+      setResendResult({ email: res.data.email, new_password: res.data.new_password });
+      loadData();
+    } catch (err) {
+      setCredError(err.response?.data?.detail || 'Errore durante il reinvio');
+    } finally { setResendLoading(false); }
   };
 
   // ── elimina utente ───────────────────────────────────────────────────────
@@ -425,55 +448,95 @@ export default function AdminUsers() {
           </DialogContent>
         </Dialog>
 
-        {/* ── Dialog Modifica Credenziali ──────────────────────────────────── */}
-        <Dialog open={credDialog.open} onOpenChange={(open) => { if (!open) { setCredDialog({ open: false, user: null }); setCredSuccess(false); } }}>
+        {/* ── Dialog Modifica / Reinvio Credenziali ───────────────────────── */}
+        <Dialog open={credDialog.open} onOpenChange={(open) => {
+          if (!open) { setCredDialog({ open: false, user: null }); setCredSuccess(false); setResendResult(null); }
+        }}>
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="edit-cred-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
                 <Key className="w-5 h-5" style={{ color: '#4169E1' }} />
-                Modifica Credenziali
+                Credenziali — {credDialog.user?.name}
               </DialogTitle>
             </DialogHeader>
-            {credSuccess ? (
-              <div className="py-6 flex flex-col items-center gap-3">
-                <CheckCircle className="w-12 h-12" style={{ color: '#32CD32' }} />
-                <p className="text-base font-bold text-gray-900">Credenziali aggiornate!</p>
+
+            {/* Risultato reinvio */}
+            {resendResult ? (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span className="text-xs text-green-700 font-semibold">Email inviata con le nuove credenziali!</span>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
+                  <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{resendResult.email}</strong></p>
+                  <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{resendResult.new_password}</strong></p>
+                </div>
+                <Button onClick={() => { setCredDialog({ open: false, user: null }); setResendResult(null); }}
+                  className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+              </div>
+            ) : credSuccess ? (
+              <div className="py-4 flex flex-col items-center gap-3">
+                <CheckCircle className="w-10 h-10" style={{ color: '#32CD32' }} />
+                <p className="text-sm font-bold text-gray-900">Credenziali aggiornate!</p>
                 <Button onClick={() => { setCredDialog({ open: false, user: null }); setCredSuccess(false); }}
                   className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
               </div>
             ) : (
               <div className="space-y-3 pt-2">
-                <p className="text-xs text-gray-500">Utente: <strong>{credDialog.user?.name}</strong></p>
+                {/* Email attuale — sempre visibile */}
                 <div>
-                  <Label className="text-xs font-medium text-gray-600">Email</Label>
-                  <Input data-testid="cred-email-input"
-                    type="email"
-                    autoComplete="off"
+                  <Label className="text-xs font-medium text-gray-600">Email account</Label>
+                  <Input data-testid="cred-email-input" type="email" autoComplete="off"
                     value={credForm.email}
                     onChange={e => setCredForm({ ...credForm, email: e.target.value })}
                     className="rounded-xl mt-1" />
                 </div>
+
+                {/* Password — con auto-genera */}
                 <div>
-                  <Label className="text-xs font-medium text-gray-600">Nuova Password (lascia vuoto per non cambiare)</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className="text-xs font-medium text-gray-600">Nuova Password</Label>
+                    <button type="button"
+                      onClick={() => setCredForm(f => ({ ...f, password: generatePassword() }))}
+                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>
+                      <RefreshCw className="w-3 h-3" />Auto-genera
+                    </button>
+                  </div>
                   <div className="relative mt-1">
                     <Input data-testid="cred-password-input"
                       type={showCredPwd ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={credForm.password}
                       onChange={e => setCredForm({ ...credForm, password: e.target.value })}
-                      className="rounded-xl pr-10" placeholder="Minimo 6 caratteri" />
+                      className="rounded-xl pr-10 font-mono"
+                      placeholder="Lascia vuoto per non cambiare" />
                     <button type="button" onClick={() => setShowCredPwd(v => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                       {showCredPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
+
                 {credError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{credError}</p>}
-                <Button data-testid="save-cred-submit" onClick={handleSaveCred}
-                  disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email)}
-                  className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#4169E1' }}>
-                  {credLoading ? 'Salvataggio...' : 'Salva Modifiche'}
-                </Button>
+
+                {/* Due pulsanti: Salva silenzioso / Salva + Reinvia email */}
+                <div className="flex gap-2">
+                  <Button data-testid="save-cred-submit" onClick={handleSaveCred}
+                    disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email)}
+                    variant="outline"
+                    className="flex-1 rounded-xl h-10 text-sm border-2" style={{ borderColor: '#4169E1', color: '#4169E1' }}>
+                    {credLoading ? 'Salvo...' : 'Salva'}
+                  </Button>
+                  <Button data-testid="resend-cred-submit" onClick={handleResendCred}
+                    disabled={resendLoading}
+                    className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: '#32CD32' }}>
+                    <Mail className="w-3.5 h-3.5 mr-1.5" />
+                    {resendLoading ? 'Invio...' : 'Salva e Invia Email'}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-gray-400 text-center">
+                  "Salva e Invia Email" aggiorna le credenziali e le invia all'utente
+                </p>
               </div>
             )}
           </DialogContent>

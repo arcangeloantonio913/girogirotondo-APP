@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 from services.database import get_db
 from models.user import UserCreate, UserUpdate, IscrizioneCreate
 from middleware.auth import get_current_user, validate_admin_sede_access
-from services.email_service import send_credentials_email
+from services.email_service import send_credentials_email, send_resend_credentials_email
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -323,6 +323,56 @@ async def update_user_credentials(
     await db.users.update_one({"id": user_id}, {"$set": updates})
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     return user
+
+
+# ---------------------------------------------------------------------------
+# POST /api/users/{user_id}/resend-credentials  — reinvia credenziali (admin)
+# ---------------------------------------------------------------------------
+
+@router.post("/{user_id}/resend-credentials")
+async def resend_credentials(
+    user_id: str,
+    payload: dict,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Genera nuova password (o usa quella fornita), aggiorna l'utente
+    e invia email con le nuove credenziali.
+    Restituisce la nuova password in chiaro (per consegna manuale).
+    Solo admin.
+    """
+    _require_admin(current_user)
+    db = get_db()
+
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if target.get("is_superadmin") and not current_user.get("is_superadmin"):
+        raise HTTPException(status_code=403, detail="Non puoi modificare un SuperAmministratore")
+
+    new_password = payload.get("password") or _generate_password()
+
+    # Aggiorna la password nel DB
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"password": bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()}}
+    )
+
+    # Invia email in background con le nuove credenziali
+    background_tasks.add_task(
+        send_resend_credentials_email,
+        target["email"],
+        target.get("name", ""),
+        new_password,
+        target.get("role", "parent"),
+    )
+
+    return {
+        "message": "Credenziali aggiornate e email inviata",
+        "email": target["email"],
+        "new_password": new_password,
+    }
 
 
 # ---------------------------------------------------------------------------

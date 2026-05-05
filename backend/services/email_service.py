@@ -321,6 +321,98 @@ async def send_credentials_email(
     return False
 
 
+async def send_resend_credentials_email(
+    to_email: str,
+    user_name: str,
+    new_password: str,
+    role: str = "parent",
+) -> bool:
+    """
+    Invia email di aggiornamento credenziali (usata quando l'admin resetta la password).
+    Funziona per qualsiasi ruolo (genitore, maestra, admin).
+    """
+    year = datetime.now().year
+    role_label = {"parent": "Genitore", "teacher": "Maestra", "admin": "Amministratore"}.get(role, "Utente")
+
+    subject = "Girogirotondo — Aggiornamento credenziali di accesso"
+    plain = (
+        f"Ciao {user_name},\n\n"
+        f"Le tue credenziali di accesso al portale sono state aggiornate.\n\n"
+        f"Email:    {to_email}\n"
+        f"Password: {new_password}\n\n"
+        f"Accedi su: https://www.girogirotondowebapp.it\n\n"
+        f"Per assistenza: girogirotondo@libero.it\n\n"
+        f"Girogirotondo — Scuola dell'Infanzia"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+        <tr>
+          <td align="center" style="background:#4169E1;padding:28px 32px 24px;">
+            <h1 style="margin:0;font-size:26px;color:white;font-weight:900;">&#127897; Girogirotondo</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">Aggiornamento credenziali</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 0;">
+            <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:700;">Ciao {user_name}! 👋</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.75;">
+              Le tue credenziali di accesso al portale <strong>Girogirotondo</strong> sono state aggiornate dall'amministrazione.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#EBF0FF;border-radius:12px;padding:20px;margin-bottom:24px;">
+              <tr><td>
+                <p style="margin:0 0 14px;font-size:11px;color:#4169E1;font-weight:800;letter-spacing:.8px;text-transform:uppercase;">
+                  🔑 Le tue nuove credenziali
+                </p>
+                <table width="100%" cellpadding="6">
+                  <tr>
+                    <td style="font-size:13px;color:#555;width:90px;">Email</td>
+                    <td style="font-size:14px;color:#1A202C;font-weight:700;">{to_email}</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;color:#555;">Password</td>
+                    <td>
+                      <code style="background:white;padding:4px 12px;border-radius:8px;
+                                   color:#4169E1;font-size:15px;font-weight:800;
+                                   border:1px solid #E2E8F0;">{new_password}</code>
+                    </td>
+                  </tr>
+                </table>
+              </td></tr>
+            </table>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+              <tr><td align="center">
+                <a href="https://www.girogirotondowebapp.it"
+                   style="display:inline-block;background:#4169E1;color:white;text-decoration:none;
+                          padding:14px 40px;border-radius:12px;font-weight:800;font-size:15px;">
+                  Accedi al Portale →
+                </a>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 24px;background:#FAFAFA;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#9CA3AF;">
+              &copy; {year} Girogirotondo — Scuola dell'Infanzia &nbsp;|&nbsp;
+              <a href="mailto:girogirotondo@libero.it" style="color:#4169E1;">girogirotondo@libero.it</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    if await _send_via_resend(to_email, subject, html, plain):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain)
+
+
 async def send_reset_password_email(to_email: str, user_name: str, token: str) -> bool:
     """Invia email con link per il reset della password."""
     year        = datetime.now().year

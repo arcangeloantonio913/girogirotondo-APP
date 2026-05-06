@@ -257,15 +257,22 @@ async def iscrizione_bambino(
         parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
 
     # 3. Email in background — non blocca la risposta (risposta immediata ~0.3s)
-    background_tasks.add_task(
-        send_credentials_email,
-        payload.genitore_email,
-        payload.bambino_nome,
-        payload.bambino_cognome,
-        password_plain,
-        cls.get("sede_id", sede_id),
-    )
-    email_inviata = True  # verrà inviata in background
+    if sibling_mode:
+        # Genitore già esistente: NON inviare email con nuova password
+        # (il genitore usa già le sue credenziali attuali — la password_plain
+        # era stata generata ma non è stata salvata nel DB)
+        email_inviata = False
+    else:
+        # Nuovo genitore: invia email con credenziali in background
+        background_tasks.add_task(
+            send_credentials_email,
+            payload.genitore_email,
+            payload.bambino_nome,
+            payload.bambino_cognome,
+            password_plain,
+            cls.get("sede_id", sede_id),
+        )
+        email_inviata = True
 
     student.pop("_id", None)
     if isinstance(parent, dict):

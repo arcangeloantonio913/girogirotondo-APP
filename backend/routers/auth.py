@@ -111,7 +111,7 @@ async def login(request: Request, payload: dict):
     token_payload = {
         "user_id": user["id"],
         "role": user["role"],
-        "exp": datetime.now(timezone.utc) + timedelta(hours=8),
+        "exp": datetime.now(timezone.utc) + timedelta(days=3650)  # 10 anni — login permanente,
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k != "password"}

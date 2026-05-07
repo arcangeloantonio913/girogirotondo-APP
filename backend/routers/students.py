@@ -44,11 +44,14 @@ async def get_students(
 
     elif role == "teacher":
         teacher_class_ids = _teacher_class_ids(current_user)
+        # BUG FIX CRITICO: classe non assegnata → restituisce [] invece di TUTTI gli studenti
+        if not teacher_class_ids:
+            return []
         if class_id:
             if class_id not in teacher_class_ids:
                 raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
             query["class_id"] = class_id
-        elif teacher_class_ids:
+        else:
             query["class_id"] = {"$in": teacher_class_ids}
         return await db.students.find(query, {"_id": 0}).to_list(1000)
 

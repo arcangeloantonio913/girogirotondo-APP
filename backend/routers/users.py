@@ -241,6 +241,7 @@ async def iscrizione_bambino(
             "cognome": payload.bambino_cognome,
             "email": payload.genitore_email,
             "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
+            "admin_password": password_plain,   # visibile all'admin
             "role": "parent",
             "is_superadmin": False,
             "sede_id": sede_id,
@@ -323,6 +324,7 @@ async def update_user_credentials(
         if len(new_password) < 6:
             raise HTTPException(status_code=400, detail="La password deve essere di almeno 6 caratteri")
         updates["password"] = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+        updates["admin_password"] = new_password   # visibile all'admin
 
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
@@ -360,10 +362,13 @@ async def resend_credentials(
 
     new_password = payload.get("password") or _generate_password()
 
-    # Aggiorna la password nel DB
+    # Aggiorna la password nel DB + salva in chiaro per admin
     await db.users.update_one(
         {"id": user_id},
-        {"$set": {"password": bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()}}
+        {"$set": {
+            "password":       bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode(),
+            "admin_password": new_password,   # visibile all'admin
+        }}
     )
 
     # Invia email in background con le nuove credenziali

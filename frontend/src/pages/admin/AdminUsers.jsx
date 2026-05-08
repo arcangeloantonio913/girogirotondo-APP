@@ -492,10 +492,29 @@ export default function AdminUsers() {
                     className="rounded-xl mt-1" />
                 </div>
 
-                {/* Password — con auto-genera */}
+                {/* Password attuale impostata dall'admin — se disponibile */}
+                {credDialog.user?.admin_password && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">
+                      🔑 Password attuale (impostata dall'admin)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 font-mono text-sm font-bold text-amber-800 select-all">
+                        {credDialog.user.admin_password}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!credDialog.user?.admin_password && (
+                  <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-400 italic">
+                    🔒 Password modificata dall'utente — non visibile
+                  </div>
+                )}
+
+                {/* Imposta nuova password */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label className="text-xs font-medium text-gray-600">Nuova Password</Label>
+                    <Label className="text-xs font-medium text-gray-600">Imposta nuova password</Label>
                     <button type="button"
                       onClick={() => setCredForm(f => ({ ...f, password: generatePassword() }))}
                       className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>

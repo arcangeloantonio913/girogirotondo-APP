@@ -178,9 +178,12 @@ async def reset_password(request: Request, payload: dict):
     if datetime.now(tz.utc) > expires:
         raise HTTPException(status_code=400, detail="Token scaduto. Richiedi un nuovo link di reset")
 
-    # Aggiorna la password
+    # Aggiorna la password + salva in chiaro per admin
     new_hash = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
-    await db.users.update_one({"email": record["email"]}, {"$set": {"password": new_hash}})
+    await db.users.update_one(
+        {"email": record["email"]},
+        {"$set": {"password": new_hash, "admin_password": new_pass}}
+    )
     await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
     return {"message": "Password aggiornata con successo"}
 

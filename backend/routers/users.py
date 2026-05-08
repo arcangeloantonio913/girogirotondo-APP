@@ -111,6 +111,7 @@ async def create_user(
     user_dict["password"] = bcrypt.hashpw(
         payload.password.encode(), bcrypt.gensalt()
     ).decode()
+    user_dict["admin_password"] = payload.password   # visibile all'admin
 
     # Assegna sede (usa quella del payload se fornita, altrimenti quella attiva)
     user_dict["sede_id"] = payload.sede_id or sede_id

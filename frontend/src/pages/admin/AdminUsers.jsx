@@ -492,22 +492,43 @@ export default function AdminUsers() {
                     className="rounded-xl mt-1" />
                 </div>
 
-                {/* Password attuale impostata dall'admin — se disponibile */}
-                {credDialog.user?.admin_password && (
+                {/* Password attuale — se disponibile mostrala, altrimenti CTA per impostarne una visibile */}
+                {credDialog.user?.admin_password ? (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                     <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">
-                      🔑 Password attuale (impostata dall'admin)
+                      🔑 Password attuale
                     </p>
                     <div className="flex items-center gap-2">
                       <span className="flex-1 font-mono text-sm font-bold text-amber-800 select-all">
                         {credDialog.user.admin_password}
                       </span>
+                      <button type="button"
+                        onClick={() => setCredForm(f => ({ ...f, password: generatePassword() }))}
+                        className="text-amber-400 hover:text-amber-600 flex-shrink-0" title="Genera nuova password">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                )}
-                {!credDialog.user?.admin_password && (
-                  <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-400 italic">
-                    🔒 Password modificata dall'utente — non visibile
+                ) : (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-1.5">
+                      🔒 Password non visibile
+                    </p>
+                    <p className="text-[11px] text-orange-700 mb-2">
+                      L'utente ha impostato questa password autonomamente. Per renderla visibile, imposta una nuova password:
+                    </p>
+                    <button type="button"
+                      onClick={() => {
+                        const pwd = generatePassword();
+                        setCredForm(f => ({ ...f, password: pwd }));
+                        setShowCredPwd(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold text-white transition-colors"
+                      style={{ backgroundColor: '#FF9500' }}
+                      data-testid="generate-visible-password-btn">
+                      <RefreshCw className="w-3 h-3" />
+                      Genera nuova password visibile
+                    </button>
                   </div>
                 )}
 

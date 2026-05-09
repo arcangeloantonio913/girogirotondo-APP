@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { FileText, CheckCircle2, Circle, Shield } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Shield, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ParentModulistica() {
@@ -28,6 +28,23 @@ export default function ParentModulistica() {
   }, [user]);
 
   const isAcknowledged = (docId) => receipts.some(r => r.document_id === docId);
+
+  // Scarica il file: per data URL crea un link fittizio, per URL HTTP apre in nuova scheda
+  const handleDownload = (doc) => {
+    if (!doc.file_url) return;
+    if (doc.file_url.startsWith('data:')) {
+      // Base64 data URL → download diretto
+      const a = document.createElement('a');
+      a.href = doc.file_url;
+      a.download = doc.title || 'documento';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // URL remoto (Firebase Storage, ecc.) → apri in nuova scheda
+      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const handleAcknowledge = async (docId) => {
     setAcknowledging(docId);
@@ -81,7 +98,24 @@ export default function ParentModulistica() {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>{doc.title}</h3>
                     <p className="text-xs text-gray-500 mt-1">{doc.description}</p>
+                    {doc.categoria && (
+                      <span className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize"
+                        style={{ backgroundColor: '#A7C7E720', color: '#7BA7C7' }}>
+                        {doc.categoria}
+                      </span>
+                    )}
                   </div>
+                  {/* Pulsante download — solo se il documento ha un file allegato */}
+                  {doc.file_url && (
+                    <button
+                      data-testid={`document-download-${doc.id}`}
+                      onClick={() => handleDownload(doc)}
+                      title="Scarica documento"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-blue-50 transition-colors"
+                      style={{ color: '#4169E1' }}>
+                      <Download className="w-4.5 h-4.5" />
+                    </button>
+                  )}
                 </div>
 
                 {ack ? (

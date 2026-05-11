@@ -73,6 +73,10 @@ export default function AdminUsers() {
   const [iscError, setIscError] = useState('');
   const [iscSuccess, setIscSuccess] = useState(null);
 
+  // secondo genitore nell'iscrizione
+  const [showSecondParent, setShowSecondParent] = useState(false);
+  const [isc2Form, setIsc2Form] = useState({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
+
   // form modifica credenziali
   const [credForm, setCredForm] = useState({ email: '', password: '' });
   const [showCredPwd, setShowCredPwd] = useState(false);
@@ -123,6 +127,8 @@ export default function AdminUsers() {
     setIscError('');
     setIscSuccess(null);
     setShowIscPwd(false);
+    setShowSecondParent(false);
+    setIsc2Form({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
     setDialogType('iscrizione');
     setDialogOpen(true);
   };
@@ -169,11 +175,35 @@ export default function AdminUsers() {
         genitore_password: iscForm.genitore_password || undefined,
       };
       const res = await api.post('/users/iscrizione', payload);
+      const studentId = res.data.student?.id;
+
+      // Se il secondo genitore è stato inserito, crealo subito
+      let parent2Result = null;
+      if (showSecondParent && isc2Form.genitore_email.trim() && studentId) {
+        try {
+          const r2 = await api.post('/users/secondo-genitore', {
+            student_id: studentId,
+            genitore_email: isc2Form.genitore_email.trim(),
+            genitore_nome: isc2Form.genitore_nome || undefined,
+            genitore_password: isc2Form.genitore_password || undefined,
+          });
+          parent2Result = {
+            email: r2.data.parent?.email,
+            password: r2.data.new_password,
+            email_inviata: r2.data.email_inviata,
+          };
+        } catch (e2) {
+          parent2Result = { error: e2.response?.data?.detail || 'Errore secondo genitore' };
+        }
+      }
+
       setIscSuccess({
         genitore_email: res.data.genitore_email,
         bambino_nome: `${iscForm.bambino_nome} ${iscForm.bambino_cognome}`,
         email_inviata: res.data.email_inviata,
-        generatedPwd: iscForm.genitore_password,  // salva password per mostrarla
+        generatedPwd: iscForm.genitore_password,
+        parent2: parent2Result,
+        parent2Pwd: isc2Form.genitore_password,
       });
       loadData();
     } catch (err) {
@@ -184,6 +214,10 @@ export default function AdminUsers() {
   // ── stato reinvio credenziali ─────────────────────────────────────────────
   const [resendLoading, setResendLoading] = useState(false);
   const [resendResult, setResendResult]   = useState(null); // { email, new_password }
+
+  // ── reinvio bulk a tutte le maestre ──────────────────────────────────────
+  const [bulkResendLoading, setBulkResendLoading] = useState(false);
+  const [bulkResendResults, setBulkResendResults] = useState(null);
 
   // ── submit modifica credenziali ──────────────────────────────────────────
   const handleSaveCred = async () => {
@@ -219,6 +253,32 @@ export default function AdminUsers() {
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante il reinvio');
     } finally { setResendLoading(false); }
+  };
+
+  // ── reinvia credenziali a TUTTE le maestre ───────────────────────────────
+  const handleBulkResendTeachers = async () => {
+    const teachers = users.filter(u => u.role === 'teacher');
+    if (!teachers.length) return;
+    setBulkResendLoading(true);
+    setBulkResendResults(null);
+    const results = [];
+    for (const t of teachers) {
+      try {
+        const res = await api.post(`/users/${t.id}/resend-credentials`, {});
+        results.push({
+          name: t.name,
+          email: res.data.email,
+          password: res.data.new_password,
+          email_sent: res.data.email_sent,
+          ok: true,
+        });
+      } catch (err) {
+        results.push({ name: t.name, email: t.email, ok: false, error: err.response?.data?.detail || 'Errore' });
+      }
+    }
+    setBulkResendResults(results);
+    setBulkResendLoading(false);
+    loadData();
   };
 
   // ── elimina utente — immediato senza reload ───────────────────────────────
@@ -380,10 +440,50 @@ export default function AdminUsers() {
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2"
               style={{ backgroundColor: `${getRoleColor(role)}08` }}>
               {(() => { const Icon = getRoleIcon(role); return <Icon className="w-4 h-4" style={{ color: getRoleColor(role) }} />; })()}
-              <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: getRoleColor(role) }}>
+              <span className="text-sm font-bold flex-1" style={{ fontFamily: 'Nunito', color: getRoleColor(role) }}>
                 {getRoleLabel(role)} ({grouped[role].length})
               </span>
+              {/* Pulsante reinvio bulk — solo per le maestre */}
+              {role === 'teacher' && grouped.teacher.length > 0 && (
+                <button
+                  data-testid="bulk-resend-teachers"
+                  onClick={handleBulkResendTeachers}
+                  disabled={bulkResendLoading}
+                  title="Reinvia credenziali a tutte le maestre"
+                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors hover:bg-pink-100"
+                  style={{ color: '#FF69B4' }}>
+                  <Mail className="w-3 h-3" />
+                  {bulkResendLoading ? 'Invio...' : 'Reinvia a tutte'}
+                </button>
+              )}
             </div>
+
+            {/* Risultati reinvio bulk */}
+            {role === 'teacher' && bulkResendResults && (
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 space-y-2" data-testid="bulk-resend-results">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Risultati reinvio credenziali</p>
+                  <button onClick={() => setBulkResendResults(null)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                </div>
+                {bulkResendResults.map((r, i) => (
+                  <div key={i} className={`rounded-xl px-3 py-2 text-xs ${r.ok ? 'bg-white border border-gray-100' : 'bg-red-50'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-gray-700">{r.name}</span>
+                      {r.ok
+                        ? (r.email_sent ? <span className="text-green-600 font-bold text-[10px]">📧 inviata</span> : <span className="text-orange-500 font-bold text-[10px]">⚠️ email fallita</span>)
+                        : <span className="text-red-500 text-[10px]">🔴 {r.error}</span>
+                      }
+                    </div>
+                    {r.ok && (
+                      <div className="mt-1 text-[10px] text-gray-500 space-y-0.5">
+                        <p>Email: <span className="font-mono text-gray-700 select-all">{r.email}</span></p>
+                        <p>Password: <span className="font-mono font-bold text-blue-700 select-all">{r.password}</span></p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="divide-y divide-gray-50">
               {grouped[role].map((u) => {
                 const childrenOfParent = role === 'parent'
@@ -765,21 +865,43 @@ export default function AdminUsers() {
                       {iscSuccess.bambino_nome} registrato ✓
                     </p>
                     <p className="text-xs text-gray-400">
-                      {iscSuccess.email_inviata ? '📧 Email inviata' : '📧 Email non inviata — credenziali da consegnare manualmente'}
+                      {iscSuccess.email_inviata ? '📧 Email inviata al 1° genitore' : '📧 Email non inviata — consegna manuale'}
                     </p>
                   </div>
                 </div>
-                {/* Credenziali sempre visibili per consegna manuale */}
+
+                {/* Credenziali 1° genitore */}
                 <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">1° Genitore</p>
                   <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{iscSuccess.genitore_email}</strong></p>
                   <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{iscSuccess.generatedPwd}</strong></p>
                 </div>
+
+                {/* Credenziali 2° genitore se creato */}
+                {iscSuccess.parent2 && !iscSuccess.parent2.error && (
+                  <div className="bg-blue-50 rounded-xl p-3 text-xs space-y-1">
+                    <p className="text-[10px] font-bold text-blue-400 uppercase mb-1">
+                      2° Genitore {iscSuccess.parent2.email_inviata ? '📧 email inviata' : '📧 consegna manuale'}
+                    </p>
+                    <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{iscSuccess.parent2.email}</strong></p>
+                    {iscSuccess.parent2.password && (
+                      <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{iscSuccess.parent2.password}</strong></p>
+                    )}
+                  </div>
+                )}
+                {iscSuccess.parent2?.error && (
+                  <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">
+                    ⚠️ 2° genitore: {iscSuccess.parent2.error}
+                  </p>
+                )}
+
                 <div className="flex gap-2">
                   <Button onClick={() => {
-                    // Iscrivi un altro — riapri il form vuoto mantenendo la classe
                     const lastClassId = iscForm.class_id;
                     const pwd = generatePassword();
                     setIscForm({ ...EMPTY_ISCRIZIONE, genitore_password: pwd, class_id: lastClassId });
+                    setIsc2Form({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
+                    setShowSecondParent(false);
                     setAutogenPwd(true);
                     setIscSuccess(null);
                   }}
@@ -843,7 +965,7 @@ export default function AdminUsers() {
                     onChange={e => setIscForm({ ...iscForm, genitore_email: e.target.value })}
                     className="rounded-xl mt-1" placeholder="genitore@esempio.it" />
                 </div>
-                {/* Password auto-generata — sempre visibile, rigenerabile */}
+                {/* Password 1° genitore */}
                 <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
                   <span className="text-[10px] text-gray-400 font-medium">PWD:</span>
                   <span className="flex-1 text-sm font-mono font-bold text-blue-700 select-all">{iscForm.genitore_password}</span>
@@ -851,6 +973,49 @@ export default function AdminUsers() {
                     className="text-blue-400 hover:text-blue-600 flex-shrink-0" title="Rigenera password">
                     <RefreshCw className="w-4 h-4" />
                   </button>
+                </div>
+
+                {/* ── Sezione 2° Genitore (opzionale) ─────────────────────── */}
+                <div className="border-t border-gray-100 pt-2">
+                  <button type="button"
+                    onClick={() => setShowSecondParent(v => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50"
+                    style={{ color: showSecondParent ? '#4169E1' : '#9CA3AF' }}
+                    data-testid="toggle-second-parent">
+                    <span className="flex items-center gap-1.5">
+                      <UserPlus className="w-3.5 h-3.5" />
+                      Aggiungi 2° genitore (es. separati/divorziati)
+                    </span>
+                    <span className="text-lg leading-none">{showSecondParent ? '−' : '+'}</span>
+                  </button>
+
+                  {showSecondParent && (
+                    <div className="mt-2 space-y-2 bg-blue-50 rounded-xl p-3">
+                      <p className="text-[10px] text-blue-500 font-semibold">Secondo account genitore — accesso separato allo stesso bambino</p>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-600">Email 2° Genitore *</Label>
+                        <Input type="email" autoComplete="off" data-testid="genitore2-email-input"
+                          value={isc2Form.genitore_email}
+                          onChange={e => setIsc2Form(f => ({ ...f, genitore_email: e.target.value }))}
+                          className="rounded-xl mt-1" placeholder="genitore2@esempio.it" />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-600">Nome (opzionale)</Label>
+                        <Input autoComplete="off" data-testid="genitore2-nome-input"
+                          value={isc2Form.genitore_nome}
+                          onChange={e => setIsc2Form(f => ({ ...f, genitore_nome: e.target.value }))}
+                          className="rounded-xl mt-1" placeholder="Nome Cognome" />
+                      </div>
+                      <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2">
+                        <span className="text-[10px] text-gray-400 font-medium">PWD:</span>
+                        <span className="flex-1 text-sm font-mono font-bold text-blue-700 select-all">{isc2Form.genitore_password}</span>
+                        <button type="button" onClick={() => setIsc2Form(f => ({ ...f, genitore_password: generatePassword() }))}
+                          className="text-blue-400 hover:text-blue-600">
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {iscError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{iscError}</p>}

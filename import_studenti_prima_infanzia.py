@@ -2,11 +2,8 @@
 """
 import_studenti_prima_infanzia.py
 ──────────────────────────────────
-Importa gli studenti della Sezione II Infanzia (Prima Infanzia)
-di Il Magico Mondo — dati letti dalle foto allegate.
-
-Maestra: Pillitteri Loredana
-Classe:  Prima Infanzia (il-magico-mondo)
+Importa gli studenti della Sezione II Infanzia
+di Girogirotondo — dati letti dalle foto allegate.
 
 Esegui:  python3 import_studenti_prima_infanzia.py
          python3 import_studenti_prima_infanzia.py --dry-run
@@ -19,7 +16,7 @@ CREDS   = [
     {"email": "mariucciasc@gmail.com",    "password": "Mariagrazia2026!"},
     {"email": "melignanoteresa@gmail.com", "password": "Teresa2026!"},
 ]
-SEDE_MM = "il-magico-mondo"
+SEDE_GGT = "girogirotondo"
 
 # ── Dati letti dalle foto ────────────────────────────────────────────────────
 # Classe: Sezione II Infanzia = Prima Infanzia, Il Magico Mondo
@@ -69,11 +66,20 @@ for c in CREDS:
 if not token:
     print(f"{R}Login fallito{W}"); sys.exit(1)
 
-# ── Trova la classe Prima Infanzia di MM ──────────────────────────────────────
-classes = req("GET", "/classes", token, sede=SEDE_MM)
-prima   = next((c for c in classes if "prima" in c.get("name","").lower() and "infanzia" in c.get("name","").lower()), None)
+# ── Trova la classe Girogirotondo (mostra elenco per scelta) ─────────────────
+classes = req("GET", "/classes", token, sede=SEDE_GGT)
+print(f"\nClassi disponibili in Girogirotondo:")
+for i, c in enumerate(classes):
+    n_s = sum(1 for s in req("GET", "/students", token, sede=SEDE_GGT) if s.get("class_id") == c["id"]) if i == 0 else "?"
+    print(f"  {i+1}. {c.get('name')} (id: {c['id']})")
+
+class_name_input = input("\nInserisci il NOME ESATTO della classe (es. I Infanzia): ").strip()
+prima = next((c for c in classes if c.get("name","").lower() == class_name_input.lower()), None)
 if not prima:
-    print(f"{R}Classe 'Prima Infanzia' non trovata in Il Magico Mondo{W}")
+    # Ricerca parziale
+    prima = next((c for c in classes if class_name_input.lower() in c.get("name","").lower()), None)
+if not prima:
+    print(f"{R}Classe '{class_name_input}' non trovata.{W}")
     print("Classi disponibili:", [c.get("name") for c in classes])
     sys.exit(1)
 
@@ -81,9 +87,9 @@ CLASS_ID = prima["id"]
 print(f"📋 Classe: {prima['name']} (id: {CLASS_ID})\n")
 
 # ── Fetch studenti esistenti (per evitare duplicati) ──────────────────────────
-existing_students = req("GET", "/students", token, sede=SEDE_MM)
-existing_names    = {s.get("name","").lower() for s in existing_students}
-existing_emails   = req("GET", "/users", token, sede=SEDE_MM)
+existing_students = req("GET", "/students", token, sede=SEDE_GGT)
+existing_names    = {f"{s.get('name','')} {s.get('cognome','')}".strip().lower() for s in existing_students}
+existing_emails   = req("GET", "/users", token, sede=SEDE_GGT)
 existing_email_set= {u.get("email","").lower() for u in existing_emails if u.get("email")}
 
 # ── IMPORT ────────────────────────────────────────────────────────────────────
@@ -121,7 +127,7 @@ for row in STUDENTI:
         "bambino_cognome":       cognome,
         "bambino_data_nascita":  "",
         "class_id":              CLASS_ID,
-        "sede_id":               SEDE_MM,
+        "sede_id":               SEDE_GGT,
         "genitore_email":        email,
         "genitore_nome":         genitore,
         "genitore_password":     None,  # auto-generata
@@ -132,7 +138,7 @@ for row in STUDENTI:
         imported += 1
         continue
 
-    res = req("POST", "/users/iscrizione", token, payload, sede=SEDE_MM)
+    res = req("POST", "/users/iscrizione", token, payload, sede=SEDE_GGT)
     if res.get("__error__"):
         print(f"  {R}🔴  {bambino:<24} {genitore:<28} {email:<35} ERRORE: {res.get('detail','?')}{W}")
         errors += 1

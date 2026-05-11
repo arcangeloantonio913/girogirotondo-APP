@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 
 from services.database import get_db
-from models.user import UserCreate, UserUpdate, IscrizioneCreate
+from models.user import UserCreate, UserUpdate, IscrizioneCreate, SecondoGenitoreCreate
 from middleware.auth import get_current_user, validate_admin_sede_access
 from services.email_service import send_credentials_email, send_resend_credentials_email
 
@@ -291,6 +291,136 @@ async def iscrizione_bambino(
 
 
 # ---------------------------------------------------------------------------
+# POST /api/users/secondo-genitore  — aggiunge un secondo genitore a un bambino
+# ---------------------------------------------------------------------------
+
+@router.post("/secondo-genitore", status_code=201)
+async def aggiungi_secondo_genitore(
+    payload: SecondoGenitoreCreate,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Aggiunge un secondo account genitore associato allo stesso bambino.
+    Utile per genitori divorziati che vogliono accessi separati.
+    - Se l'email è già un account genitore: aggiunge il bambino ai suoi child_ids.
+    - Se l'email non esiste: crea nuovo account genitore con credenziali proprie.
+    Solo admin.
+    """
+    _require_admin(current_user)
+    db = get_db()
+
+    # Verifica che lo studente esista
+    student = await db.students.find_one({"id": payload.student_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Bambino non trovato")
+
+    password_plain = payload.genitore_password or _generate_password()
+    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+
+    if existing_parent and existing_parent.get("role") == "parent":
+        # Aggiungi bambino al genitore esistente
+        await db.users.update_one(
+            {"email": payload.genitore_email},
+            {
+                "$addToSet": {"child_ids": payload.student_id},
+                "$set":      {"child_id": payload.student_id},
+            }
+        )
+        parent = await db.users.find_one(
+            {"email": payload.genitore_email}, {"_id": 0, "password": 0}
+        )
+        email_inviata = False
+        created = False
+    elif existing_parent:
+        raise HTTPException(
+            status_code=400,
+            detail="Questa email è già usata da un account staff. Usa un'email diversa."
+        )
+    else:
+        # Crea nuovo account genitore
+        nome = payload.genitore_nome or f"Famiglia {student.get('cognome', '')}"
+        parent_doc = {
+            "id":           str(uuid.uuid4()),
+            "name":         nome,
+            "cognome":      student.get("cognome", ""),
+            "email":        payload.genitore_email,
+            "password":     bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
+            "admin_password": password_plain,
+            "role":         "parent",
+            "is_superadmin": False,
+            "sede_id":      student.get("sede_id"),
+            "child_id":     payload.student_id,
+            "child_ids":    [payload.student_id],
+            "class_id":     None,
+            "class_ids":    [],
+            "firebase_uid": None,
+            "avatar_url":   None,
+            "active":       True,
+            "created_at":   datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(parent_doc)
+        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
+
+        # Invia email con credenziali
+        background_tasks.add_task(
+            send_credentials_email,
+            payload.genitore_email,
+            student.get("name", ""),
+            student.get("cognome", ""),
+            password_plain,
+            student.get("sede_id", "girogirotondo"),
+        )
+        email_inviata = True
+        created = True
+
+    if isinstance(parent, dict):
+        parent.pop("_id", None)
+        parent.pop("password", None)
+
+    return {
+        "parent":        parent,
+        "student":       student,
+        "created":       created,
+        "email_inviata": email_inviata,
+        "new_password":  password_plain if created else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/users/{user_id}/email  — modifica email (self o admin)
+# ---------------------------------------------------------------------------
+
+@router.patch("/{user_id}/email")
+async def update_user_email(
+    user_id: str,
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Permette all'utente di aggiornare la propria email, o all'admin di cambiarla.
+    Verifica unicità email e aggiorna anche il campo admin_password se necessario.
+    """
+    is_admin = current_user.get("role") == "admin"
+    is_self  = current_user.get("id") == user_id
+    if not is_admin and not is_self:
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    new_email = (payload.get("email") or "").strip().lower()
+    if not new_email:
+        raise HTTPException(status_code=400, detail="Email obbligatoria")
+
+    db = get_db()
+    existing = await db.users.find_one({"email": new_email, "id": {"$ne": user_id}})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email già in uso da un altro account")
+
+    await db.users.update_one({"id": user_id}, {"$set": {"email": new_email}})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return user
+
+
+# ---------------------------------------------------------------------------
 # PUT /api/users/{user_id}/credentials  — modifica email e/o password (admin only)
 # ---------------------------------------------------------------------------
 
@@ -372,9 +502,8 @@ async def resend_credentials(
         }}
     )
 
-    # Invia email in background con le nuove credenziali
-    background_tasks.add_task(
-        send_resend_credentials_email,
+    # Invia email — sincrono per restituire feedback reale all'admin
+    email_sent = await send_resend_credentials_email(
         target["email"],
         target.get("name", ""),
         new_password,
@@ -382,9 +511,10 @@ async def resend_credentials(
     )
 
     return {
-        "message": "Credenziali aggiornate e email inviata",
+        "message": "Credenziali aggiornate" + (" e email inviata" if email_sent else " (email NON inviata — verifica RESEND_API_KEY su Railway)"),
         "email": target["email"],
         "new_password": new_password,
+        "email_sent": email_sent,
     }
 
 

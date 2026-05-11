@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { ClipboardList } from 'lucide-react';
+
+const QUANTITA_LABELS = {
+  tutto: { label: 'Tutto',  bg: '#DCFCE7', text: '#166534' },
+  molta: { label: 'Molta',  bg: '#D1FAE5', text: '#065F46' },
+  metà:  { label: 'Metà',   bg: '#FEF9C3', text: '#854D0E' },
+  poca:  { label: 'Poca',   bg: '#FEE2E2', text: '#991B1B' },
+};
 
 const EmptyBearTimeline = () => (
   <div className="bg-white rounded-2xl p-8 text-center shadow-md">
@@ -15,8 +21,25 @@ const EmptyBearTimeline = () => (
       <path d="M26 42c0 0 3 3 6 3s6-3 6-3" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
     <p className="text-sm text-gray-500 font-medium">Dati non ancora disponibili per oggi!</p>
+    <p className="text-xs text-gray-400 mt-1">La maestra non ha ancora compilato la griglia.</p>
   </div>
 );
+
+function QuantitaBadge({ active, qty, activeColor }) {
+  if (!active && !qty) {
+    return <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">Non mangiato</span>;
+  }
+  if (qty && QUANTITA_LABELS[qty]) {
+    const q = QUANTITA_LABELS[qty];
+    return (
+      <span className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ backgroundColor: q.bg, color: q.text }}>
+        {q.label}
+      </span>
+    );
+  }
+  // Legacy: boolean true senza qty
+  return <span className="text-xs font-bold px-2.5 py-1 rounded-lg text-white" style={{ backgroundColor: activeColor }}>Sì</span>;
+}
 
 export default function ParentGriglia() {
   const { user, activeChildId } = useAuth();
@@ -25,8 +48,7 @@ export default function ParentGriglia() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    // Supporta sia child_ids (nuovo) sia child_id (legacy)
-    const primaryChildId = (activeChildId) || (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    const primaryChildId = activeChildId || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (!primaryChildId) return;
     Promise.all([
       api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
@@ -38,24 +60,33 @@ export default function ParentGriglia() {
   }, [user, today]);
 
   const timelineItems = griglia ? [
-    { time: '12:00', label: 'Pasta',   active: griglia.pasta,   color: '#F4C2C2' },
-    { time: '12:10', label: 'Secondo', active: griglia.secondo, color: '#A7C7E7' },
-    { time: '12:20', label: 'Pane',    active: griglia.pane,    color: '#FFD699' },
-    { time: '12:30', label: 'Frutta',  active: griglia.frutta,  color: '#98FB98' },
-    { time: '',      label: 'Pupù',    active: griglia.pupu,    color: '#D4B8E0' },
+    { time: '12:00', label: 'Pasta',    active: griglia.pasta,    qty: griglia.pasta_qty,   color: '#F4C2C2' },
+    { time: '12:10', label: 'Secondo',  active: griglia.secondo,  qty: griglia.secondo_qty, color: '#A7C7E7' },
+    { time: '12:20', label: 'Pane',     active: griglia.pane,     qty: griglia.pane_qty,    color: '#FFD699' },
+    { time: '12:30', label: 'Frutta',   active: griglia.frutta,   qty: griglia.frutta_qty,  color: '#98FB98' },
+    { time: '15:30', label: 'Merenda',  active: griglia.merenda,  qty: griglia.merenda_qty, color: '#FFB347' },
+    { time: '',      label: 'Pupù',     active: griglia.pupu,     qty: null,                color: '#D4B8E0' },
   ] : [];
 
   return (
     <AppLayout title="Griglia Giornaliera" showBack>
       <div className="max-w-lg mx-auto" data-testid="parent-griglia-page">
-        {/* Date & Child Header */}
+
+        {/* Intestazione bambino */}
         <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{child?.name || 'Caricamento...'}</h3>
-              <p className="text-xs text-gray-500 mt-0.5">{new Date(today).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <h3 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
+                {child?.name || 'Caricamento...'}
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {new Date(today + 'T12:00:00').toLocaleDateString('it-IT', {
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                })}
+              </p>
             </div>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: '#F4C2C2' }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+              style={{ backgroundColor: '#F4C2C2' }}>
               {child?.name?.charAt(0) || '?'}
             </div>
           </div>
@@ -68,7 +99,11 @@ export default function ParentGriglia() {
             {timelineItems.map((item, idx) => (
               <div key={idx} className="flex items-start gap-4" data-testid={`timeline-item-${idx}`}>
                 <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center border-2" style={{ borderColor: item.active ? item.color : '#E5E7EB', backgroundColor: item.active ? `${item.color}30` : '#F9FAFB' }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center border-2"
+                    style={{
+                      borderColor: item.active ? item.color : '#E5E7EB',
+                      backgroundColor: item.active ? `${item.color}30` : '#F9FAFB'
+                    }}>
                     <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item.active ? item.color : '#E5E7EB' }} />
                   </div>
                   {idx < timelineItems.length - 1 && (
@@ -79,13 +114,18 @@ export default function ParentGriglia() {
                   <div className="bg-white rounded-xl p-3 shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Nunito' }}>{item.label}</p>
+                        <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Nunito' }}>
+                          {item.label}
+                        </p>
                         {item.time && <p className="text-xs text-gray-400 mt-0.5">{item.time}</p>}
                       </div>
-                      {item.active ? (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg text-white" style={{ backgroundColor: item.color }}>Si</span>
+                      {/* Per il pupù usa Si/No, per i pasti usa la quantità */}
+                      {item.label === 'Pupù' ? (
+                        item.active
+                          ? <span className="text-xs font-bold px-2.5 py-1 rounded-lg text-white" style={{ backgroundColor: item.color }}>Sì</span>
+                          : <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">No</span>
                       ) : (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-400">No</span>
+                        <QuantitaBadge active={item.active} qty={item.qty} activeColor={item.color} />
                       )}
                     </div>
                   </div>
@@ -101,6 +141,13 @@ export default function ParentGriglia() {
             )}
           </div>
         )}
+
+        {/* GDPR Footer */}
+        <div className="mt-6 p-3 rounded-xl text-center" style={{ backgroundColor: '#F9FAFB' }}>
+          <p className="text-[10px] text-gray-400 leading-relaxed">
+            🔒 I dati del registro pasti sono trattati nel rispetto del GDPR e della privacy del minore.
+          </p>
+        </div>
       </div>
     </AppLayout>
   );

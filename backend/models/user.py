@@ -49,6 +49,14 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 
+class SecondoGenitoreCreate(BaseModel):
+    """Aggiunge un secondo genitore a un bambino già iscritto."""
+    student_id: str
+    genitore_email: EmailStr
+    genitore_nome: Optional[str] = None
+    genitore_password: Optional[str] = None
+
+
 class IscrizioneCreate(BaseModel):
     """Iscrizione bambino: crea studente + genitore in un solo step."""
     bambino_nome: str

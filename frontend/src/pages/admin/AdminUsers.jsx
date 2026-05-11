@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Users, Plus, Trash2, Shield, GraduationCap, Heart, Baby,
   AlertTriangle, Eye, EyeOff, CheckCircle, Mail, RefreshCw,
-  Pencil, BookOpen, Key,
+  Pencil, BookOpen, Key, UserPlus, XCircle,
 } from 'lucide-react';
 import StudentDetailDialog from '@/components/StudentDetailDialog';
 
@@ -78,6 +78,17 @@ export default function AdminUsers() {
   const [showCredPwd, setShowCredPwd] = useState(false);
   const [credLoading, setCredLoading] = useState(false);
   const [credError, setCredError] = useState('');
+
+  // secondo genitore
+  const [secondoGenitoreDialog, setSecondoGenitoreDialog] = useState({ open: false, student: null });
+  const [sgForm, setSgForm] = useState({ genitore_email: '', genitore_nome: '', genitore_password: '' });
+  const [sgLoading, setSgLoading] = useState(false);
+  const [sgError, setSgError] = useState('');
+  const [sgSuccess, setSgSuccess] = useState(null);
+
+  // delete studente
+  const [deleteStudentDialog, setDeleteStudentDialog] = useState({ open: false, student: null });
+  const [deleteStudentLoading, setDeleteStudentLoading] = useState(false);
   const [credSuccess, setCredSuccess] = useState(false);
 
   useEffect(() => { loadData(); }, [sede]);
@@ -203,23 +214,73 @@ export default function AdminUsers() {
       const res = await api.post(`/users/${credDialog.user.id}/resend-credentials`, {
         password: credForm.password || undefined,
       });
-      setResendResult({ email: res.data.email, new_password: res.data.new_password });
+      setResendResult({ email: res.data.email, new_password: res.data.new_password, email_sent: res.data.email_sent });
       loadData();
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante il reinvio');
     } finally { setResendLoading(false); }
   };
 
-  // ── elimina utente ───────────────────────────────────────────────────────
+  // ── elimina utente — immediato senza reload ───────────────────────────────
   const handleDelete = async () => {
     if (!deleteDialog.user) return;
     setDeleteLoading(true);
     try {
-      await api.delete(`/users/${deleteDialog.user.id}`);
+      const uid = deleteDialog.user.id;
+      await api.delete(`/users/${uid}`);
+      setUsers(prev => prev.filter(u => u.id !== uid));
       setDeleteDialog({ open: false, user: null });
-      loadData();
     } catch (err) { console.error(err); }
     finally { setDeleteLoading(false); }
+  };
+
+  // ── elimina studente — immediato senza reload ─────────────────────────────
+  const handleDeleteStudent = async () => {
+    if (!deleteStudentDialog.student) return;
+    setDeleteStudentLoading(true);
+    try {
+      const sid = deleteStudentDialog.student.id;
+      await api.delete(`/students/${sid}`);
+      setStudents(prev => prev.filter(s => s.id !== sid));
+      setDeleteStudentDialog({ open: false, student: null });
+    } catch (err) { console.error(err); }
+    finally { setDeleteStudentLoading(false); }
+  };
+
+  // ── apri dialog secondo genitore ──────────────────────────────────────────
+  const openSecondoGenitoreDialog = (student) => {
+    setSgForm({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
+    setSgError('');
+    setSgSuccess(null);
+    setSecondoGenitoreDialog({ open: true, student });
+  };
+
+  // ── submit secondo genitore ───────────────────────────────────────────────
+  const handleSecondoGenitore = async () => {
+    setSgLoading(true);
+    setSgError('');
+    try {
+      const res = await api.post('/users/secondo-genitore', {
+        student_id: secondoGenitoreDialog.student.id,
+        genitore_email: sgForm.genitore_email,
+        genitore_nome: sgForm.genitore_nome || undefined,
+        genitore_password: sgForm.genitore_password || undefined,
+      });
+      setSgSuccess({
+        email: res.data.parent?.email,
+        password: res.data.new_password,
+        email_inviata: res.data.email_inviata,
+        created: res.data.created,
+      });
+      // Aggiorna lista utenti senza reload
+      if (res.data.created) {
+        setUsers(prev => [...prev, res.data.parent]);
+      } else {
+        setUsers(prev => prev.map(u => u.id === res.data.parent?.id ? res.data.parent : u));
+      }
+    } catch (err) {
+      setSgError(err.response?.data?.detail || 'Errore durante l\'aggiunta');
+    } finally { setSgLoading(false); }
   };
 
   // ── Ricerca utenti ───────────────────────────────────────────────────────
@@ -390,29 +451,48 @@ export default function AdminUsers() {
               const cls = classes.find(c => c.id === s.class_id);
               const parent = users.find(u => (u.child_ids || []).includes(s.id) || u.child_id === s.id);
               return (
-                <button key={s.id} data-testid={`student-row-${s.id}`}
-                  onClick={() => setSelectedStudent(s)}
-                  className="px-4 py-3 flex items-center gap-3 w-full text-left hover:bg-blue-50 transition-colors">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                    style={{ backgroundColor: '#4169E1' }}>
-                    {s.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{s.name} {s.cognome || ''}</p>
-                    <div className="flex gap-2 mt-0.5 flex-wrap">
-                      {cls && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: '#FFF0F7', color: '#FF69B4' }}>
-                          <BookOpen className="w-2.5 h-2.5 inline mr-1" />{cls.name}
-                        </span>
-                      )}
-                      {parent && (
-                        <span className="text-[10px] text-gray-400 truncate">Genitore: {parent.name}</span>
-                      )}
+                <div key={s.id} className="px-4 py-3 flex items-center gap-3">
+                  <button data-testid={`student-row-${s.id}`}
+                    onClick={() => setSelectedStudent(s)}
+                    className="flex items-center gap-3 flex-1 text-left min-w-0">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                      style={{ backgroundColor: '#4169E1' }}>
+                      {s.name.charAt(0)}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{s.name} {s.cognome || ''}</p>
+                      <div className="flex gap-2 mt-0.5 flex-wrap">
+                        {cls && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: '#FFF0F7', color: '#FF69B4' }}>
+                            <BookOpen className="w-2.5 h-2.5 inline mr-1" />{cls.name}
+                          </span>
+                        )}
+                        {parent && (
+                          <span className="text-[10px] text-gray-400 truncate">Genitore: {parent.name}</span>
+                        )}
+                      </div>
+                    </div>
+                    <Pencil className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
+                  </button>
+                  {/* Azioni studente */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button
+                      data-testid={`add-parent-${s.id}`}
+                      onClick={() => openSecondoGenitoreDialog(s)}
+                      title="Aggiungi secondo genitore"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-gray-300 hover:text-green-500 transition-colors">
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      data-testid={`delete-student-${s.id}`}
+                      onClick={() => setDeleteStudentDialog({ open: true, student: s })}
+                      title="Elimina bambino"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <Pencil className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
-                </button>
+                </div>
               );
             })}
             {students.length === 0 && (
@@ -463,10 +543,17 @@ export default function AdminUsers() {
             {/* Risultato reinvio */}
             {resendResult ? (
               <div className="space-y-3 pt-1">
-                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="text-xs text-green-700 font-semibold">Email inviata con le nuove credenziali!</span>
-                </div>
+                {resendResult.email_sent !== false ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl">
+                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-green-700 font-semibold">✅ Email inviata con le nuove credenziali!</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-xl border border-orange-200">
+                    <XCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-xs text-orange-700 font-semibold">⚠️ Credenziali aggiornate ma email NON inviata — consegna manualmente le credenziali sotto. Verifica RESEND_API_KEY su Railway.</span>
+                  </div>
+                )}
                 <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
                   <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{resendResult.email}</strong></p>
                   <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{resendResult.new_password}</strong></p>
@@ -793,9 +880,105 @@ export default function AdminUsers() {
         onDeleted={(id) => {
           setStudents(prev => prev.filter(s => s.id !== id));
           setSelectedStudent(null);
-          loadData();
         }}
       />
+
+      {/* ── Dialog Elimina Studente ──────────────────────────────────────── */}
+      <Dialog open={deleteStudentDialog.open} onOpenChange={(open) => !open && setDeleteStudentDialog({ open: false, student: null })}>
+        <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-student-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
+              <AlertTriangle className="w-5 h-5" />Elimina Bambino
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-1 space-y-4">
+            <p className="text-sm text-gray-600">
+              Elimina <strong>{deleteStudentDialog.student?.name} {deleteStudentDialog.student?.cognome}</strong>?
+            </p>
+            <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">⚠️ Azione irreversibile. Il bambino verrà rimosso da tutte le griglie e gallerie.</p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDeleteStudentDialog({ open: false, student: null })}
+                className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
+              <Button onClick={handleDeleteStudent} disabled={deleteStudentLoading}
+                className="flex-1 rounded-xl h-10 text-sm font-bold text-white"
+                style={{ backgroundColor: '#EF4444' }} data-testid="confirm-delete-student">
+                {deleteStudentLoading ? 'Eliminazione...' : 'Elimina'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog Secondo Genitore ──────────────────────────────────────── */}
+      <Dialog open={secondoGenitoreDialog.open} onOpenChange={(open) => {
+        if (!open) { setSecondoGenitoreDialog({ open: false, student: null }); setSgSuccess(null); }
+      }}>
+        <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="secondo-genitore-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#32CD32' }}>
+              <UserPlus className="w-5 h-5" />Aggiungi Secondo Genitore
+            </DialogTitle>
+          </DialogHeader>
+          {sgSuccess ? (
+            <div className="pt-2 space-y-3">
+              {sgSuccess.email_inviata ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-xs text-green-700 font-semibold">✅ Account creato ed email inviata!</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-xl">
+                  <XCircle className="w-4 h-4 text-orange-500" />
+                  <span className="text-xs text-orange-700 font-semibold">Account {sgSuccess.created ? 'creato' : 'aggiornato'} — consegna credenziali manualmente</span>
+                </div>
+              )}
+              <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1.5">
+                <p className="text-gray-500 text-[10px] font-bold uppercase">Credenziali</p>
+                <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{sgSuccess.email}</strong></p>
+                {sgSuccess.password && (
+                  <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{sgSuccess.password}</strong></p>
+                )}
+              </div>
+              <Button onClick={() => { setSecondoGenitoreDialog({ open: false, student: null }); setSgSuccess(null); }}
+                className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-2">
+              <p className="text-xs text-gray-500 bg-blue-50 rounded-xl px-3 py-2">
+                👨‍👩‍👧 Aggiunge un secondo account genitore per <strong>{secondoGenitoreDialog.student?.name}</strong>. Utile per genitori divorziati con accessi separati.
+              </p>
+              <div>
+                <Label className="text-xs font-medium text-gray-600">Email Genitore *</Label>
+                <Input type="email" autoComplete="off" data-testid="sg-email-input"
+                  value={sgForm.genitore_email}
+                  onChange={e => setSgForm({ ...sgForm, genitore_email: e.target.value })}
+                  className="rounded-xl mt-1" placeholder="genitore2@esempio.it" />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-gray-600">Nome (opzionale)</Label>
+                <Input autoComplete="off" data-testid="sg-nome-input"
+                  value={sgForm.genitore_nome}
+                  onChange={e => setSgForm({ ...sgForm, genitore_nome: e.target.value })}
+                  className="rounded-xl mt-1" placeholder="Nome Cognome" />
+              </div>
+              <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
+                <span className="text-[10px] text-gray-400 font-medium">PWD:</span>
+                <span className="flex-1 text-sm font-mono font-bold text-blue-700 select-all">{sgForm.genitore_password}</span>
+                <button type="button" onClick={() => setSgForm(f => ({ ...f, genitore_password: generatePassword() }))}
+                  className="text-blue-400 hover:text-blue-600"><RefreshCw className="w-4 h-4" /></button>
+              </div>
+              {sgError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{sgError}</p>}
+              <Button onClick={handleSecondoGenitore}
+                disabled={sgLoading || !sgForm.genitore_email}
+                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#32CD32' }}
+                data-testid="sg-submit">
+                {sgLoading ? 'Aggiunta...' : '✓ Aggiungi Genitore'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </AppLayout>
   );
 }

@@ -15,9 +15,6 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _parent_child_ids(current_user: dict) -> list:
-    """Restituisce la lista di child_ids autorizzati per un genitore.
-    Supporta sia il campo child_ids (nuovo) sia child_id (legacy).
-    """
     ids = list(current_user.get("child_ids") or [])
     legacy = current_user.get("child_id")
     if legacy and legacy not in ids:
@@ -36,14 +33,13 @@ async def get_griglia(
     query: dict = {}
     role = current_user.get("role")
 
-    # ── Parent isolation: il genitore vede solo i propri figli ───────────────
     if role == "parent":
         allowed = _parent_child_ids(current_user)
         if not allowed:
             return []
         if student_id:
             if student_id not in allowed:
-                raise HTTPException(status_code=403, detail="Accesso negato: questo bambino non è associato al tuo account")
+                raise HTTPException(status_code=403, detail="Accesso negato")
             query["student_id"] = student_id
         else:
             query["student_id"] = {"$in": allowed}
@@ -67,25 +63,38 @@ async def save_griglia(
     entry: GrigliaEntry,
     current_user: dict = Depends(get_current_user),
 ):
-    # Solo admin e maestre possono aggiornare la griglia giornaliera
     if current_user.get("role") not in ("admin", "teacher"):
-        raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può aggiornare la griglia")
+        raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     entries_created = []
+
+    # Deriva boolean da qty se qty è impostato
+    def _active(flag: bool, qty: str) -> bool:
+        return bool(qty) or flag
+
     for sid in entry.student_ids:
         existing = await db.griglia.find_one(
             {"student_id": sid, "date": entry.date, "class_id": entry.class_id}
         )
         doc = {
-            "id": str(uuid.uuid4()),
-            "class_id": entry.class_id,
-            "student_id": sid,
-            "date": entry.date,
-            "pasta": entry.pasta,
-            "secondo": entry.secondo,
-            "pane": entry.pane,
-            "frutta": entry.frutta,
-            "pupu": entry.pupu,
+            "id": str(uuid.uuid4()) if not existing else existing.get("id", str(uuid.uuid4())),
+            "class_id":    entry.class_id,
+            "student_id":  sid,
+            "date":        entry.date,
+            # boolean (true se qty impostata o flag esplicito)
+            "pasta":    _active(entry.pasta,   entry.pasta_qty   or ""),
+            "secondo":  _active(entry.secondo, entry.secondo_qty or ""),
+            "pane":     _active(entry.pane,    entry.pane_qty    or ""),
+            "frutta":   _active(entry.frutta,  entry.frutta_qty  or ""),
+            "merenda":  _active(entry.merenda, entry.merenda_qty or ""),
+            # quantità
+            "pasta_qty":   entry.pasta_qty   or "",
+            "secondo_qty": entry.secondo_qty or "",
+            "pane_qty":    entry.pane_qty    or "",
+            "frutta_qty":  entry.frutta_qty  or "",
+            "merenda_qty": entry.merenda_qty or "",
+            # igiene
+            "pupu":  entry.pupu,
             "notes": entry.notes,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

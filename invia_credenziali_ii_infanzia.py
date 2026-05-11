@@ -35,7 +35,7 @@ G="\033[92m"; R="\033[91m"; Y="\033[93m"; W="\033[0m"; BOLD="\033[1m"
 
 def req(method, path, token=None, body=None, sede=None, silent=False):
     url  = BASE + path
-    data = json.dumps(body).encode() if body else None
+    data = json.dumps(body).encode() if body is not None else None
     hdrs = {"Content-Type": "application/json", "User-Agent": "ggt-send/1.0"}
     if token: hdrs["Authorization"] = f"Bearer {token}"
     if sede:  hdrs["X-Sede-Id"] = sede

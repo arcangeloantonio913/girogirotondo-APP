@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Users, BookOpen, Calendar, FileText, ChevronRight, TrendingUp, UtensilsCrossed, Megaphone } from 'lucide-react';
+import { Users, BookOpen, Calendar, FileText, ChevronRight, TrendingUp, UtensilsCrossed, Megaphone, ClipboardList } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, sede, sedeInfo } = useAuth();
@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     { id: 'users',       icon: Users,          color: '#4169E1', bg: '#EBF0FF', title: 'Gestione Utenti',         subtitle: 'Crea e gestisci account',            path: '/admin/users' },
     { id: 'classes',     icon: BookOpen,       color: '#FF69B4', bg: '#FFF0F7', title: 'Gestione Classi',         subtitle: 'Organizza le classi',                path: '/admin/classes' },
     { id: 'appointments',icon: Calendar,       color: '#F59E0B', bg: '#FFFBEB', title: 'Appuntamenti',            subtitle: 'Visualizza prenotazioni',            path: '/admin/appointments' },
+    { id: 'presenze',    icon: ClipboardList,  color: '#FF9500', bg: '#FFF7E6', title: 'Registro Presenze',       subtitle: 'Presenze e assenze di tutte le classi', path: '/admin/presenze' },
     { id: 'modulistica', icon: FileText,       color: '#32CD32', bg: '#F0FFF0', title: 'Modulistica',             subtitle: 'Documenti e prese visione',          path: '/admin/modulistica' },
     { id: 'mensa',       icon: UtensilsCrossed,color: '#4169E1', bg: '#EBF0FF', title: 'Menu della Mensa',        subtitle: 'Gestisci i menu giornalieri',        path: '/admin/mensa' },
     { id: 'avvisi',      icon: Megaphone,      color: '#8B5CF6', bg: '#F5F3FF', title: 'Avvisi e Comunicazioni',  subtitle: 'Pubblica comunicazioni ai genitori', path: '/admin/avvisi' },

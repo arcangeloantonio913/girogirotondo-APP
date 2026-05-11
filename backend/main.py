@@ -63,6 +63,7 @@ from routers.calendar import router as calendar_router
 from routers.notifications import router as notifications_router
 from routers.avvisi import router as avvisi_router
 from routers.sedi import router as sedi_router
+from routers.presenze import router as presenze_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -104,6 +105,7 @@ app.include_router(calendar_router)
 app.include_router(notifications_router)
 app.include_router(avvisi_router)
 app.include_router(sedi_router)
+app.include_router(presenze_router)
 
 
 # --- Security headers middleware ---

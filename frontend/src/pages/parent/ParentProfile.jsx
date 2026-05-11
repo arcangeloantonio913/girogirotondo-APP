@@ -127,7 +127,16 @@ export default function ParentProfile() {
               <Mail className="w-5 h-5" style={{ color: '#A7C7E7' }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Email Scuola</p>
-                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>girogirotondo@libero.it</p>
+                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>scuolagirogirotondo@libero.it</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#A7C7E715' }}>
+              <Phone className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Telefono Scuola</p>
+                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>
+                  {user?.sede_id === 'il-magico-mondo' ? '392 41 79 110' : '350 16 76 101'}
+                </p>
               </div>
             </div>
           </div>

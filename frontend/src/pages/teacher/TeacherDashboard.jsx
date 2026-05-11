@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Grid3X3, Camera, Users, BookOpen, ChevronRight } from 'lucide-react';
+import { Grid3X3, Camera, Users, BookOpen, ChevronRight, ClipboardList } from 'lucide-react';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -32,8 +32,9 @@ export default function TeacherDashboard() {
   }, [user]);
 
   const cards = [
-    { id: 'griglia', icon: Grid3X3, color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera', subtitle: 'Gestisci le attivita quotidiane', path: '/teacher/griglia' },
-    { id: 'media', icon: Camera, color: '#32CD32', bg: '#F0FFF0', title: 'Carica Media', subtitle: 'Aggiungi foto e video', path: '/teacher/media' },
+    { id: 'griglia',   icon: Grid3X3,      color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera',   subtitle: 'Gestisci le attività quotidiane', path: '/teacher/griglia' },
+    { id: 'presenze',  icon: ClipboardList, color: '#4169E1', bg: '#EBF0FF', title: 'Registro Presenze',     subtitle: 'Segna presenze e assenze',       path: '/teacher/presenze' },
+    { id: 'media',     icon: Camera,        color: '#32CD32', bg: '#F0FFF0', title: 'Carica Media',          subtitle: 'Aggiungi foto e video',           path: '/teacher/media' },
   ];
 
   return (

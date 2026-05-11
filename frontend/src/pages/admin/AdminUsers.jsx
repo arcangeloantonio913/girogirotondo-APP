@@ -957,13 +957,22 @@ export default function AdminUsers() {
                   </div>
                 </div>
 
-                {/* Email genitore */}
-                <div>
-                  <Label className="text-xs font-medium text-gray-600">Email Genitore *</Label>
-                  <Input data-testid="genitore-email-input" type="email" autoComplete="off"
-                    value={iscForm.genitore_email}
-                    onChange={e => setIscForm({ ...iscForm, genitore_email: e.target.value })}
-                    className="rounded-xl mt-1" placeholder="genitore@esempio.it" />
+                {/* Nome + Email genitore */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Nome Genitore</Label>
+                    <Input data-testid="genitore-nome-input" autoComplete="off"
+                      value={iscForm.genitore_nome}
+                      onChange={e => setIscForm({ ...iscForm, genitore_nome: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="Nome Cognome" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Email Genitore *</Label>
+                    <Input data-testid="genitore-email-input" type="email" autoComplete="off"
+                      value={iscForm.genitore_email}
+                      onChange={e => setIscForm({ ...iscForm, genitore_email: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="genitore@email.it" />
+                  </div>
                 </div>
                 {/* Password 1° genitore */}
                 <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">

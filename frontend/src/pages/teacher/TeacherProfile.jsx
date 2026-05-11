@@ -128,10 +128,21 @@ export default function TeacherProfile() {
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Contatti Scuola</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+              <Mail className="w-5 h-5" style={{ color: '#4169E1' }} />
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Email Segreteria</p>
+                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>scuolagirogirotondo@libero.it</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
               <GraduationCap className="w-5 h-5" style={{ color: '#4169E1' }} />
               <div>
-                <p className="text-xs text-gray-500 font-medium">Direzione</p>
-                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>girogirotondo@libero.it</p>
+                <p className="text-xs text-gray-500 font-medium">
+                  Telefono {user?.sede_id === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}
+                </p>
+                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>
+                  {user?.sede_id === 'il-magico-mondo' ? '392 41 79 110' : '350 16 76 101'}
+                </p>
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Home, User, FileText, Calendar, Camera, Grid3X3, LogOut,
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
-  Megaphone, ChevronDown, Building2, BookMarked,
+  Megaphone, ChevronDown, Building2, BookMarked, ClipboardList,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -32,24 +32,27 @@ function getNavItems(role) {
   }
   if (role === 'teacher') {
     return [
-      { path: '/teacher',          icon: Home,       label: 'Home' },
-      { path: '/teacher/griglia',  icon: Grid3X3,    label: 'Griglia' },
-      { path: '/teacher/diario',   icon: BookMarked, label: 'Diario' },
-      { path: '/teacher/media',    icon: Camera,     label: 'Media' },
-      { path: '/teacher/avvisi',   icon: Megaphone,  label: 'Avvisi' },
-      // ── Solo sidebar ─────────────────────────────────────────────────
-      { path: '/teacher/profile',  icon: User,       label: 'Profilo' },
+      // ── Bottom nav (first 5) ─────────────────────────────────────────────
+      { path: '/teacher',           icon: Home,          label: 'Home' },
+      { path: '/teacher/presenze',  icon: ClipboardList, label: 'Presenze' },
+      { path: '/teacher/griglia',   icon: Grid3X3,       label: 'Griglia' },
+      { path: '/teacher/diario',    icon: BookMarked,    label: 'Diario' },
+      { path: '/teacher/media',     icon: Camera,        label: 'Media' },
+      // ── Solo sidebar ─────────────────────────────────────────────────────
+      { path: '/teacher/avvisi',    icon: Megaphone,     label: 'Avvisi' },
+      { path: '/teacher/profile',   icon: User,          label: 'Profilo' },
     ];
   }
   if (role === 'admin') {
     return [
       // ── Bottom nav (first 5) ──────────────────────────────────────────────
       { path: '/admin',               icon: Home,           label: 'Home' },
+      { path: '/admin/presenze',      icon: ClipboardList,  label: 'Presenze' },
       { path: '/admin/users',         icon: Users,          label: 'Utenti' },
       { path: '/admin/classes',       icon: BookOpen,       label: 'Classi' },
       { path: '/admin/avvisi',        icon: Megaphone,      label: 'Avvisi' },
-      { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
       // ── Solo sidebar ──────────────────────────────────────────────────────
+      { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
       { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },
       { path: '/admin/modulistica',   icon: FileText,       label: 'Modulistica' },
       { path: '/admin/profile',       icon: User,           label: 'Profilo' },

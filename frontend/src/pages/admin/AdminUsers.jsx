@@ -156,9 +156,9 @@ export default function AdminUsers() {
     setStaffLoading(true);
     setStaffError('');
     try {
-      await api.post('/users', staffForm);
+      const res = await api.post('/users', staffForm);
+      setUsers(prev => [...prev, res.data]);
       setDialogOpen(false);
-      loadData();
     } catch (err) {
       setStaffError(err.response?.data?.detail || 'Errore durante la creazione');
     } finally { setStaffLoading(false); }
@@ -205,7 +205,12 @@ export default function AdminUsers() {
         parent2: parent2Result,
         parent2Pwd: isc2Form.genitore_password,
       });
-      loadData();
+      // Aggiorna state immediatamente senza reload
+      if (res.data.student) setStudents(prev => [...prev, res.data.student]);
+      if (res.data.parent)  setUsers(prev => {
+        const exists = prev.find(u => u.id === res.data.parent.id);
+        return exists ? prev.map(u => u.id === res.data.parent.id ? res.data.parent : u) : [...prev, res.data.parent];
+      });
     } catch (err) {
       setIscError(err.response?.data?.detail || 'Errore durante l\'iscrizione');
     } finally { setIscLoading(false); }
@@ -231,7 +236,10 @@ export default function AdminUsers() {
         password: credForm.password || undefined,
       });
       setCredSuccess(true);
-      loadData();
+      // Aggiorna email nel pannello senza reload
+      if (credForm.email !== credDialog.user.email) {
+        setUsers(prev => prev.map(u => u.id === credDialog.user.id ? { ...u, email: credForm.email } : u));
+      }
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante la modifica');
     } finally { setCredLoading(false); }
@@ -249,7 +257,6 @@ export default function AdminUsers() {
         password: credForm.password || undefined,
       });
       setResendResult({ email: res.data.email, new_password: res.data.new_password, email_sent: res.data.email_sent });
-      loadData();
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante il reinvio');
     } finally { setResendLoading(false); }
@@ -278,7 +285,6 @@ export default function AdminUsers() {
     }
     setBulkResendResults(results);
     setBulkResendLoading(false);
-    loadData();
   };
 
   // ── elimina utente — immediato senza reload ───────────────────────────────

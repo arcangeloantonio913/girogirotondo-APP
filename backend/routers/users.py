@@ -169,7 +169,6 @@ async def update_user(
 @router.post("/iscrizione", status_code=201)
 async def iscrizione_bambino(
     payload: IscrizioneCreate,
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     x_sede_id: Optional[str] = Header(None),
 ):
@@ -258,23 +257,17 @@ async def iscrizione_bambino(
         await db.users.insert_one(parent_doc)
         parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
 
-    # 3. Email in background — non blocca la risposta (risposta immediata ~0.3s)
+    # 3. Email — sincrona per garantire l'invio reale su Railway
     if sibling_mode:
-        # Genitore già esistente: NON inviare email con nuova password
-        # (il genitore usa già le sue credenziali attuali — la password_plain
-        # era stata generata ma non è stata salvata nel DB)
         email_inviata = False
     else:
-        # Nuovo genitore: invia email con credenziali in background
-        background_tasks.add_task(
-            send_credentials_email,
+        email_inviata = await send_credentials_email(
             payload.genitore_email,
             payload.bambino_nome,
             payload.bambino_cognome,
             password_plain,
             cls.get("sede_id", sede_id),
         )
-        email_inviata = True
 
     student.pop("_id", None)
     if isinstance(parent, dict):
@@ -297,7 +290,6 @@ async def iscrizione_bambino(
 @router.post("/secondo-genitore", status_code=201)
 async def aggiungi_secondo_genitore(
     payload: SecondoGenitoreCreate,
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -362,16 +354,14 @@ async def aggiungi_secondo_genitore(
         await db.users.insert_one(parent_doc)
         parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
 
-        # Invia email con credenziali
-        background_tasks.add_task(
-            send_credentials_email,
+        # Invia email con credenziali — sincrona
+        email_inviata = await send_credentials_email(
             payload.genitore_email,
             student.get("name", ""),
             student.get("cognome", ""),
             password_plain,
             student.get("sede_id", "girogirotondo"),
         )
-        email_inviata = True
         created = True
 
     if isinstance(parent, dict):
@@ -473,7 +463,6 @@ async def update_user_credentials(
 async def resend_credentials(
     user_id: str,
     payload: dict,
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
     """

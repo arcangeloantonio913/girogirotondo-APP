@@ -206,33 +206,12 @@ for t in teachers_ggt:
         cred_inviate += 1
 
 # ══════════════════════════════════════════════════════════
-# FIX 4 — Credenziali genitori GGT già nel DB
+# FIX 4 — Credenziali genitori GGT (DISABILITATO)
 # ══════════════════════════════════════════════════════════
-print(f"\n{BOLD}{'─'*65}{W}")
-print(f"{BOLD}  FIX 4 — Credenziali genitori GGT{W}")
-print(f"{BOLD}{'─'*65}{W}")
-
-parents_ggt = [u for u in users_ggt if u.get("role") == "parent"]
-parents_mm  = [u for u in users_mm  if u.get("role") == "parent"]
-# Includi anche genitori con sede_id MM che hanno figli in GGT
-all_parents = {u["id"]: u for u in parents_ggt + parents_mm}
-
-print(f"  Genitori da notificare: {len(all_parents)}")
+# Le credenziali ai genitori verranno inviate in un secondo momento.
+# Esegui: python3 invia_credenziali_genitori_ggt.py
 sent = 0
-for uid, u in all_parents.items():
-    if DRY_RUN:
-        print(f"  {B}[DRY] {u.get('email','?')}{W}")
-        sent += 1
-        continue
-    res = req("POST", f"/users/{uid}/resend-credentials", token, {})
-    if res.get("__error__"):
-        print(f"  {R}🔴 {u.get('email','?')}: {res.get('detail')}{W}")
-    else:
-        ok  = res.get("email_sent", True)
-        pwd = res.get("new_password","?")
-        flag = f"{G}📧{W}" if ok else f"{Y}⚠️{W}"
-        print(f"  {G}✅ {u.get('name','?'):<25} {u.get('email','?'):<40}{W} {flag}  pwd: {BOLD}{pwd}{W}")
-        sent += 1
+print(f"\n  {Y}ℹ️  Invio credenziali genitori rimandato — verrà fatto separatamente.{W}")
 
 # ══════════════════════════════════════════════════════════
 # RIEPILOGO
@@ -243,7 +222,7 @@ print(f"{BOLD}{'═'*65}{W}")
 print(f"\n  Bambini MM → GGT:        {G}{spostati if not DRY_RUN else '(dry-run)'}{W}")
 print(f"  Bambini Colorandia → I:  {G}{spostati2 if not DRY_RUN else '(dry-run)'}{W}")
 print(f"  Credenziali maestre:     {G}{cred_inviate}{W}")
-print(f"  Credenziali genitori:    {G}{sent}{W}")
+print(f"  Credenziali genitori:    {Y}rimandato — eseguire separatamente{W}")
 
 print(f"""
   {Y}⚠️  BAMBINI DA INSERIRE MANUALMENTE (non nel DB):{W}

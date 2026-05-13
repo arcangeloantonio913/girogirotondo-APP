@@ -10,9 +10,11 @@ export default function ParentDiario() {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    // Il backend filtra automaticamente per le classi dei figli del genitore
-    api.get('/diary').then(res => setEntries(res.data)).catch(() => {});
-  }, [user]);
+    const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
+    if (!childId) return;
+    // Filtra il diario per il figlio attivo
+    api.get(`/diary?student_id=${childId}`).then(res => setEntries(res.data)).catch(() => {});
+  }, [user, activeChildId]); // ← activeChildId nelle deps per fratellini
 
   return (
     <AppLayout title="Diario di Bordo" showBack>

@@ -23,19 +23,31 @@ export default function TeacherMedia() {
   const [previewUrls, setPreviewUrls] = useState([]);
   const fileInputRef = useRef(null);
 
+  const loadStudents = () => {
+    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
+    if (!primaryClassId) return;
+    api.get('/students').then(r => setStudents(r.data)).catch(console.error);
+  };
+
   useEffect(() => {
-    // Supporta class_ids (nuovo) e class_id legacy
     const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
     if (!primaryClassId) return;
     Promise.all([
-      // GET /students senza class_id: il backend filtra per le classi della maestra
       api.get('/students'),
       api.get(`/gallery?class_id=${primaryClassId}`),
     ]).then(([sRes, gRes]) => {
       setStudents(sRes.data);
       setGallery(gRes.data);
     });
-  }, [user]);
+  }, [user]); // eslint-disable-line
+
+  // Ricarica studenti ogni volta che il modal si apre (fix: lista vuota dopo upload)
+  useEffect(() => {
+    if (uploadModalOpen) {
+      loadStudents();
+      setSelectedStudents([]); // reset selezione
+    }
+  }, [uploadModalOpen]); // eslint-disable-line
 
   const toggleStudent = (id) => {
     setSelectedStudents(prev =>

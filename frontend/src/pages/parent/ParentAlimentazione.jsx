@@ -42,7 +42,7 @@ export default function ParentAlimentazione() {
       finally { setLoading(false); }
     };
     load();
-  }, [user, currentDate]);
+  }, [user, activeChildId, currentDate]); // ← activeChildId nelle deps per fratellini
 
   const mealItems = meal ? [
     { label: 'Merenda Mattina',    value: meal.merenda_mattina,   icon: Coffee,         color: '#F59E0B', bg: '#FFFBEB' },

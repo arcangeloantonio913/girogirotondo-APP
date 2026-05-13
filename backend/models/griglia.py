@@ -16,21 +16,23 @@ class GrigliaEntry(BaseModel):
     date: str
 
     # ── 5 campi pasto — boolean (true se ha mangiato qualcosa) ───────────────
+    # Ordine visualizzazione: merenda prima, poi pasta, secondo, pane, frutta
+    merenda:  bool = False
     pasta:    bool = False
     secondo:  bool = False
     pane:     bool = False
     frutta:   bool = False
-    merenda:  bool = False
 
-    # ── Quantità per pasto (tutto | molta | poca | metà | "") ─────────────────
+    # ── Quantità per pasto (tutto | bis | poca | metà | no | "") ─────────────
+    merenda_qty: Optional[str] = ""
     pasta_qty:   Optional[str] = ""
     secondo_qty: Optional[str] = ""
     pane_qty:    Optional[str] = ""
     frutta_qty:  Optional[str] = ""
-    merenda_qty: Optional[str] = ""
 
-    # ── Igiene ────────────────────────────────────────────────────────────────
-    pupu: bool = False
+    # ── Igiene e riposo ───────────────────────────────────────────────────────
+    pupu:  bool = False
+    nanna: bool = False
 
     # ── Note libere ───────────────────────────────────────────────────────────
     notes: str = ""

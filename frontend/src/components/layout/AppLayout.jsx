@@ -21,11 +21,11 @@ function getNavItems(role) {
       { path: '/parent',              icon: Home,           label: 'Home' },
       { path: '/parent/gallery',      icon: Camera,         label: 'Foto' },
       { path: '/parent/griglia',      icon: Grid3X3,        label: 'Griglia' },
-      { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
-      { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
-      // ── Solo sidebar ────────────────────────────────────────────────────
-      { path: '/parent/appuntamenti', icon: Calendar,       label: 'Prenotazioni' },
       { path: '/parent/alimentazione',icon: UtensilsCrossed,label: 'Dieta' },
+      { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
+      // ── Solo sidebar ────────────────────────────────────────────────────
+      { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
+      { path: '/parent/appuntamenti', icon: Calendar,       label: 'Prenotazioni' },
       { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },
       { path: '/parent/profile',      icon: User,           label: 'Profilo' },
     ];

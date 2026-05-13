@@ -69,7 +69,9 @@ async def save_griglia(
     entries_created = []
 
     # Deriva boolean da qty se qty è impostato
+    # "no" = esplicitamente non mangiato → boolean False
     def _active(flag: bool, qty: str) -> bool:
+        if qty == "no": return False
         return bool(qty) or flag
 
     for sid in entry.student_ids:
@@ -81,20 +83,21 @@ async def save_griglia(
             "class_id":    entry.class_id,
             "student_id":  sid,
             "date":        entry.date,
-            # boolean (true se qty impostata o flag esplicito)
+            # boolean (true se qty impostata e non "no", o flag esplicito)
+            "merenda":  _active(entry.merenda, entry.merenda_qty or ""),
             "pasta":    _active(entry.pasta,   entry.pasta_qty   or ""),
             "secondo":  _active(entry.secondo, entry.secondo_qty or ""),
             "pane":     _active(entry.pane,    entry.pane_qty    or ""),
             "frutta":   _active(entry.frutta,  entry.frutta_qty  or ""),
-            "merenda":  _active(entry.merenda, entry.merenda_qty or ""),
-            # quantità
+            # quantità (tutto | bis | poca | metà | no | "")
+            "merenda_qty": entry.merenda_qty or "",
             "pasta_qty":   entry.pasta_qty   or "",
             "secondo_qty": entry.secondo_qty or "",
             "pane_qty":    entry.pane_qty    or "",
             "frutta_qty":  entry.frutta_qty  or "",
-            "merenda_qty": entry.merenda_qty or "",
-            # igiene
+            # igiene e riposo
             "pupu":  entry.pupu,
+            "nanna": entry.nanna,
             "notes": entry.notes,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

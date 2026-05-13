@@ -126,6 +126,25 @@ export default function TeacherPresenze() {
   const presentiCount = students.filter(s => presenze[s.id]?.presente !== false).length;
   const assentiCount  = students.length - presentiCount;
 
+  // Nessuna classe assegnata → messaggio di errore
+  if (!primaryClassId) {
+    return (
+      <AppLayout title="Registro Presenze" showBack>
+        <div className="max-w-lg mx-auto">
+          <div className="bg-white rounded-2xl shadow-md p-8 text-center border border-orange-100">
+            <BookOpen className="w-12 h-12 mx-auto text-orange-300 mb-3" />
+            <p className="text-sm font-bold text-gray-700" style={{ fontFamily: 'Nunito' }}>
+              Nessuna classe assegnata
+            </p>
+            <p className="text-xs text-gray-400 mt-2">
+              Contatta l'amministrazione per associare la tua classe al tuo account.
+            </p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Registro Presenze" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="teacher-presenze-page">

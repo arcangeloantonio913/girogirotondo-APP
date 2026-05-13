@@ -26,10 +26,16 @@ async def get_meals(
     query: dict = {}
     role = current_user.get("role")
 
+    # Filtro data: cerca menu con data singola OPPURE range che include la data
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
-        query["date"] = date
+        # Seleziona menu dove: date==date OPPURE (date_from<=date AND date_to>=date)
+        query["$or"] = [
+            {"date": date},
+            {"date_from": {"$lte": date}, "date_to": {"$gte": date}},
+            {"date_from": {"$lte": date}, "date_to": None, "date_from_only": True},
+        ]
 
     if role == "admin":
         # Admin: filtro per sede attiva
@@ -91,6 +97,11 @@ async def create_meal(
     doc["id"] = str(uuid.uuid4())
     doc["sede_id"] = sede_id
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Normalizza: se è range senza date singola, rimuovi date=None
+    if doc.get("date_from") and doc.get("date_to") and not doc.get("date"):
+        doc["date"] = None  # range mode
+
     await db.meals.insert_one(doc)
     doc.pop("_id", None)
     return doc

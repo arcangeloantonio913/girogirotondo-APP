@@ -9,62 +9,97 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach auth token + sede header on every request
+// ── Cache in-memory per le GET più frequenti ─────────────────────────────────
+// Riduce le chiamate ripetute a endpoint che cambiano raramente
+const _cache = new Map();
+const CACHE_TTL_MS = 30_000; // 30 secondi
+
+const CACHEABLE_PATHS = ['/classes', '/students', '/sedi'];
+
+function cacheKey(url, headers) {
+  return `${headers['X-Sede-Id'] || ''}::${url}`;
+}
+function isCacheable(url) {
+  return CACHEABLE_PATHS.some(p => url === p || url.startsWith(p + '?'));
+}
+
+// ── Request interceptor ───────────────────────────────────────────────────────
 api.interceptors.request.use(async (config) => {
-  // 1. Auth token (Firebase o JWT fallback)
+  // 1. Auth token
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      // Firebase: getIdToken(true) forza il refresh automatico del token
       const token = await currentUser.getIdToken(true);
       config.headers.Authorization = `Bearer ${token}`;
     } else {
       const jwtToken = localStorage.getItem('ggt_token');
-      if (jwtToken) {
-        config.headers.Authorization = `Bearer ${jwtToken}`;
-      }
+      if (jwtToken) config.headers.Authorization = `Bearer ${jwtToken}`;
     }
-  } catch {
-    // Se il recupero del token fallisce, procedi senza token
-  }
+  } catch { /* procedi senza token */ }
 
-  // 2. Multi-tenant: X-Sede-Id header
+  // 2. Multi-tenant sede header
   const sedeId = localStorage.getItem('ggt_sede');
-  if (sedeId) {
-    config.headers['X-Sede-Id'] = sedeId;
+  if (sedeId) config.headers['X-Sede-Id'] = sedeId;
+
+  // 3. Cache GET per endpoint statici
+  if (config.method === 'get' && isCacheable(config.url)) {
+    const key  = cacheKey(config.url, config.headers);
+    const hit  = _cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
+      // Ritorna la risposta cached usando adapter custom
+      config.adapter = () => Promise.resolve({
+        data:    hit.data,
+        status:  200,
+        headers: {},
+        config,
+        cached:  true,
+      });
+    }
   }
 
   return config;
 });
 
-// Gestione errori — NON fare logout automatico su 401
-// (il token dura 10 anni, quindi un 401 è probabilmente un errore di rete,
-//  non una sessione scaduta)
+// ── Response interceptor ──────────────────────────────────────────────────────
 let _isLoggingOut = false;
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Salva in cache se è una GET cacheabile
+    if (res.config?.method === 'get' && !res.cached && isCacheable(res.config.url)) {
+      const key = cacheKey(res.config.url, res.config.headers || {});
+      _cache.set(key, { data: res.data, ts: Date.now() });
+    }
+    return res;
+  },
   async (err) => {
-    // Logout automatico SOLO se la sessione è esplicitamente terminata
-    // (es. utente disabilitato) — non su ogni 401 generica
     if (err.response?.status === 401 && !_isLoggingOut) {
       const detail = err.response?.data?.detail || '';
-      const isHardLogout =
+      const isHard =
         detail.includes('disabilitato') ||
         detail.includes('non trovato') ||
         detail.includes('revocato');
-
-      if (isHardLogout) {
+      if (isHard) {
         _isLoggingOut = true;
         localStorage.removeItem('ggt_token');
         localStorage.removeItem('ggt_user');
         try { await auth.signOut(); } catch { /* ignore */ }
         window.location.replace('/login');
       }
-      // Per tutti gli altri 401: non fare logout, lascia l'utente loggato
     }
     return Promise.reject(err);
   }
 );
+
+// Invalida la cache manualmente (es. dopo una modifica)
+api.clearCache = (path) => {
+  if (path) {
+    for (const key of _cache.keys()) {
+      if (key.includes(path)) _cache.delete(key);
+    }
+  } else {
+    _cache.clear();
+  }
+};
 
 export default api;

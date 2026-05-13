@@ -8,6 +8,45 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Square } from 'lucide-react';
 
+// Comprime immagine via canvas — riduce il peso da 3-5MB a ~200-400KB
+function compressImage(file, maxSize = 1200, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    if (file.type.startsWith('video/')) {
+      // Video: nessuna compressione, leggi direttamente
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror  = () => reject(new Error('Errore lettura video'));
+      reader.readAsDataURL(file);
+      return;
+    }
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width  = Math.round(width  * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width  = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      // Fallback: leggi senza compressione
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror  = () => reject(new Error('File non leggibile'));
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
+  });
+}
+
 export default function TeacherMedia() {
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
@@ -110,16 +149,9 @@ export default function TeacherMedia() {
       setUploadProgress({ current: i + 1, total: selectedFiles.length });
 
       try {
-        // FileReader diretto — nessun canvas, funziona su QUALSIASI formato iOS/Android
-        const dataURL = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            if (reader.result) resolve(reader.result);
-            else reject(new Error('File vuoto o non leggibile'));
-          };
-          reader.onerror = () => reject(new Error(reader.error?.message || 'Errore lettura'));
-          reader.readAsDataURL(file);
-        });
+        // Comprime l'immagine (max 1200px, 75% quality) prima dell'upload
+        // Riduce da 3-5MB a ~200-400KB → caricamento molto più veloce
+        const dataURL = await compressImage(file, 1200, 0.75);
 
         const res = await api.post('/gallery/upload-b64', {
           class_id:    primaryClassId,

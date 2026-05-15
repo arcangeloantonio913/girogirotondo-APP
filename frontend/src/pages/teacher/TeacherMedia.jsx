@@ -133,7 +133,9 @@ export default function TeacherMedia() {
   };
 
   const handleUpload = async () => {
-    if (selectedStudents.length === 0 || !caption || selectedFiles.length === 0) return;
+    if (selectedStudents.length === 0 || selectedFiles.length === 0) return;
+    // Caption automatica basata sulla data
+    const autoCaption = caption || new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
     const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
     if (!primaryClassId) return;
 
@@ -157,7 +159,7 @@ export default function TeacherMedia() {
           class_id:    primaryClassId,
           student_ids: selectedStudents,
           media_type:  file.type.startsWith('video') ? 'video' : 'photo',
-          caption,
+          caption:     autoCaption,
           media_url:   dataURL,
         });
         newItems.push(res.data);
@@ -344,18 +346,6 @@ export default function TeacherMedia() {
                 </div>
               </div>
 
-              {/* Caption */}
-              <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Descrizione</Label>
-                <Input
-                  data-testid="modal-caption-input"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Descrizione della foto/video..."
-                  className="rounded-xl mt-2"
-                />
-              </div>
-
               {/* Upload Error */}
               {uploadError && (
                 <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{uploadError}</p>
@@ -365,7 +355,7 @@ export default function TeacherMedia() {
               <Button
                 data-testid="modal-upload-button"
                 onClick={handleUpload}
-                disabled={uploading || selectedStudents.length === 0 || !caption || selectedFiles.length === 0}
+                disabled={uploading || selectedStudents.length === 0 || selectedFiles.length === 0}
                 className="w-full rounded-2xl font-bold h-11"
                 style={{ backgroundColor: '#32CD32' }}
               >

@@ -58,7 +58,8 @@ async def get_meals(
             query["class_id"] = {"$in": teacher_class_ids}
 
     else:
-        # Parent: vede menu delle classi dei figli
+        # Parent: vede SOLO il menu della classe del proprio figlio
+        # + menu universali (class_id vuoto = per tutte le classi)
         child_ids = list(current_user.get("child_ids") or [])
         legacy = current_user.get("child_id")
         if legacy and legacy not in child_ids:
@@ -68,11 +69,20 @@ async def get_meals(
                 {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1}
             ).to_list(100)
             parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
-            if parent_class_ids:
-                # Mostra menu specifici per la classe DEL FIGLIO + menu universali (class_id vuoto/None)
-                query["class_id"] = {"$in": parent_class_ids + ["", None]}
-        if class_id:
-            query["class_id"] = class_id
+
+            if class_id:
+                # Il frontend ha richiesto una classe specifica:
+                # la mostriamo SOLO se appartiene ai figli del genitore
+                if class_id in parent_class_ids:
+                    allowed = [class_id, "", None]
+                else:
+                    # classe non autorizzata → mostra solo universali
+                    allowed = ["", None]
+            else:
+                # Nessuna classe specificata → tutte le classi dei figli + universali
+                allowed = parent_class_ids + ["", None]
+
+            query["class_id"] = {"$in": allowed}
 
     meals = await db.meals.find(query, {"_id": 0}).to_list(100)
     return meals

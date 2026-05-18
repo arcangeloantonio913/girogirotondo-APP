@@ -76,14 +76,14 @@ def ggt_req(method, path, token=None, body=None, sede=None, silent=False):
         return {"__error__": True}
 
 def remove_suppression(email):
-    """Restituisce True se rimossa, False se non era soppressa (404), None se errore."""
+    """Restituisce (True, code) se rimossa, (False, code) se non trovata, (None, code) se errore."""
     encoded = urllib.parse.quote(email, safe='')
-    status, _ = resend_req("DELETE", f"/suppressions/{encoded}")
+    status, body = resend_req("DELETE", f"/suppressions/{encoded}")
     if status in (200, 201, 204):
-        return True    # era soppressa, ora rimossa
+        return True, status
     if status == 404:
-        return False   # non era soppressa, tutto ok
-    return None        # errore inatteso
+        return False, status
+    return None, status   # errore — stampa status per debug
 
 # ═══════════════════════════════════════════════════════
 print(f"\n{BOLD}{'═'*60}{W}")
@@ -140,25 +140,44 @@ for email in emails:
         print(f"  {Y}{email:<45}{W} [dry-run]")
         continue
 
-    result = remove_suppression(email)
-    time.sleep(0.15)   # evita rate-limit Resend (7 req/s)
+    result, code = remove_suppression(email)
+    time.sleep(0.15)   # evita rate-limit Resend
 
     if result is True:
-        print(f"  {G}🔓 {email:<43}{W} rimossa dalla lista")
+        print(f"  {G}🔓 {email:<43}{W} rimossa (HTTP {code})")
         removed += 1
     elif result is False:
-        already_ok += 1  # silenzia i "non soppressi" — troppo rumore
+        already_ok += 1  # non era soppressa — silenzioso
     else:
-        print(f"  {R}⚠️  {email:<43}{W} errore")
+        # Mostra solo il primo errore per capire il problema
+        if errors < 3:
+            print(f"  {R}⚠️  {email:<43}{W} HTTP {code}")
+        elif errors == 3:
+            print(f"  {Y}  ... (altri errori silenziati){W}")
         errors += 1
 
 print(f"\n{'─'*60}")
-print(f"  {G}Sbloccate:{W} {removed}  |  Ok (non soppress): {already_ok}  |  {R}Errori:{W} {errors}")
-if removed > 0:
+print(f"  {G}Sbloccate:{W} {removed}  |  Non soppress: {already_ok}  |  {R}Errori:{W} {errors}")
+
+if errors > 0 and removed == 0 and already_ok == 0:
+    print(f"""
+  {R}⚠️  Tutti gli errori — possibili cause:{W}
+  1. La chiave Resend non ha permessi per gestire le soppressioni
+  2. Il piano Resend gratuito non include la gestione suppression via API
+  3. L'endpoint è cambiato in una versione più recente dell'API
+
+  {Y}SOLUZIONE MANUALE:{W}
+  1. Vai su https://resend.com
+  2. Login → sezione "Emails" → filtra per "Suppressed"
+  3. Per ogni email soppressa clicca i tre puntini → "Remove from suppression list"
+
+  Oppure verifica nella dashboard Resend se esiste una sezione
+  "Suppression List" dedicata nel menu a sinistra.
+""")
+elif removed > 0:
     print(f"\n  {G}✅ {removed} indirizzi sbloccati!{W}")
-    print(f"  Le email future verranno consegnate normalmente.")
-    print(f"  {Y}⚠️  Se alcune rimbalzano di nuovo, l'indirizzo potrebbe essere sbagliato.{W}")
-elif not DRY_RUN:
+    print(f"  {Y}⚠️  Se alcune rimbalzano ancora, l'indirizzo è probabilmente sbagliato.{W}")
+elif not DRY_RUN and errors == 0:
     print(f"\n  {G}✅ Nessun indirizzo era soppresso — tutto ok!{W}")
 
 print()

@@ -92,7 +92,8 @@ if pilato:
     valid  = [all_students[c] for c in cids if c in all_students]
     invalid= [c for c in cids if c not in all_students]
     print(f"  Email:   {pilato.get('email')}")
-    print(f"  Figli validi: {[f\"{s.get('name')} {s.get('cognome','')}\" for s in valid]}")
+    nomi_validi = [s.get('name','') + ' ' + s.get('cognome','') for s in valid]
+    print(f"  Figli validi: {nomi_validi}")
     if invalid:
         print(f"  {R}ID fantasma: {invalid}{W}")
         print(f"\n  {Y}SOLUZIONE:{W}")

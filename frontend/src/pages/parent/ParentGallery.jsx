@@ -146,8 +146,11 @@ export default function ParentGallery() {
     || user?.child_id;
 
   // 1) Carica galleria personale + ricava class_id dallo studente
+  // NON azzerare classItems quando cambia il figlio — no flash di contenuto vuoto
   useEffect(() => {
     if (!childId) return;
+    setClassItems([]); // reset solo la galleria di classe (è specifica per figlio+classe)
+    setClassId(null);
     setLoadingPersonal(true);
 
     const loadPersonal = api.get(`/gallery?student_id=${childId}`)

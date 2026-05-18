@@ -14,7 +14,8 @@ const api = axios.create({
 const _cache = new Map();
 const CACHE_TTL_MS = 30_000; // 30 secondi
 
-const CACHEABLE_PATHS = ['/classes', '/students', '/sedi'];
+// Solo dati che cambiano raramente — /students escluso (admin lo modifica spesso)
+const CACHEABLE_PATHS = ['/classes', '/sedi'];
 
 function cacheKey(url, headers) {
   return `${headers['X-Sede-Id'] || ''}::${url}`;

@@ -56,8 +56,7 @@ export default function ParentGriglia() {
   useEffect(() => {
     const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
     if (!childId) return;
-    setGriglia(null);
-    setChild(null);
+    // NON azzerare i dati — mostra quelli vecchi finché arrivano i nuovi (no flash)
     Promise.all([
       api.get(`/griglia?student_id=${childId}&date=${today}`),
       api.get(`/students/${childId}`),

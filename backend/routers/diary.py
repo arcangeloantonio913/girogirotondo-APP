@@ -14,28 +14,35 @@ router = APIRouter(tags=["diary"])
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-async def _get_diary(class_id: Optional[str], date: Optional[str], current_user: dict):
+async def _get_diary(class_id: Optional[str], date: Optional[str], current_user: dict,
+                     student_id: Optional[str] = None):
     db = get_db()
     query: dict = {}
     role = current_user.get("role")
 
     # ── Parent isolation: il genitore vede solo il diario della classe del figlio ─
     if role == "parent":
-        # Recupera le classi dei propri figli
         child_ids = list(current_user.get("child_ids") or [])
         legacy = current_user.get("child_id")
         if legacy and legacy not in child_ids:
             child_ids.append(legacy)
         if not child_ids:
             return []
-        # Trova le classi dei figli
+
+        # Se passato student_id, usa SOLO la classe di quel figlio (figlio attivo)
+        if student_id:
+            if student_id not in child_ids:
+                raise HTTPException(status_code=403, detail="Accesso negato")
+            lookup_ids = [student_id]
+        else:
+            lookup_ids = child_ids
+
         students = await db.students.find(
-            {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1}
+            {"id": {"$in": lookup_ids}}, {"_id": 0, "class_id": 1}
         ).to_list(100)
         allowed_classes = list({s["class_id"] for s in students if s.get("class_id")})
         if not allowed_classes:
             return []
-        # Se class_id specificato, verifica che appartenga ai figli
         if class_id:
             if class_id not in allowed_classes:
                 raise HTTPException(status_code=403, detail="Accesso negato")
@@ -69,9 +76,10 @@ async def _create_diary(entry: DiaryEntryCreate, user_id: str):
 async def get_diary(
     class_id: Optional[str] = None,
     date: Optional[str] = None,
+    student_id: Optional[str] = None,   # filtro per figlio attivo (fratellini)
     current_user: dict = Depends(get_current_user),
 ):
-    return await _get_diary(class_id, date, current_user)
+    return await _get_diary(class_id, date, current_user, student_id)
 
 
 @router.post("/api/diary", status_code=201)

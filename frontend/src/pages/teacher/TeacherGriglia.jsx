@@ -21,14 +21,15 @@ const BOOL_COLS = [
   { key: 'nanna', label: 'Nanna', short: 'NAN', color: '#93C5FD' },
 ];
 
-// Quantità: Tutto, Bis (secondo piatto), Metà, Poca, No
+// Quantità: Tutto, Bis, Metà, Mangiata poca, Lasciata poca, No
 const QUANTITA_OPTIONS = [
-  { value: '',      label: '—',     bg: '#F3F4F6', text: '#9CA3AF' },
-  { value: 'tutto', label: 'Tutto', bg: '#DCFCE7', text: '#166534' },
-  { value: 'bis',   label: 'Bis',   bg: '#D1FAE5', text: '#065F46' },
-  { value: 'metà',  label: 'Metà',  bg: '#FEF9C3', text: '#854D0E' },
-  { value: 'poca',  label: 'Poca',  bg: '#FEE2E2', text: '#991B1B' },
-  { value: 'no',    label: 'No',    bg: '#F1F5F9', text: '#64748B' },
+  { value: '',             label: '—',            bg: '#F3F4F6', text: '#9CA3AF' },
+  { value: 'tutto',        label: 'Tutto',         bg: '#DCFCE7', text: '#166534' },
+  { value: 'bis',          label: 'Bis',           bg: '#D1FAE5', text: '#065F46' },
+  { value: 'metà',         label: 'Metà',          bg: '#FEF9C3', text: '#854D0E' },
+  { value: 'mangiata_poca',label: 'Mangiata poca', bg: '#FEE2E2', text: '#991B1B' },
+  { value: 'lasciata_poca',label: 'Lasciata poca', bg: '#FECACA', text: '#7F1D1D' },
+  { value: 'no',           label: 'No',            bg: '#F1F5F9', text: '#64748B' },
 ];
 
 const defaultGrid = () => ({

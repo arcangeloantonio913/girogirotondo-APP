@@ -171,6 +171,36 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // ── refreshUser: aggiorna il profilo dal backend senza logout ────────────
+  // Risolve il problema "devo scollegarmi per vedere i nuovi dati"
+  const refreshUser = async () => {
+    const token = localStorage.getItem('ggt_token');
+    if (!token) return;
+    try {
+      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
+      const res = await axios.get(`${BACKEND_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const fresh = res.data;
+      localStorage.setItem('ggt_user', JSON.stringify(fresh));
+      setUser(fresh);
+    } catch { /* ignora errori di rete — usa i dati esistenti */ }
+  };
+
+  // Auto-refresh quando l'utente torna sulla tab/app (visibilitychange)
+  // → i genitori non devono più fare logout/login per vedere dati aggiornati
+  useEffect(() => {
+    const handle = () => {
+      if (!document.hidden && user) {
+        refreshUser();
+        // Invalida anche la cache API per dati freschi
+        import('./api').then(({ default: api }) => api.clearCache?.()).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handle);
+    return () => document.removeEventListener('visibilitychange', handle);
+  }, [user]); // eslint-disable-line
+
   const updateSede = (sedeId) => {
     localStorage.setItem('ggt_sede', sedeId);
     setSede(sedeId);
@@ -206,6 +236,7 @@ export function AuthProvider({ children }) {
       activeChildId: resolvedActiveChildId,
       setActiveChildId,
       childIds,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

@@ -244,7 +244,9 @@ export default function TeacherPresenze() {
                       }
                     </button>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{s.name}</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {s.name} <span className="font-normal text-gray-600">{s.cognome || ''}</span>
+                      </p>
                       <p className={`text-xs font-medium ${presente ? 'text-green-600' : 'text-red-500'}`}>
                         {presente ? 'Presente' : 'Assente'}
                       </p>

@@ -337,7 +337,7 @@ export default function TeacherMedia() {
                             {s.name.charAt(0)}
                           </div>
                           <span className={`text-sm font-medium ${isChecked ? 'text-gray-900' : 'text-gray-600'}`}>
-                            {s.name}
+                            {s.name} <span className="font-normal text-xs text-gray-400">{s.cognome || ''}</span>
                           </span>
                         </button>
                       );

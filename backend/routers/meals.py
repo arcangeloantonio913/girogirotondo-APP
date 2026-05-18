@@ -69,7 +69,8 @@ async def get_meals(
             ).to_list(100)
             parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
             if parent_class_ids:
-                query["class_id"] = {"$in": parent_class_ids}
+                # Mostra menu specifici per la classe DEL FIGLIO + menu universali (class_id vuoto/None)
+                query["class_id"] = {"$in": parent_class_ids + ["", None]}
         if class_id:
             query["class_id"] = class_id
 

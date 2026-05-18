@@ -4,12 +4,14 @@ import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 
 const QUANTITA_LABELS = {
-  tutto: { label: 'Tutto',  bg: '#DCFCE7', text: '#166534' },
-  bis:   { label: 'Bis',   bg: '#D1FAE5', text: '#065F46' },
-  metà:  { label: 'Metà',  bg: '#FEF9C3', text: '#854D0E' },
-  poca:  { label: 'Poca',  bg: '#FEE2E2', text: '#991B1B' },
-  no:    { label: 'Non mangiato', bg: '#F1F5F9', text: '#64748B' },
+  tutto:         { label: 'Tutto',         bg: '#DCFCE7', text: '#166534' },
+  bis:           { label: 'Bis',           bg: '#D1FAE5', text: '#065F46' },
+  metà:          { label: 'Metà',          bg: '#FEF9C3', text: '#854D0E' },
+  mangiata_poca: { label: 'Mangiata poca', bg: '#FEE2E2', text: '#991B1B' },
+  lasciata_poca: { label: 'Lasciata poca', bg: '#FECACA', text: '#7F1D1D' },
+  no:            { label: 'Non mangiato',  bg: '#F1F5F9', text: '#64748B' },
   // legacy
+  poca:  { label: 'Poca',  bg: '#FEE2E2', text: '#991B1B' },
   molta: { label: 'Molto', bg: '#D1FAE5', text: '#065F46' },
 };
 

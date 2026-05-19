@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Girogirotondo",
+    "slug": "girogirotondo-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFDD0"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "it.girogirotondo.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFDD0"
+      },
+      "package": "it.girogirotondo.app",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4169E1"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "girogirotondo-app"
+      }
+    }
+  }
+}

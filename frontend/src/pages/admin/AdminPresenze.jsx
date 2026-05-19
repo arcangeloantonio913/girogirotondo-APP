@@ -219,7 +219,7 @@ export default function AdminPresenze() {
                         <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                       )}
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">{s.name}</p>
+                        <p className="text-sm font-medium text-gray-800">{s.name} <span className="font-normal text-gray-400 text-xs">{s.cognome || ''}</span></p>
                         {rec?.nota && <p className="text-xs text-gray-400 italic">{rec.nota}</p>}
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${

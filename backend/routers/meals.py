@@ -30,11 +30,10 @@ async def get_meals(
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
-        # Seleziona menu dove: date==date OPPURE (date_from<=date AND date_to>=date)
+        # Menu singolo-giorno (vecchio formato) OPPURE range che include la data
         query["$or"] = [
             {"date": date},
             {"date_from": {"$lte": date}, "date_to": {"$gte": date}},
-            {"date_from": {"$lte": date}, "date_to": None, "date_from_only": True},
         ]
 
     if role == "admin":

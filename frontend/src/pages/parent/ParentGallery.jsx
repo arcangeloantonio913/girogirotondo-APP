@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Image, Play, User, Users, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Image, Play, User, Users, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────
    Grid di foto riutilizzabile
@@ -93,17 +93,24 @@ function Lightbox({ item, items, onClose }) {
           <img src={item.media_url} alt={item.caption} className="w-full rounded-2xl" />
         )}
 
-        <p className="text-white text-sm text-center mt-3 font-medium">{item.caption}</p>
-        <p className="text-gray-400 text-xs text-center mt-1">
-          {new Date(item.created_at).toLocaleDateString('it-IT', {
-            day: '2-digit', month: 'long', year: 'numeric'
-          })}
-        </p>
-
-        {/* Indicatore posizione */}
-        {items.length > 1 && (
-          <p className="text-gray-500 text-xs text-center mt-1">{idx + 1} / {items.length}</p>
-        )}
+        <div className="flex items-center justify-between mt-3 px-1">
+          <div>
+            <p className="text-white text-sm font-medium">{item.caption}</p>
+            <p className="text-gray-400 text-xs mt-0.5">
+              {new Date(item.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+              {items.length > 1 && <span className="ml-2 text-gray-500">{idx + 1}/{items.length}</span>}
+            </p>
+          </div>
+          {/* Download foto */}
+          {item.media_type !== 'video' && (
+            <a href={item.media_url} download={item.caption || 'foto'}
+              onClick={e => e.stopPropagation()}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors ml-3 flex-shrink-0"
+              title="Scarica foto">
+              <Download className="w-4 h-4" />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Frecce navigazione */}
@@ -133,59 +140,91 @@ function Lightbox({ item, items, onClose }) {
 export default function ParentGallery() {
   const { user, activeChildId } = useAuth();
 
-  const [tab, setTab] = useState('personale'); // 'personale' | 'classe'
+  const PAGE = 24; // foto per pagina
+  const [tab, setTab]                   = useState('personale');
   const [personalItems, setPersonalItems] = useState([]);
-  const [classItems, setClassItems] = useState([]);
+  const [classItems, setClassItems]       = useState([]);
   const [loadingPersonal, setLoadingPersonal] = useState(true);
-  const [loadingClass, setLoadingClass] = useState(false);
-  const [classId, setClassId] = useState(null);
-  const [lightbox, setLightbox] = useState(null); // { item, items }
+  const [loadingClass, setLoadingClass]   = useState(false);
+  const [classId, setClassId]             = useState(null);
+  const [lightbox, setLightbox]           = useState(null);
+  const [personalOffset, setPersonalOffset] = useState(0);
+  const [classOffset, setClassOffset]     = useState(0);
+  const [hasMorePersonal, setHasMorePersonal] = useState(false);
+  const [hasMoreClass, setHasMoreClass]   = useState(false);
 
-  const childId = activeChildId
-    || (user?.child_ids && user.child_ids[0])
-    || user?.child_id;
+  const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
 
-  // 1) Carica galleria personale + ricava class_id dallo studente
-  // NON azzerare classItems quando cambia il figlio — no flash di contenuto vuoto
+  // Download foto
+  const downloadPhoto = (item) => {
+    const a = document.createElement('a');
+    a.href = item.media_url;
+    a.download = `${item.caption || 'foto'}.jpg`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // 1) Carica galleria personale (paginata)
   useEffect(() => {
     if (!childId) return;
-    setClassItems([]); // reset solo la galleria di classe (è specifica per figlio+classe)
-    setClassId(null);
+    setClassItems([]); setClassId(null); setClassOffset(0);
+    setPersonalItems([]); setPersonalOffset(0);
     setLoadingPersonal(true);
 
-    const loadPersonal = api.get(`/gallery?student_id=${childId}`)
-      .then(res => setPersonalItems(res.data))
-      .catch(err => console.error('gallery personale:', err))
+    api.get(`/gallery?student_id=${childId}&limit=${PAGE}&offset=0`)
+      .then(res => {
+        setPersonalItems(res.data);
+        setHasMorePersonal(res.data.length === PAGE);
+      })
+      .catch(console.error)
       .finally(() => setLoadingPersonal(false));
 
-    // Recupera il class_id del bambino per la galleria di classe
-    const loadStudent = api.get(`/students?id=${childId}`)
-      .then(res => {
-        const students = Array.isArray(res.data) ? res.data : [res.data];
-        const student = students.find(s => s.id === childId) || students[0];
-        if (student?.class_id) setClassId(student.class_id);
-      })
+    // Ricava class_id dello studente
+    api.get(`/students/${childId}`)
+      .then(res => { if (res.data?.class_id) setClassId(res.data.class_id); })
       .catch(() => {
-        // fallback: cerca tra i bambini del genitore
         api.get('/students').then(res => {
-          const students = Array.isArray(res.data) ? res.data : [];
-          const student = students.find(s => s.id === childId);
-          if (student?.class_id) setClassId(student.class_id);
+          const s = (Array.isArray(res.data) ? res.data : []).find(s => s.id === childId);
+          if (s?.class_id) setClassId(s.class_id);
         }).catch(() => {});
       });
+  }, [childId]); // eslint-disable-line
 
-    Promise.all([loadPersonal, loadStudent]);
-  }, [childId]);
+  // Carica altre foto personali
+  const loadMorePersonal = () => {
+    const next = personalOffset + PAGE;
+    api.get(`/gallery?student_id=${childId}&limit=${PAGE}&offset=${next}`)
+      .then(res => {
+        setPersonalItems(prev => [...prev, ...res.data]);
+        setPersonalOffset(next);
+        setHasMorePersonal(res.data.length === PAGE);
+      }).catch(console.error);
+  };
 
-  // 2) Carica galleria di classe solo quando si seleziona il tab (lazy)
+  // 2) Carica galleria di classe (lazy, paginata)
   useEffect(() => {
     if (tab !== 'classe' || !classId || classItems.length > 0) return;
     setLoadingClass(true);
-    api.get(`/gallery?class_id=${classId}`)
-      .then(res => setClassItems(res.data))
-      .catch(err => console.error('gallery classe:', err))
+    api.get(`/gallery?class_id=${classId}&limit=${PAGE}&offset=0`)
+      .then(res => {
+        setClassItems(res.data);
+        setHasMoreClass(res.data.length === PAGE);
+      })
+      .catch(console.error)
       .finally(() => setLoadingClass(false));
-  }, [tab, classId]);
+  }, [tab, classId]); // eslint-disable-line
+
+  const loadMoreClass = () => {
+    const next = classOffset + PAGE;
+    api.get(`/gallery?class_id=${classId}&limit=${PAGE}&offset=${next}`)
+      .then(res => {
+        setClassItems(prev => [...prev, ...res.data]);
+        setClassOffset(next);
+        setHasMoreClass(res.data.length === PAGE);
+      }).catch(console.error);
+  };
 
   const activeItems = tab === 'personale' ? personalItems : classItems;
   const isLoading = tab === 'personale' ? loadingPersonal : loadingClass;
@@ -248,10 +287,20 @@ export default function ParentGallery() {
             ))}
           </div>
         ) : (
-          <PhotoGrid
-            items={activeItems}
-            onSelect={(item, items) => setLightbox({ item, items })}
-          />
+          <>
+            <PhotoGrid
+              items={activeItems}
+              onSelect={(item, items) => setLightbox({ item, items })}
+            />
+            {/* Carica altre foto */}
+            {(tab === 'personale' ? hasMorePersonal : hasMoreClass) && (
+              <button
+                onClick={tab === 'personale' ? loadMorePersonal : loadMoreClass}
+                className="w-full py-3 rounded-2xl text-sm font-semibold text-gray-500 bg-white shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors">
+                Carica altre foto
+              </button>
+            )}
+          </>
         )}
       </div>
 

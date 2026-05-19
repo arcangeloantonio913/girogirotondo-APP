@@ -49,6 +49,8 @@ async def get_gallery(
     student_id: Optional[str] = None,
     media_type: Optional[str] = None,
     date: Optional[str] = None,
+    limit: int = 24,       # max foto per richiesta — evita risposta da centinaia di MB
+    offset: int = 0,       # paginazione
     current_user: dict = Depends(get_current_user),
 ):
     db = get_db()
@@ -79,7 +81,11 @@ async def get_gallery(
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["created_at"] = {"$regex": f"^{date}"}
 
-    items = await db.gallery.find(query, {"_id": 0}).to_list(1000)
+    limit  = max(1, min(limit, 50))   # hard cap 50 per richiesta
+    items  = await db.gallery.find(query, {"_id": 0}) \
+        .sort("created_at", -1) \
+        .skip(offset) \
+        .to_list(limit)
     return [_refresh_signed_url(i) for i in items]
 
 

@@ -73,7 +73,7 @@ export default function TeacherMedia() {
     if (!primaryClassId) return;
     Promise.all([
       api.get('/students'),
-      api.get(`/gallery?class_id=${primaryClassId}`),
+      api.get(`/gallery?class_id=${primaryClassId}&limit=24&offset=0`),
     ]).then(([sRes, gRes]) => {
       setStudents(sRes.data);
       setGallery(gRes.data);

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
+import DashboardHeader from '../../components/layout/DashboardHeader';
 import api from '../../lib/api';
 
 const C = {
@@ -96,6 +97,7 @@ export default function ParentDashboard({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.root}>
+      <DashboardHeader navigation={navigation}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 

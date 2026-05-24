@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
+import DashboardHeader from '../../components/layout/DashboardHeader';
 import api from '../../lib/api';
 
 const C = { bg: '#FFFDD0', white: '#FFFFFF', primary: '#4169E1', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
@@ -34,6 +35,7 @@ export default function AdminDashboard({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.root}>
+      <DashboardHeader navigation={navigation}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {/* Header */}
@@ -88,6 +90,7 @@ export default function AdminDashboard({ navigation }: any) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      </DashboardHeader>
     </SafeAreaView>
   );
 }

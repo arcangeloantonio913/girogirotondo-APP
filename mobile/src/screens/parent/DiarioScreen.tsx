@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
-const TODAY = new Date().toISOString().split('T')[0];
+const C = { babyBlue: '#A7C7E7', babyPink: '#F4C2C2', text: '#1A202C', muted: '#9CA3AF', white: '#FFFFFF', border: '#F3F4F6', bg: '#EBF0FF' };
 
 export default function ParentDiario() {
   const { activeChildId, user } = useAuth();
-  const [entries, setEntries]   = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
   useEffect(() => {
@@ -22,57 +21,54 @@ export default function ParentDiario() {
       .finally(() => setLoading(false));
   }, [childId]);
 
-  if (loading) return <ScreenLayout title="Diario di Bordo" loading />;
-
   return (
-    <ScreenLayout title="Diario di Bordo" scrollable={false}>
-      {entries.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-          <Ionicons name="book-outline" size={64} color="#E5E7EB" />
-          <Text style={{ color: '#9CA3AF', marginTop: 12, fontSize: 15 }}>Nessuna nota disponibile</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={entries}
-          keyExtractor={i => i.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          renderItem={({ item }) => {
-            const isToday = item.date === TODAY;
-            return (
-              <View style={{
-                backgroundColor: isToday ? '#EBF0FF' : '#FFF',
-                borderRadius: 16, padding: 16,
-                borderLeftWidth: isToday ? 4 : 0, borderLeftColor: '#4169E1',
-                shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
-              }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: isToday ? '#4169E1' : '#9CA3AF', textTransform: 'capitalize' }}>
-                    {new Date(item.date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </Text>
-                  {isToday && (
-                    <View style={{ backgroundColor: '#4169E1', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700' }}>OGGI</Text>
-                    </View>
-                  )}
-                </View>
-                {item.mood && <Text style={{ fontSize: 28, marginBottom: 6 }}>{item.mood}</Text>}
-                {item.activities && item.activities.length > 0 && (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+    <ScreenLayout title="Diario di Bordo" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+      <FlatList
+        data={entries}
+        keyExtractor={(_, i) => String(i)}
+        contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+        ListEmptyComponent={
+          <View style={s.empty}>
+            <Text style={{ fontSize: 48 }}>📓</Text>
+            <Text style={s.emptyText}>Nessuna nota nel diario</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={s.card}>
+            <View style={s.cardTop}>
+              <Text style={{ fontSize: 28 }}>{item.mood || '😊'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.date}>{new Date(item.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+                {item.activities?.length > 0 && (
+                  <View style={s.tagsRow}>
                     {item.activities.map((a: string, i: number) => (
-                      <View key={i} style={{ backgroundColor: '#EBF0FF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 }}>
-                        <Text style={{ fontSize: 12, color: '#4169E1', fontWeight: '600' }}>{a}</Text>
-                      </View>
+                      <View key={i} style={s.tag}><Text style={s.tagText}>{a}</Text></View>
                     ))}
                   </View>
                 )}
-                {item.note && (
-                  <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20 }}>{item.note}</Text>
-                )}
               </View>
-            );
-          }}
-        />
-      )}
+            </View>
+            {(item.summary || item.note) && (
+              <View style={s.noteBox}>
+                <Text style={s.noteText}>{item.summary || item.note}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      />
     </ScreenLayout>
   );
 }
+
+const s = StyleSheet.create({
+  empty:    { alignItems: 'center', paddingTop: 80 },
+  emptyText:{ fontSize: 14, color: C.muted, marginTop: 12 },
+  card:     { backgroundColor: C.white, borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  cardTop:  { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 8 },
+  date:     { fontSize: 13, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
+  tagsRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  tag:      { backgroundColor: C.bg, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  tagText:  { fontSize: 10, color: C.babyBlue, fontWeight: '600' },
+  noteBox:  { backgroundColor: '#EBF0FF30', borderRadius: 10, padding: 10 },
+  noteText: { fontSize: 12, color: '#374151', lineHeight: 18 },
+});

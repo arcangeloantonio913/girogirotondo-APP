@@ -1,34 +1,45 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { auth } from './firebase';
 
 const BACKEND_URL = 'https://girogirotondo-app-production.up.railway.app';
-const API_BASE    = `${BACKEND_URL}/api`;
 
+// Istanza generale (timeout 20s)
 const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: `${BACKEND_URL}/api`,
   timeout: 20000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Allega token + sede header a ogni richiesta
+// Istanza per il login (timeout 35s — Railway può essere lento al risveglio)
+export const loginApi = axios.create({
+  baseURL: `${BACKEND_URL}/api`,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 api.interceptors.request.use(async (config) => {
   try {
-    const token = await SecureStore.getItemAsync('ggt_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-
+    const fbUser = auth.currentUser;
+    if (fbUser) {
+      const t = await fbUser.getIdToken(false);
+      config.headers.Authorization = `Bearer ${t}`;
+    } else {
+      const t = await SecureStore.getItemAsync('ggt_token');
+      if (t) config.headers.Authorization = `Bearer ${t}`;
+    }
     const sede = await SecureStore.getItemAsync('ggt_sede');
     if (sede) config.headers['X-Sede-Id'] = sede;
   } catch {}
   return config;
 });
 
-// Gestione errori — logout solo se sessione esplicitamente revocata
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     if (err.response?.status === 401) {
-      const detail = err.response?.data?.detail || '';
-      if (detail.includes('disabilitato') || detail.includes('revocato')) {
+      const d = err.response?.data?.detail || '';
+      if (d.includes('disabilitato') || d.includes('revocato')) {
         await SecureStore.deleteItemAsync('ggt_token');
         await SecureStore.deleteItemAsync('ggt_user');
       }

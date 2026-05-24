@@ -1,156 +1,106 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
+const C = { green: '#32CD32', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
 const TODAY = new Date().toISOString().split('T')[0];
+const PIATTI = ['primo','secondo','contorno','frutta','merenda_mattina','merenda_pomeriggio'];
 
 export default function AdminMensa() {
   const { sede } = useAuth();
-  const [meals, setMeals]       = useState<any[]>([]);
-  const [classes, setClasses]   = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [meals, setMeals]   = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving]     = useState(false);
-  const [form, setForm] = useState({
-    class_id: '', date_from: TODAY, date_to: TODAY,
-    primo: '', secondo: '', contorno: '', frutta: '',
-    merenda_mattina: '', merenda_pomeriggio: '',
-  });
+  const [form, setForm] = useState({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '' });
+  const [saving, setSaving] = useState(false);
 
-  const loadData = () => {
-    setLoading(true);
-    Promise.all([
-      api.get(`/meals?date=${TODAY}`),
-      api.get('/classes'),
-    ]).then(([m, c]) => {
-      setMeals(m.data || []);
-      setClasses(c.data || []);
-    }).catch(() => {}).finally(() => setLoading(false));
-  };
+  useEffect(() => {
+    api.get('/meals').then(r => setMeals(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+  }, [sede]);
 
-  useEffect(() => { loadData(); }, [sede]);
-
-  const deleteMeal = (id: string) => {
-    Alert.alert('Elimina menu', 'Eliminare questo menu?', [
-      { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: async () => {
-        try { await api.delete(`/meals/menu/${id}`); setMeals(prev => prev.filter(m => m.id !== id)); }
-        catch { Alert.alert('Errore', 'Impossibile eliminare.'); }
-      }},
-    ]);
-  };
-
-  const saveMeal = async () => {
-    if (!form.primo) { Alert.alert('Attenzione', 'Inserisci almeno il primo piatto.'); return; }
+  const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await api.post('/meals/menu', { ...form, date: form.date_from === form.date_to ? form.date_from : null });
-      setMeals(prev => [...prev, res.data]);
+      const res = await api.post('/meals', form);
+      setMeals(prev => [res.data, ...prev]);
       setShowForm(false);
-    } catch { Alert.alert('Errore', 'Impossibile salvare.'); }
+    } catch { Alert.alert('Errore', 'Impossibile salvare'); }
     finally { setSaving(false); }
   };
 
-  const getClassName = (id: string) => classes.find(c => c.id === id)?.name || 'Tutte le classi';
-
-  if (loading) return <ScreenLayout title="Menu Mensa" loading />;
-
   return (
-    <ScreenLayout title="Menu Mensa" scrollable={false}
-      rightAction={
-        <TouchableOpacity onPress={() => setShowForm(true)}
-          style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#EBF0FF', justifyContent: 'center', alignItems: 'center' }}>
-          <Ionicons name="add" size={22} color="#4169E1" />
-        </TouchableOpacity>
-      }>
-
-      {meals.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-          <Text style={{ fontSize: 40 }}>🍽️</Text>
-          <Text style={{ color: '#9CA3AF', marginTop: 12 }}>Nessun menu per oggi</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={meals}
-          keyExtractor={m => m.id}
-          contentContainerStyle={{ padding: 16, gap: 10 }}
-          renderItem={({ item: m }) => (
-            <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#1A202C' }}>{getClassName(m.class_id)}</Text>
-                <TouchableOpacity onPress={() => deleteMeal(m.id)}>
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-              {[['Primo', m.primo], ['Secondo', m.secondo], ['Contorno', m.contorno], ['Frutta', m.frutta]].filter(([,v]) => v).map(([l, v]) => (
-                <View key={l as string} style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', width: 60 }}>{l}:</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', flex: 1 }}>{v}</Text>
-                </View>
+    <ScreenLayout title="Menu Mensa" showBack color={C.green} loading={loading} scrollable={false}>
+      <FlatList
+        data={meals}
+        keyExtractor={(_, i) => String(i)}
+        contentContainerStyle={{ padding: 12 }}
+        ListHeaderComponent={
+          <TouchableOpacity onPress={() => setShowForm(true)} style={s.addBtn}>
+            <Ionicons name="add" size={18} color={C.white} />
+            <Text style={s.addBtnText}>Aggiungi Menu</Text>
+          </TouchableOpacity>
+        }
+        ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 48 }}>🍽️</Text><Text style={s.emptyText}>Nessun menu configurato</Text></View>}
+        renderItem={({ item }) => (
+          <View style={s.card}>
+            <Text style={s.cardDate}>{item.date_from}{item.date_to && item.date_to !== item.date_from ? ` → ${item.date_to}` : ''}</Text>
+            <View style={s.mealGrid}>
+              {[['primo','🍝'],['secondo','🍗'],['contorno','🥗'],['frutta','🍎']].map(([k,e]) => (
+                item[k] ? <View key={k} style={s.mealItem}><Text style={s.mealIcon}>{e}</Text><Text style={s.mealValue}>{item[k]}</Text></View> : null
               ))}
             </View>
-          )}
-        />
-      )}
-
-      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
-        <View style={{ flex: 1, backgroundColor: '#FFFDD0' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C' }}>Nuovo Menu</Text>
-            <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color="#374151" /></TouchableOpacity>
           </View>
-          <FlatList
-            data={[1]}
-            keyExtractor={() => 'f'}
-            contentContainerStyle={{ padding: 16, gap: 12 }}
-            renderItem={() => (
-              <View style={{ gap: 12 }}>
-                {/* Classe */}
-                <View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 8 }}>Classe (opzionale)</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_id: '' }))}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: !form.class_id ? '#4169E1' : '#F3F4F6' }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: !form.class_id ? '#FFF' : '#374151' }}>Tutte</Text>
-                    </TouchableOpacity>
-                    {classes.map(c => (
-                      <TouchableOpacity key={c.id} onPress={() => setForm(p => ({ ...p, class_id: c.id }))}
-                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: form.class_id === c.id ? '#4169E1' : '#F3F4F6' }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: form.class_id === c.id ? '#FFF' : '#374151' }}>{c.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                {/* Piatti */}
-                {[
-                  { key: 'primo',             label: 'Primo *' },
-                  { key: 'secondo',           label: 'Secondo *' },
-                  { key: 'contorno',          label: 'Contorno' },
-                  { key: 'frutta',            label: 'Frutta' },
-                  { key: 'merenda_mattina',   label: 'Merenda mattina' },
-                  { key: 'merenda_pomeriggio',label: 'Merenda pomeriggio' },
-                ].map(f => (
-                  <View key={f.key}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 }}>{f.label}</Text>
-                    <TextInput
-                      value={form[f.key as keyof typeof form]}
-                      onChangeText={t => setForm(p => ({ ...p, [f.key]: t }))}
-                      placeholder={f.label.replace(' *', '')} placeholderTextColor="#D1D5DB"
-                      style={{ borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: '#1A202C', backgroundColor: '#FFF' }} />
-                  </View>
-                ))}
-                <TouchableOpacity onPress={saveMeal} disabled={saving}
-                  style={{ backgroundColor: saving ? '#93C5FD' : '#4169E1', borderRadius: 14, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
-                  {saving ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>Pubblica Menu</Text>}
-                </TouchableOpacity>
-              </View>
-            )}
-          />
+        )}
+      />
+      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Nuovo Menu</Text>
+            <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color={C.text} /></TouchableOpacity>
+          </View>
+          {[
+            { key: 'date_from', label: 'Data inizio', ph: 'YYYY-MM-DD' },
+            { key: 'date_to',   label: 'Data fine',   ph: 'YYYY-MM-DD' },
+            { key: 'primo',     label: '🍝 Primo',    ph: 'Es. Pasta al pomodoro' },
+            { key: 'secondo',   label: '🍗 Secondo',  ph: 'Es. Pollo arrosto' },
+            { key: 'contorno',  label: '🥗 Contorno', ph: 'Es. Insalata mista' },
+            { key: 'frutta',    label: '🍎 Frutta',   ph: 'Es. Mela' },
+            { key: 'merenda_mattina',    label: '☕ Merenda mattina',    ph: 'Es. Latte e biscotti' },
+            { key: 'merenda_pomeriggio', label: '🍪 Merenda pomeriggio', ph: 'Es. Frutta' },
+          ].map(f => (
+            <View key={f.key}>
+              <Text style={s.formLabel}>{f.label}</Text>
+              <TextInput style={s.input} value={(form as any)[f.key]} onChangeText={t => setForm(prev => ({ ...prev, [f.key]: t }))} placeholder={f.ph} placeholderTextColor={C.muted} />
+            </View>
+          ))}
+          <TouchableOpacity style={s.submitBtn} onPress={handleSave} disabled={saving}>
+            <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Menu'}</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </ScreenLayout>
   );
 }
+
+const s = StyleSheet.create({
+  addBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.green, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, justifyContent: 'center' },
+  addBtnText:{ color: C.white, fontWeight: '700', fontSize: 14 },
+  empty:     { alignItems: 'center', paddingTop: 60 },
+  emptyText: { fontSize: 14, color: C.muted, marginTop: 12 },
+  card:      { backgroundColor: C.white, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  cardDate:  { fontSize: 13, fontWeight: '700', color: C.text, marginBottom: 10 },
+  mealGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  mealItem:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F0FFF0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  mealIcon:  { fontSize: 16 },
+  mealValue: { fontSize: 12, fontWeight: '600', color: C.text },
+  modal:     { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
+  modalHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle:{ fontSize: 20, fontWeight: '800', color: C.text },
+  formLabel: { fontSize: 13, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginTop: 12 },
+  input:     { borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, backgroundColor: C.white },
+  submitBtn: { backgroundColor: C.green, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitText:{ color: C.white, fontWeight: '700', fontSize: 15 },
+});

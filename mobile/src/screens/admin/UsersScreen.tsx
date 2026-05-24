@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, FlatList, TextInput, TouchableOpacity,
-  Alert, ActivityIndicator, Modal,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+
+const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
+  admin:   { bg: '#EBF0FF', text: '#4169E1' },
+  teacher: { bg: '#FFF0F7', text: '#FF69B4' },
+  parent:  { bg: '#F0FFF0', text: '#32CD32' },
+};
 
 function generatePassword(len = 10) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
@@ -15,262 +19,141 @@ function generatePassword(len = 10) {
 
 export default function AdminUsers() {
   const { sede } = useAuth();
-  const [users, setUsers]       = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
-  const [classes, setClasses]   = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
-  const [tab, setTab]           = useState<'users' | 'students'>('users');
-
-  // Dialog iscrizione
-  const [showIsc, setShowIsc]   = useState(false);
-  const [iscForm, setIscForm]   = useState({
-    bambino_nome: '', bambino_cognome: '', class_id: '',
-    genitore_email: '', genitore_nome: '', genitore_password: generatePassword(),
-  });
-  const [iscLoading, setIscLoading] = useState(false);
-  const [iscResult, setIscResult]   = useState<any>(null);
+  const [users,   setUsers]   = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', role: 'parent', password: generatePassword() });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.get('/users'),
-      api.get('/students'),
-      api.get('/classes'),
-    ]).then(([u, s, c]) => {
-      setUsers(u.data || []);
-      setStudents(s.data || []);
-      setClasses(c.data || []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    api.get('/users').then(r => setUsers(r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
-  const filteredUsers = users.filter(u =>
-    !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
-  );
-  const filteredStudents = students.filter(s =>
-    !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.cognome?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter(u => `${u.name} ${u.email}`.toLowerCase().includes(search.toLowerCase()));
 
-  const deleteUser = (id: string, name: string) => {
-    Alert.alert('Elimina utente', `Elimina ${name}?`, [
-      { text: 'Annulla', style: 'cancel' },
-      {
-        text: 'Elimina', style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/users/${id}`);
-            setUsers(prev => prev.filter(u => u.id !== id));
-          } catch { Alert.alert('Errore', 'Impossibile eliminare.'); }
-        },
-      },
-    ]);
-  };
-
-  const deleteStudent = (id: string, name: string) => {
-    Alert.alert('Elimina alunno', `Elimina ${name}?`, [
-      { text: 'Annulla', style: 'cancel' },
-      {
-        text: 'Elimina', style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/students/${id}`);
-            setStudents(prev => prev.filter(s => s.id !== id));
-          } catch { Alert.alert('Errore', 'Impossibile eliminare.'); }
-        },
-      },
-    ]);
-  };
-
-  const handleIscrizione = async () => {
-    if (!iscForm.bambino_nome || !iscForm.bambino_cognome || !iscForm.class_id || !iscForm.genitore_email) {
-      Alert.alert('Attenzione', 'Compila tutti i campi obbligatori.');
-      return;
-    }
-    setIscLoading(true);
+  const handleCreate = async () => {
+    if (!form.name || !form.email) { Alert.alert('Attenzione', 'Nome e email obbligatori'); return; }
+    setSaving(true);
     try {
-      const res = await api.post('/users/iscrizione', { ...iscForm, sede_id: sede });
-      setIscResult(res.data);
-      setStudents(prev => [...prev, res.data.student]);
-      if (res.data.parent) setUsers(prev => [...prev, res.data.parent]);
-    } catch (e: any) {
-      Alert.alert('Errore', e.response?.data?.detail || 'Iscrizione fallita.');
-    } finally { setIscLoading(false); }
+      const res = await api.post('/users', form);
+      setUsers(prev => [res.data, ...prev]);
+      setShowForm(false);
+      Alert.alert('Utente creato', `Email: ${form.email}\nPassword: ${form.password}`);
+      setForm({ name: '', email: '', role: 'parent', password: generatePassword() });
+    } catch (err: any) { Alert.alert('Errore', err.response?.data?.detail || 'Impossibile creare'); }
+    finally { setSaving(false); }
   };
 
-  const roleColor: Record<string, string> = { admin: '#4169E1', teacher: '#FF69B4', parent: '#32CD32' };
-  const roleLabel: Record<string, string> = { admin: 'Admin', teacher: 'Maestra', parent: 'Genitore' };
-
-  if (loading) return <ScreenLayout title="Gestione Utenti" loading />;
+  const handleDelete = (id: string) => {
+    Alert.alert('Elimina utente', 'Sei sicuro?', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: async () => {
+        try { await api.delete(`/users/${id}`); setUsers(prev => prev.filter(u => u.id !== id)); }
+        catch { Alert.alert('Errore', 'Impossibile eliminare'); }
+      }},
+    ]);
+  };
 
   return (
-    <ScreenLayout title="Gestione Utenti" scrollable={false}
-      rightAction={
-        <TouchableOpacity onPress={() => { setShowIsc(true); setIscResult(null); }}
-          style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#EBF0FF', justifyContent: 'center', alignItems: 'center' }}>
-          <Ionicons name="person-add" size={18} color="#4169E1" />
-        </TouchableOpacity>
-      }>
-
-      {/* Search */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 16, marginTop: 16, borderRadius: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
-        <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-        <TextInput value={search} onChangeText={setSearch} placeholder="Cerca..." placeholderTextColor="#D1D5DB"
-          style={{ flex: 1, height: 44, fontSize: 15, color: '#1A202C' }} />
-        {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={18} color="#9CA3AF" /></TouchableOpacity> : null}
-      </View>
-
-      {/* Tab */}
-      <View style={{ flexDirection: 'row', margin: 16, marginBottom: 8, backgroundColor: '#F3F4F6', borderRadius: 12, padding: 3 }}>
-        {(['users', 'students'] as const).map(t => (
-          <TouchableOpacity key={t} onPress={() => setTab(t)}
-            style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: tab === t ? '#FFF' : 'transparent' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: tab === t ? '#1A202C' : '#9CA3AF' }}>
-              {t === 'users' ? `Utenti (${users.length})` : `Alunni (${students.length})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {tab === 'users' ? (
-        <FlatList
-          data={filteredUsers}
-          keyExtractor={u => u.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-          renderItem={({ item: u }) => (
-            <View style={{ backgroundColor: '#FFF', borderRadius: 14, padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: `${roleColor[u.role]}25`, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: roleColor[u.role] }}>{u.name?.charAt(0)}</Text>
+    <ScreenLayout title="Gestione Utenti" showBack color={C.primary} loading={loading} scrollable={false}>
+      <FlatList
+        data={filtered}
+        keyExtractor={u => u.id}
+        contentContainerStyle={{ padding: 12 }}
+        ListHeaderComponent={
+          <>
+            <View style={s.searchRow}>
+              <Ionicons name="search-outline" size={16} color={C.muted} style={{ marginRight: 8 }} />
+              <TextInput style={s.searchInput} value={search} onChangeText={setSearch} placeholder="Cerca utenti..." placeholderTextColor={C.muted} />
+            </View>
+            <TouchableOpacity onPress={() => setShowForm(true)} style={s.addBtn}>
+              <Ionicons name="person-add-outline" size={18} color={C.white} />
+              <Text style={s.addBtnText}>Nuovo Utente</Text>
+            </TouchableOpacity>
+          </>
+        }
+        ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 48 }}>👥</Text><Text style={s.emptyText}>Nessun utente trovato</Text></View>}
+        renderItem={({ item }) => {
+          const rc = ROLE_COLORS[item.role] || ROLE_COLORS.parent;
+          return (
+            <View style={s.card}>
+              <View style={[s.avatar, { backgroundColor: rc.bg }]}>
+                <Text style={[s.avatarText, { color: rc.text }]}>{item.name?.charAt(0) || '?'}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A202C' }}>{u.name}</Text>
-                <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{u.email}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <View style={{ backgroundColor: `${roleColor[u.role]}20`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: roleColor[u.role] }}>{roleLabel[u.role]}</Text>
-                  </View>
+                <Text style={s.userName}>{item.name} {item.cognome}</Text>
+                <Text style={s.userEmail}>{item.email}</Text>
+                <View style={[s.roleBadge, { backgroundColor: rc.bg }]}>
+                  <Text style={[s.roleText, { color: rc.text }]}>{item.role}</Text>
                 </View>
               </View>
-              {!u.is_superadmin && (
-                <TouchableOpacity onPress={() => deleteUser(u.id, u.name)} style={{ padding: 8 }}>
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        />
-      ) : (
-        <FlatList
-          data={filteredStudents}
-          keyExtractor={s => s.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-          renderItem={({ item: s }) => {
-            const cls = classes.find(c => c.id === s.class_id);
-            return (
-              <View style={{ backgroundColor: '#FFF', borderRadius: 14, padding: 14, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#EBF0FF', justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '900', color: '#4169E1' }}>{s.name?.charAt(0)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1A202C' }}>{s.name} {s.cognome || ''}</Text>
-                  {cls && <Text style={{ fontSize: 12, color: '#FF69B4', fontWeight: '600' }}>{cls.name}</Text>}
-                </View>
-                <TouchableOpacity onPress={() => deleteStudent(s.id, s.name)} style={{ padding: 8 }}>
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-            );
-          }}
-        />
-      )}
-
-      {/* Modal Iscrizione */}
-      <Modal visible={showIsc} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowIsc(false)}>
-        <View style={{ flex: 1, backgroundColor: '#FFFDD0' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C' }}>Iscrivi Bambino</Text>
-            <TouchableOpacity onPress={() => setShowIsc(false)}>
-              <Ionicons name="close" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
-
-          {iscResult ? (
-            <View style={{ padding: 24, gap: 16 }}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 40 }}>✅</Text>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C', marginTop: 12 }}>
-                  {iscResult.student?.name} iscritto!
-                </Text>
-                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                  {iscResult.email_inviata ? '📧 Email inviata al genitore' : '📧 Consegna manuale credenziali'}
-                </Text>
-              </View>
-              <View style={{ backgroundColor: '#EBF0FF', borderRadius: 16, padding: 16, gap: 6 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#4169E1', textTransform: 'uppercase' }}>Credenziali genitore</Text>
-                <Text style={{ fontSize: 14, color: '#374151' }}>Email: {iscResult.genitore_email}</Text>
-                <Text style={{ fontSize: 14, color: '#374151' }}>Password: <Text style={{ fontWeight: '800', color: '#4169E1' }}>{iscForm.genitore_password}</Text></Text>
-              </View>
-              <TouchableOpacity onPress={() => { setShowIsc(false); setIscResult(null); setIscForm({ bambino_nome: '', bambino_cognome: '', class_id: '', genitore_email: '', genitore_nome: '', genitore_password: generatePassword() }); }}
-                style={{ backgroundColor: '#4169E1', borderRadius: 14, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>Chiudi</Text>
+              <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.deleteBtn}>
+                <Ionicons name="trash-outline" size={16} color={C.red} />
               </TouchableOpacity>
             </View>
-          ) : (
-            <FlatList
-              data={[1]}
-              keyExtractor={() => 'form'}
-              contentContainerStyle={{ padding: 16, gap: 12 }}
-              renderItem={() => (
-                <View style={{ gap: 12 }}>
-                  {[
-                    { key: 'bambino_nome', label: 'Nome bambino *', placeholder: 'Nome' },
-                    { key: 'bambino_cognome', label: 'Cognome bambino *', placeholder: 'Cognome' },
-                    { key: 'genitore_nome', label: 'Nome genitore', placeholder: 'Nome Cognome' },
-                    { key: 'genitore_email', label: 'Email genitore *', placeholder: 'email@esempio.it', keyboard: 'email-address' },
-                  ].map(f => (
-                    <View key={f.key}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 }}>{f.label}</Text>
-                      <TextInput
-                        value={iscForm[f.key as keyof typeof iscForm]}
-                        onChangeText={t => setIscForm(prev => ({ ...prev, [f.key]: t }))}
-                        placeholder={f.placeholder} placeholderTextColor="#D1D5DB"
-                        keyboardType={(f.keyboard || 'default') as any}
-                        autoCapitalize={f.keyboard === 'email-address' ? 'none' : 'words'}
-                        style={{ borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: '#1A202C', backgroundColor: '#FFF' }} />
-                    </View>
-                  ))}
+          );
+        }}
+      />
 
-                  {/* Classe */}
-                  <View>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 8 }}>Classe *</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {classes.map(c => (
-                        <TouchableOpacity key={c.id} onPress={() => setIscForm(prev => ({ ...prev, class_id: c.id }))}
-                          style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, backgroundColor: iscForm.class_id === c.id ? '#4169E1' : '#F3F4F6' }}>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: iscForm.class_id === c.id ? '#FFF' : '#374151' }}>{c.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Password */}
-                  <View style={{ backgroundColor: '#EBF0FF', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Password:</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#4169E1' }}>{iscForm.genitore_password}</Text>
-                    <TouchableOpacity onPress={() => setIscForm(prev => ({ ...prev, genitore_password: generatePassword() }))}>
-                      <Ionicons name="refresh" size={18} color="#4169E1" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity onPress={handleIscrizione} disabled={iscLoading}
-                    style={{ backgroundColor: iscLoading ? '#86EFAC' : '#32CD32', borderRadius: 14, height: 50, justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
-                    {iscLoading ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>✓ Iscrivi</Text>}
-                  </TouchableOpacity>
-                </View>
-              )}
-            />
-          )}
+      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Nuovo Utente</Text>
+            <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color={C.text} /></TouchableOpacity>
+          </View>
+          {[
+            { key: 'name', label: 'Nome', placeholder: 'Nome e cognome' },
+            { key: 'email', label: 'Email', placeholder: 'email@esempio.it', keyboard: 'email-address' as any },
+            { key: 'password', label: 'Password', placeholder: 'Password' },
+          ].map(f => (
+            <View key={f.key}>
+              <Text style={s.formLabel}>{f.label}</Text>
+              <TextInput style={s.input} value={(form as any)[f.key]} onChangeText={t => setForm(prev => ({ ...prev, [f.key]: t }))}
+                placeholder={f.placeholder} keyboardType={f.keyboard} autoCapitalize="none" />
+            </View>
+          ))}
+          <Text style={s.formLabel}>Ruolo</Text>
+          <View style={s.roleRow}>
+            {['parent', 'teacher', 'admin'].map(r => (
+              <TouchableOpacity key={r} onPress={() => setForm(prev => ({ ...prev, role: r }))}
+                style={[s.roleBtn, form.role === r && { backgroundColor: C.primary, borderColor: C.primary }]}>
+                <Text style={[s.roleBtnText, form.role === r && { color: C.white }]}>{r}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={s.submitBtn} onPress={handleCreate} disabled={saving}>
+            <Text style={s.submitText}>{saving ? 'Creazione...' : 'Crea Account'}</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </ScreenLayout>
   );
 }
+
+const s = StyleSheet.create({
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.white, borderRadius: 12, paddingHorizontal: 12, marginBottom: 10, borderWidth: 1, borderColor: C.border, height: 44 },
+  searchInput:{ flex: 1, fontSize: 14, color: C.text },
+  addBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 12, justifyContent: 'center' },
+  addBtnText:{ color: C.white, fontWeight: '700', fontSize: 14 },
+  empty:     { alignItems: 'center', paddingTop: 60 },
+  emptyText: { fontSize: 14, color: C.muted, marginTop: 12 },
+  card:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.white, borderRadius: 14, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: C.border },
+  avatar:    { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  avatarText:{ fontSize: 16, fontWeight: '800' },
+  userName:  { fontSize: 14, fontWeight: '700', color: C.text },
+  userEmail: { fontSize: 12, color: C.muted },
+  roleBadge: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 3 },
+  roleText:  { fontSize: 10, fontWeight: '700' },
+  deleteBtn: { padding: 8 },
+  modal:     { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
+  modalHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle:{ fontSize: 20, fontWeight: '800', color: C.text },
+  formLabel: { fontSize: 13, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginTop: 14 },
+  input:     { borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, backgroundColor: C.white },
+  roleRow:   { flexDirection: 'row', gap: 10 },
+  roleBtn:   { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
+  roleBtnText:{ fontSize: 13, fontWeight: '700', color: C.muted },
+  submitBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitText:{ color: C.white, fontWeight: '700', fontSize: 15 },
+});

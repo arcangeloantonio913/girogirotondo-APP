@@ -1,137 +1,73 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, FlatList, TouchableOpacity, Image,
-  Alert, ActivityIndicator, Dimensions,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, Alert, Dimensions, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
 const { width } = Dimensions.get('window');
-const IMG_SIZE  = (width - 48) / 2;
-const PAGE      = 20;
-
-async function compressToBase64(uri: string): Promise<string> {
-  // Legge il file come base64
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  return `data:image/jpeg;base64,${base64}`;
-}
+const IMG = (width - 48) / 2;
+const C = { babyGreen: '#98FB98', green: '#32CD32', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
 
 export default function TeacherMedia() {
   const { user } = useAuth();
   const classId = user?.class_ids?.[0] || user?.class_id;
-  const [gallery, setGallery]   = useState<any[]>([]);
-  const [students, setStudents] = useState<any[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [items,    setItems]    = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
-    Promise.all([
-      api.get('/students'),
-      api.get(`/gallery?class_id=${classId}&limit=${PAGE}&offset=0`),
-    ]).then(([sRes, gRes]) => {
-      setStudents(sRes.data || []);
-      setGallery(gRes.data || []);
-    }).catch(() => {}).finally(() => setLoading(false));
+    api.get(`/gallery?class_id=${classId}&limit=40`)
+      .then(r => setItems(r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, [classId]);
 
-  const pickAndUpload = async () => {
+  const handlePick = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permesso necessario', 'Consenti accesso alla galleria.'); return; }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.6,
-      exif: false,
-    });
-
-    if (result.canceled || !result.assets.length) return;
-    if (selected.length === 0) { Alert.alert('Seleziona bambini', 'Seleziona almeno un bambino prima di caricare.'); return; }
-
+    if (!perm.granted) { Alert.alert('Permesso negato', 'Concedi l\'accesso alla galleria nelle impostazioni'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    if (result.canceled || !result.assets?.[0]) return;
     setUploading(true);
-    let ok = 0;
-    for (const asset of result.assets) {
-      try {
-        const dataURL = await compressToBase64(asset.uri);
-        const today   = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-        const res = await api.post('/gallery/upload-b64', {
-          class_id:    classId,
-          student_ids: selected,
-          media_type:  'photo',
-          caption:     today,
-          media_url:   dataURL,
-        });
-        setGallery(prev => [res.data, ...prev]);
-        ok++;
-      } catch {}
-    }
-    setUploading(false);
-    setShowPicker(false);
-    Alert.alert('✓', `${ok} foto caricate!`);
+    try {
+      const uri = result.assets[0].uri;
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+      const res = await api.post('/gallery', { class_id: classId, media_url: `data:image/jpeg;base64,${base64}`, media_type: 'image' });
+      setItems(prev => [res.data, ...prev]);
+    } catch { Alert.alert('Errore', 'Impossibile caricare la foto'); }
+    finally { setUploading(false); }
   };
 
-  if (loading) return <ScreenLayout title="Galleria Media" loading />;
-
   return (
-    <ScreenLayout title="Galleria Media" scrollable={false}
-      rightAction={
-        <TouchableOpacity onPress={() => setShowPicker(!showPicker)}
-          style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0FFF0', justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ fontSize: 22, color: '#32CD32' }}>+</Text>
-        </TouchableOpacity>
-      }>
-
-      {showPicker && (
-        <View style={{ backgroundColor: '#FFF', margin: 16, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 }}>
-          <Text style={{ fontSize: 14, fontWeight: '800', color: '#1A202C', marginBottom: 10 }}>
-            Seleziona i bambini nelle foto
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-            {students.map(s => (
-              <TouchableOpacity key={s.id} onPress={() => setSelected(prev => prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id])}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: selected.includes(s.id) ? '#32CD32' : '#F3F4F6' }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: selected.includes(s.id) ? '#FFF' : '#374151' }}>
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <TouchableOpacity onPress={pickAndUpload} disabled={uploading}
-            style={{ backgroundColor: uploading ? '#86EFAC' : '#32CD32', borderRadius: 14, height: 48, justifyContent: 'center', alignItems: 'center' }}>
-            {uploading ? <ActivityIndicator color="#FFF" /> : (
-              <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>📷 Scegli e carica foto</Text>
-            )}
+    <ScreenLayout title="Carica Media" showBack color={C.babyGreen} loading={loading} scrollable={false}>
+      <FlatList
+        data={items}
+        numColumns={2}
+        keyExtractor={(_, i) => String(i)}
+        contentContainerStyle={{ padding: 12 }}
+        ListHeaderComponent={
+          <TouchableOpacity onPress={handlePick} disabled={uploading} style={[s.uploadBtn, { opacity: uploading ? 0.6 : 1 }]}>
+            {uploading ? <ActivityIndicator color={C.white} size="small" /> : <Ionicons name="cloud-upload-outline" size={20} color={C.white} />}
+            <Text style={s.uploadBtnText}>{uploading ? 'Caricamento...' : 'Carica Foto'}</Text>
           </TouchableOpacity>
-        </View>
-      )}
-
-      {gallery.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-          <Text style={{ fontSize: 48 }}>📷</Text>
-          <Text style={{ color: '#9CA3AF', marginTop: 12 }}>Nessuna foto caricata</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={gallery}
-          keyExtractor={i => i.id}
-          numColumns={2}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          columnWrapperStyle={{ gap: 12 }}
-          renderItem={({ item }) => (
-            <Image
-              source={{ uri: item.thumbnail_url || item.media_url }}
-              style={{ width: IMG_SIZE, height: IMG_SIZE, borderRadius: 14 }}
-              resizeMode="cover"
-            />
-          )}
-        />
-      )}
+        }
+        ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 48 }}>📸</Text><Text style={s.emptyText}>Nessuna foto caricata</Text></View>}
+        renderItem={({ item }) => (
+          <View style={s.thumb}>
+            <Image source={{ uri: item.media_url || item.url }} style={s.thumbImg} />
+          </View>
+        )}
+      />
     </ScreenLayout>
   );
 }
+
+const s = StyleSheet.create({
+  uploadBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#32CD32', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, justifyContent: 'center' },
+  uploadBtnText:{ color: C.white, fontWeight: '700', fontSize: 14 },
+  empty:      { alignItems: 'center', paddingTop: 60 },
+  emptyText:  { fontSize: 14, color: C.muted, marginTop: 12 },
+  thumb:      { width: IMG, height: IMG, margin: 4, borderRadius: 14, overflow: 'hidden', backgroundColor: C.border },
+  thumbImg:   { width: IMG, height: IMG },
+});

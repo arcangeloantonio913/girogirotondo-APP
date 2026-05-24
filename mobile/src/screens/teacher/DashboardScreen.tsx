@@ -1,92 +1,92 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
+const C = { bg: '#FFFDD0', white: '#FFFFFF', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
+
 const CARDS = [
-  { icon: 'clipboard',  label: 'Registro Presenze', color: '#4169E1', bg: '#EBF0FF', tab: 'Presenze' },
-  { icon: 'grid',       label: 'Griglia Pasti',     color: '#FF69B4', bg: '#FFF0F7', tab: 'Griglia' },
-  { icon: 'book',       label: 'Diario di Bordo',   color: '#A7C7E7', bg: '#EBF0FF', tab: 'Diario' },
-  { icon: 'camera',     label: 'Carica Foto',        color: '#32CD32', bg: '#F0FFF0', tab: 'Media' },
+  { id: 'griglia',  icon: 'grid-outline',       color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera',   sub: 'Gestisci le attività quotidiane', tab: 'Griglia' },
+  { id: 'presenze', icon: 'clipboard-outline',  color: '#4169E1', bg: '#EBF0FF', title: 'Registro Presenze',     sub: 'Segna presenze e assenze',         tab: 'Presenze' },
+  { id: 'diario',   icon: 'book-outline',       color: '#A7C7E7', bg: '#EBF0FF', title: 'Diario di Bordo',       sub: 'Scrivi il diario della classe',    tab: 'Diario' },
+  { id: 'media',    icon: 'camera-outline',     color: '#32CD32', bg: '#F0FFF0', title: 'Carica Media',          sub: 'Aggiungi foto e video',            tab: 'Media' },
+  { id: 'avvisi',   icon: 'megaphone-outline',  color: '#FF69B4', bg: '#FFF0F7', title: 'Avvisi',                sub: 'Comunicazioni scuola',             tab: 'Avvisi' },
+  { id: 'profilo',  icon: 'person-outline',     color: '#A7C7E7', bg: '#EBF0FF', title: 'Il mio Profilo',        sub: 'Dati account e password',          tab: 'Profilo' },
 ];
 
 export default function TeacherDashboard({ navigation }: any) {
   const { user, logout } = useAuth();
   const [className, setClassName] = useState('');
   const [studentCount, setStudentCount] = useState(0);
-
-  const classId = user?.class_ids?.[0] || user?.class_id;
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!classId) return;
-    api.get('/classes').then(r => {
-      const cls = r.data.find((c: any) => c.id === classId);
-      if (cls) setClassName(cls.name);
-    }).catch(() => {});
-    api.get('/students').then(r => setStudentCount(r.data?.length || 0)).catch(() => {});
-  }, [classId]);
-
-  const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+    const classIds = user?.class_ids?.length ? user.class_ids : user?.class_id ? [user.class_id] : [];
+    if (!classIds.length) { setLoading(false); return; }
+    Promise.all([api.get('/students'), api.get('/classes')]).then(([sR, cR]) => {
+      setStudentCount(sR.data?.length || 0);
+      const cls = cR.data?.filter((c: any) => classIds.includes(c.id));
+      setClassName(cls?.map((c: any) => c.name).join(', ') || '');
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [user]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFDD0' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFDD0" />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-
+    <SafeAreaView style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <View style={s.header}>
           <View>
-            <Text style={{ fontSize: 13, color: '#9CA3AF' }}>Ciao Maestra,</Text>
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#1A202C' }}>{user?.name}</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2, textTransform: 'capitalize' }}>{todayFormatted}</Text>
+            <Text style={s.greeting}>Ciao Maestra,</Text>
+            <Text style={s.name}>{user?.name}</Text>
+            <View style={s.row}>
+              <View style={[s.badge, { backgroundColor: C.babyPink }]}>
+                <Text style={s.badgeText}>{className ? `Classe ${className}` : 'Nessuna classe'}</Text>
+              </View>
+              <Text style={s.subText}>{studentCount} alunni</Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={logout} style={{ padding: 8, borderRadius: 12, backgroundColor: '#FEE2E2' }}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <TouchableOpacity onPress={logout} style={s.logoutBtn}>
+            <Ionicons name="log-out-outline" size={20} color={C.muted} />
           </TouchableOpacity>
         </View>
 
-        {/* Classe */}
-        <View style={{
-          backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 20,
-          shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 4,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: '#FFF0F7', justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="school" size={22} color="#FF69B4" />
+        {/* Cards */}
+        <Text style={s.sectionTitle}>Azioni rapide</Text>
+        {CARDS.map(card => (
+          <TouchableOpacity key={card.id} onPress={() => navigation.navigate(card.tab)}
+            style={s.card} activeOpacity={0.9}>
+            <View style={[s.iconBox, { backgroundColor: card.bg }]}>
+              <Ionicons name={card.icon as any} size={24} color={card.color} />
             </View>
-            <View>
-              <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase' }}>La tua classe</Text>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: '#FF69B4' }}>Classe {className || '...'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardTitle}>{card.title}</Text>
+              <Text style={s.cardSub}>{card.sub}</Text>
             </View>
-          </View>
-          <View style={{ flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ fontSize: 24, fontWeight: '900', color: '#FF69B4' }}>{studentCount}</Text>
-              <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Alunni</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Card sezioni */}
-        <Text style={{ fontSize: 14, fontWeight: '700', color: '#6B7280', marginBottom: 12 }}>Sezioni</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {CARDS.map(card => (
-            <TouchableOpacity
-              key={card.tab}
-              onPress={() => navigation.navigate(card.tab)}
-              style={{
-                width: '47%', backgroundColor: card.bg, borderRadius: 18, padding: 18,
-                shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
-              }}>
-              <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: `${card.color}25`, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-                <Ionicons name={card.icon as any} size={22} color={card.color} />
-              </View>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A202C' }}>{card.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            <Ionicons name="chevron-forward" size={16} color={C.muted} />
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: C.bg },
+  scroll: { padding: 16, paddingBottom: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  greeting:{ fontSize: 13, color: C.muted, fontWeight: '500' },
+  name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
+  row:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  badge:  { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  badgeText:{ color: C.white, fontSize: 11, fontWeight: '700' },
+  subText:{ fontSize: 12, color: C.gray, fontWeight: '600' },
+  logoutBtn:{ padding: 8 },
+  sectionTitle:{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 12 },
+  card:   { backgroundColor: C.white, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: C.border },
+  iconBox:{ width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  cardTitle:{ fontSize: 14, fontWeight: '800', color: C.text },
+  cardSub:{ fontSize: 11, color: C.muted, marginTop: 2 },
+  white:  C.white,
+});

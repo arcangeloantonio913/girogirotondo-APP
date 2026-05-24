@@ -1,196 +1,240 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert,
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
-// Se @react-native-picker/picker non disponibile, usa un semplice selettore custom
-const QTY_OPTIONS = [
-  { value: '',             label: '—' },
-  { value: 'tutto',        label: 'Tutto' },
-  { value: 'bis',          label: 'Bis' },
-  { value: 'metà',         label: 'Metà' },
-  { value: 'mangiata_poca',label: 'Mangiata poca' },
-  { value: 'lasciata_poca',label: 'Lasciata poca' },
-  { value: 'no',           label: 'No' },
-];
-
-const QTY_COLORS: Record<string, string> = {
-  '': '#F3F4F6', tutto: '#DCFCE7', bis: '#D1FAE5',
-  metà: '#FEF9C3', mangiata_poca: '#FEE2E2', lasciata_poca: '#FECACA', no: '#F1F5F9',
+const C = { babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const QTY = ['tutto','bis','metà','mangiata_poca','lasciata_poca','no'];
+const QTY_LABELS: Record<string,string> = { tutto:'Tutto',bis:'Bis','metà':'Metà',mangiata_poca:'Poca',lasciata_poca:'Lasciata',no:'No' };
+const QTY_COLORS: Record<string,{bg:string;text:string}> = {
+  tutto:{bg:'#D1FAE5',text:'#065F46'},bis:{bg:'#A7F3D0',text:'#065F46'},
+  'metà':{bg:'#FEF9C3',text:'#854D0E'},mangiata_poca:{bg:'#FEE2E2',text:'#991B1B'},
+  lasciata_poca:{bg:'#FECACA',text:'#7F1D1D'},no:{bg:'#F1F5F9',text:'#64748B'},
 };
-
-function addDays(n: number) {
-  const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0];
-}
-
-const defaultRow = () => ({
-  merenda: false, merenda_qty: '',
-  pasta: false, pasta_qty: '',
-  secondo: false, secondo_qty: '',
-  pane: false, pane_qty: '',
-  frutta: false, frutta_qty: '',
-  pupu: false, nanna: false, notes: '',
-});
-
-const MEAL_COLS = [
-  { key: 'merenda', label: 'Merenda' },
-  { key: 'pasta',   label: 'Pasta' },
-  { key: 'secondo', label: 'Secondo' },
-  { key: 'pane',    label: 'Pane' },
-  { key: 'frutta',  label: 'Frutta' },
+const MEALS = [
+  {key:'merenda_mattina',label:'Merenda mattina',icon:'☕'},
+  {key:'pasta',label:'Pasta',icon:'🍝'},
+  {key:'secondo',label:'Secondo',icon:'🍗'},
+  {key:'pane',label:'Pane',icon:'🍞'},
+  {key:'frutta',label:'Frutta',icon:'🍎'},
 ];
+
+function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 
 export default function TeacherGriglia() {
   const { user } = useAuth();
   const classId = user?.class_ids?.[0] || user?.class_id;
+  const [date, setDate]       = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState<any[]>([]);
-  const [grid, setGrid]         = useState<Record<string, any>>({});
-  const [dateOffset, setDateOffset] = useState(0);
-  const [saving, setSaving]     = useState(false);
+  const [griglia, setGriglia]  = useState<Record<string,any>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<string|null>(null);
   const [loading, setLoading]   = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
 
-  const currentDate = addDays(dateOffset);
-  const dateLabel   = new Date(currentDate + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  useEffect(()=>{
+    if(!classId){setLoading(false);return;}
+    api.get(`/students?class_id=${classId}`).then(r=>setStudents(r.data||[])).catch(()=>{}).finally(()=>setLoading(false));
+  },[classId]);
 
-  useEffect(() => {
-    if (!classId) { setLoading(false); return; }
-    api.get('/students').then(r => {
-      const s = r.data || [];
-      setStudents(s);
-      const g: Record<string, any> = {};
-      s.forEach((st: any) => { g[st.id] = defaultRow(); });
-      setGrid(g);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [classId]);
+  useEffect(()=>{
+    if(!classId)return;
+    api.get(`/griglia?class_id=${classId}&date=${date}`).then(r=>{
+      const map:Record<string,any>={};
+      (r.data||[]).forEach((g:any)=>{map[g.student_id]=g;});
+      setGriglia(map);
+    }).catch(()=>{});
+  },[date,classId]);
 
-  useEffect(() => {
-    if (!classId || !students.length) return;
-    api.get(`/griglia?class_id=${classId}&date=${currentDate}`).then(r => {
-      setGrid(prev => {
-        const g = { ...prev };
-        (r.data || []).forEach((e: any) => {
-          if (g[e.student_id]) g[e.student_id] = { ...defaultRow(), ...e };
-        });
-        return g;
-      });
-    }).catch(() => {});
-  }, [currentDate, students.length]);
-
-  const setQty = (sid: string, col: string, qty: string) => {
-    setGrid(prev => ({
-      ...prev,
-      [sid]: { ...prev[sid], [col]: qty !== 'no' && !!qty, [`${col}_qty`]: qty },
-    }));
+  const updateField=(sid:string,field:string,val:any)=>{
+    setGriglia(prev=>({...prev,[sid]:{...(prev[sid]||{student_id:sid}),[field]:val}}));
   };
 
-  const toggleBool = (sid: string, key: string) => {
-    setGrid(prev => ({ ...prev, [sid]: { ...prev[sid], [key]: !prev[sid]?.[key] } }));
+  const applyBulk=(field:string,val:any)=>{
+    if(selected.size===0){Alert.alert('Seleziona almeno un alunno');return;}
+    setGriglia(prev=>{
+      const next={...prev};
+      selected.forEach(sid=>{next[sid]={...(next[sid]||{student_id:sid}),[field]:val};});
+      return next;
+    });
   };
 
-  const save = async () => {
-    if (!classId) return;
+  const toggleSelect=(sid:string)=>{
+    setSelected(prev=>{const next=new Set(prev);next.has(sid)?next.delete(sid):next.add(sid);return next;});
+  };
+  const selectAll=()=>setSelected(new Set(students.map(s=>s.id)));
+  const deselectAll=()=>setSelected(new Set());
+
+  const handleSave=async()=>{
     setSaving(true);
-    try {
-      await Promise.all(students.map(s =>
-        api.post('/griglia', { class_id: classId, student_ids: [s.id], date: currentDate, ...grid[s.id] })
-      ));
-      Alert.alert('✓', 'Griglia salvata e pubblicata!');
-    } catch {
-      Alert.alert('Errore', 'Impossibile salvare.');
-    } finally { setSaving(false); }
+    try{
+      await Promise.all(students.map(st=>{
+        const g=griglia[st.id]||{};
+        return api.post('/griglia',{student_id:st.id,class_id:classId,date,...g});
+      }));
+      setSaved(true);
+      setTimeout(()=>setSaved(false),2000);
+    }catch{Alert.alert('Errore','Impossibile salvare');}
+    finally{setSaving(false);}
   };
-
-  if (loading) return <ScreenLayout title="Griglia Pasti" loading />;
 
   return (
-    <ScreenLayout title="Griglia Pasti" scrollable={false}>
-      {/* Data */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', margin: 16, backgroundColor: '#FFF', borderRadius: 16, padding: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
-        <TouchableOpacity onPress={() => setDateOffset(d => d - 1)} style={{ padding: 8 }}>
-          <Text style={{ fontSize: 22, color: '#374151' }}>‹</Text>
+    <ScreenLayout title="Griglia Pasti" showBack color={C.babyPink} loading={loading} scrollable={false}
+      rightAction={
+        <TouchableOpacity onPress={handleSave} disabled={saving}
+          style={[s.saveBtn,saving&&{opacity:0.5}]}>
+          {saved
+            ? <><Ionicons name="checkmark-circle" size={16} color="#32CD32"/><Text style={{color:'#32CD32',fontSize:12,fontWeight:'700'}}>Salvato</Text></>
+            : <Text style={{color:C.white,fontSize:12,fontWeight:'700'}}>{saving?'...':'Salva'}</Text>
+          }
         </TouchableOpacity>
-        <Text style={{ fontSize: 14, fontWeight: '800', color: '#1A202C', textTransform: 'capitalize', textAlign: 'center' }}>
-          {dateLabel}
-        </Text>
-        <TouchableOpacity onPress={() => setDateOffset(d => d + 1)} style={{ padding: 8 }}>
-          <Text style={{ fontSize: 22, color: '#374151' }}>›</Text>
+      }
+    >
+      {/* Date nav */}
+      <View style={s.dateNav}>
+        <TouchableOpacity onPress={()=>setDate(addDays(date,-1))} style={s.navBtn}>
+          <Ionicons name="chevron-back" size={20} color={C.text}/>
+        </TouchableOpacity>
+        <Text style={s.dateText}>{new Date(date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})}</Text>
+        <TouchableOpacity onPress={()=>setDate(addDays(date,1))} style={s.navBtn}
+          disabled={date>=new Date().toISOString().split('T')[0]}>
+          <Ionicons name="chevron-forward" size={20} color={date>=new Date().toISOString().split('T')[0]?C.muted:C.text}/>
+        </TouchableOpacity>
+      </View>
+
+      {/* Bulk actions */}
+      {selected.size>0&&(
+        <View style={s.bulkBar}>
+          <Text style={s.bulkLabel}>{selected.size} selezionati — Imposta:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginTop:6}}>
+            <View style={{flexDirection:'row',gap:6}}>
+              {MEALS.map(m=>(
+                <View key={m.key} style={{flexDirection:'row',gap:4,alignItems:'center'}}>
+                  <Text style={{fontSize:14}}>{m.icon}</Text>
+                  {QTY.map(q=>{
+                    const col=QTY_COLORS[q];
+                    return(
+                      <TouchableOpacity key={q} onPress={()=>applyBulk(m.key,q)}
+                        style={[s.qtyMini,{backgroundColor:col.bg}]}>
+                        <Text style={[s.qtyMiniText,{color:col.text}]}>{QTY_LABELS[q]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Select all row */}
+      <View style={s.selectRow}>
+        <TouchableOpacity onPress={selected.size===students.length?deselectAll:selectAll} style={s.selectAllBtn}>
+          <Ionicons name={selected.size===students.length?'checkbox':'square-outline'} size={18} color={C.babyPink}/>
+          <Text style={{fontSize:12,color:C.muted}}>{selected.size===students.length?'Deseleziona tutti':'Seleziona tutti'}</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={students}
-        keyExtractor={s => s.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
-        renderItem={({ item: s }) => {
-          const sg = grid[s.id] || defaultRow();
-          const isExpanded = expanded === s.id;
-          return (
-            <TouchableOpacity
-              onPress={() => setExpanded(isExpanded ? null : s.id)}
-              style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A202C' }}>
-                  {s.name} <Text style={{ fontWeight: '400', color: '#9CA3AF' }}>{s.cognome || ''}</Text>
-                </Text>
-                <Text style={{ fontSize: 18, color: '#9CA3AF' }}>{isExpanded ? '▲' : '▼'}</Text>
+        keyExtractor={s_=>s_.id}
+        contentContainerStyle={{padding:8,paddingBottom:20}}
+        renderItem={({item})=>{
+          const g=griglia[item.id]||{};
+          const isOpen=expanded===item.id;
+          const isSelected=selected.has(item.id);
+          return(
+            <View style={[s.studentCard,isSelected&&s.studentCardSelected]}>
+              <View style={s.studentHeader}>
+                <TouchableOpacity onPress={()=>toggleSelect(item.id)} style={{padding:4}}>
+                  <Ionicons name={isSelected?'checkbox':'square-outline'} size={20} color={isSelected?C.babyPink:C.muted}/>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={()=>setExpanded(isOpen?null:item.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}>
+                  <Text style={s.studentName}>{item.name} {item.cognome}</Text>
+                  {/* Mini summary */}
+                  {Object.keys(g).filter(k=>MEALS.map(m=>m.key).includes(k)&&g[k]).length>0&&(
+                    <View style={s.miniBadge}>
+                      <Text style={s.miniBadgeText}>{Object.keys(g).filter(k=>MEALS.map(m=>m.key).includes(k)&&g[k]).length} piatti</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <Ionicons name={isOpen?'chevron-up':'chevron-down'} size={16} color={C.muted}/>
               </View>
 
-              {isExpanded && (
-                <View style={{ marginTop: 12, gap: 10 }}>
-                  {MEAL_COLS.map(col => (
-                    <View key={col.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <Text style={{ width: 70, fontSize: 13, fontWeight: '600', color: '#374151' }}>{col.label}</Text>
-                      <View style={{ flex: 1, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                        {QTY_OPTIONS.map(opt => (
-                          <TouchableOpacity
-                            key={opt.value}
-                            onPress={() => setQty(s.id, col.key, opt.value)}
-                            style={{
-                              paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
-                              backgroundColor: sg[`${col.key}_qty`] === opt.value ? QTY_COLORS[opt.value] : '#F3F4F6',
-                              borderWidth: sg[`${col.key}_qty`] === opt.value ? 1.5 : 0,
-                              borderColor: '#D1D5DB',
-                            }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: '#374151' }}>{opt.label}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+              {isOpen&&(
+                <View style={s.fields}>
+                  {MEALS.map(meal=>(
+                    <View key={meal.key} style={s.mealRow}>
+                      <Text style={s.mealIcon}>{meal.icon}</Text>
+                      <Text style={s.mealLabel}>{meal.label}</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={{flexDirection:'row',gap:4}}>
+                          {QTY.map(q=>{
+                            const col=QTY_COLORS[q];
+                            const isSel=g[meal.key]===q;
+                            return(
+                              <TouchableOpacity key={q} onPress={()=>updateField(item.id,meal.key,q)}
+                                style={[s.qtyBtn,{backgroundColor:isSel?col.bg:'#F9FAFB',borderColor:isSel?col.text+'40':C.border}]}>
+                                <Text style={[s.qtyBtnText,{color:isSel?col.text:C.muted}]}>{QTY_LABELS[q]}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </ScrollView>
                     </View>
                   ))}
                   {/* Pupù e Nanna */}
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                    {[{ key: 'pupu', label: 'Pupù', color: '#D4B8E0' }, { key: 'nanna', label: 'Nanna', color: '#93C5FD' }].map(b => (
-                      <TouchableOpacity
-                        key={b.key}
-                        onPress={() => toggleBool(s.id, b.key)}
-                        style={{
-                          flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center',
-                          backgroundColor: sg[b.key] ? `${b.color}50` : '#F3F4F6',
-                        }}>
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151' }}>
-                          {sg[b.key] ? '✓' : '—'} {b.label}
-                        </Text>
+                  <View style={s.boolRow}>
+                    {[{key:'pupù',icon:'💩',label:'Pupù'},{key:'nanna',icon:'😴',label:'Nanna'}].map(b=>(
+                      <TouchableOpacity key={b.key} onPress={()=>updateField(item.id,b.key,!g[b.key])}
+                        style={[s.boolBtn,g[b.key]&&s.boolBtnActive]}>
+                        <Text style={{fontSize:18}}>{b.icon}</Text>
+                        <Text style={[s.boolText,g[b.key]&&{color:C.babyPink}]}>{b.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {/* Note */}
+                  <TextInput style={s.noteInput} value={g.notes||''} onChangeText={t=>updateField(item.id,'notes',t)}
+                    placeholder="Note..." placeholderTextColor={C.muted} multiline/>
                 </View>
               )}
-            </TouchableOpacity>
+            </View>
           );
         }}
       />
-
-      {/* Salva */}
-      <View style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
-        <TouchableOpacity onPress={save} disabled={saving} style={{ backgroundColor: saving ? '#F9A8D4' : '#FF69B4', borderRadius: 16, height: 52, justifyContent: 'center', alignItems: 'center', shadowColor: '#FF69B4', shadowOpacity: 0.4, shadowRadius: 8, elevation: 6 }}>
-          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>Salva e Pubblica</Text>}
-        </TouchableOpacity>
-      </View>
     </ScreenLayout>
   );
 }
+
+const s=StyleSheet.create({
+  saveBtn:      {flexDirection:'row',alignItems:'center',gap:4,backgroundColor:C.babyPink,borderRadius:10,paddingHorizontal:12,paddingVertical:6},
+  dateNav:      {flexDirection:'row',alignItems:'center',justifyContent:'space-between',padding:12,backgroundColor:C.white,borderBottomWidth:0.5,borderBottomColor:C.border},
+  navBtn:       {width:32,height:32,alignItems:'center',justifyContent:'center'},
+  dateText:     {fontSize:14,fontWeight:'700',color:C.text,textTransform:'capitalize'},
+  bulkBar:      {margin:8,backgroundColor:'#FFF0F7',borderRadius:12,padding:10},
+  bulkLabel:    {fontSize:12,fontWeight:'600',color:C.babyPink},
+  qtyMini:      {paddingHorizontal:6,paddingVertical:3,borderRadius:6},
+  qtyMiniText:  {fontSize:10,fontWeight:'600'},
+  selectRow:    {paddingHorizontal:12,paddingVertical:4},
+  selectAllBtn: {flexDirection:'row',alignItems:'center',gap:6},
+  studentCard:  {backgroundColor:C.white,borderRadius:12,marginBottom:6,borderWidth:0.5,borderColor:C.border,overflow:'hidden'},
+  studentCardSelected:{borderColor:C.babyPink},
+  studentHeader:{flexDirection:'row',alignItems:'center',padding:10},
+  studentName:  {fontSize:14,fontWeight:'700',color:C.text},
+  miniBadge:    {backgroundColor:'#FFF0F7',borderRadius:20,paddingHorizontal:8,paddingVertical:2},
+  miniBadgeText:{fontSize:10,color:C.babyPink,fontWeight:'600'},
+  fields:       {borderTopWidth:0.5,borderTopColor:C.border,padding:10},
+  mealRow:      {flexDirection:'row',alignItems:'center',marginBottom:8},
+  mealIcon:     {fontSize:18,width:28},
+  mealLabel:    {fontSize:12,fontWeight:'600',color:C.muted,width:90},
+  qtyBtn:       {paddingHorizontal:8,paddingVertical:5,borderRadius:20,borderWidth:0.5},
+  qtyBtnText:   {fontSize:11,fontWeight:'600'},
+  boolRow:      {flexDirection:'row',gap:10,marginTop:4,marginBottom:8},
+  boolBtn:      {flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:10,borderRadius:10,backgroundColor:'#F9FAFB',borderWidth:0.5,borderColor:C.border},
+  boolBtnActive:{backgroundColor:'#FFF0F7',borderColor:C.babyPink},
+  boolText:     {fontSize:13,fontWeight:'600',color:C.muted},
+  noteInput:    {borderWidth:0.5,borderColor:C.border,borderRadius:8,padding:8,fontSize:12,color:C.text,minHeight:40},
+});

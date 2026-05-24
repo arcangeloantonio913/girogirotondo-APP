@@ -4,8 +4,8 @@ import {
   StatusBar, StyleSheet, ActivityIndicator, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
-import DashboardHeader from '../../components/layout/DashboardHeader';
 import api from '../../lib/api';
 
 const C = {
@@ -57,9 +57,13 @@ export default function ParentDashboard({ navigation }: any) {
   const [meal,     setMeal]     = useState<any>(null);
   const [className, setClassName] = useState('');
   const [loading,  setLoading]  = useState(true);
+  const [children, setChildren] = useState<any[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sedeAttiva = user?.sede_id || 'girogirotondo';
 
   const today = new Date().toISOString().split('T')[0];
   const todayFmt = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+
 
   useEffect(() => {
     const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
@@ -85,6 +89,7 @@ export default function ParentDashboard({ navigation }: any) {
   if (loading) return (
     <SafeAreaView style={s.root}>
       <ActivityIndicator size="large" color={C.babyBlue} style={{ flex: 1 }} />
+          <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
     </SafeAreaView>
   );
 
@@ -97,8 +102,14 @@ export default function ParentDashboard({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.root}>
-      <DashboardHeader navigation={navigation}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <View style={s.topBar}>
+        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
+          <Ionicons name="menu" size={26} color={C.text} />
+        </TouchableOpacity>
+        <Text style={s.topTitle}>Girogirotondo</Text>
+        <View style={{ width: 44 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         {/* Header */}

@@ -42,6 +42,18 @@ export default function AdminAppuntamenti() {
     } catch { Alert.alert('Errore', 'Impossibile aggiornare lo stato'); }
   };
 
+  const deleteAppt = (id: string) => {
+    Alert.alert('Elimina appuntamento', 'Sei sicuro?', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/appointments/${id}`);
+          setAppts(prev => prev.filter(a => a.id !== id));
+        } catch { Alert.alert('Errore', 'Impossibile eliminare'); }
+      }},
+    ]);
+  };
+
   const exportGCal = (appt: any) => {
     const dt = appt.date?.replace(/-/g, '') || '';
     const time = appt.time_slot?.replace(':', '') || '0900';
@@ -172,6 +184,9 @@ export default function AdminAppuntamenti() {
                   <Ionicons name="calendar-outline" size={14} color={C.muted} />
                   <Text style={{ fontSize: 12, color: C.muted }}>Calendar</Text>
                 </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteAppt(item.id)} style={s.deleteBtn}>
+                  <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                </TouchableOpacity>
               </View>
             </View>
           );
@@ -213,4 +228,5 @@ const s = StyleSheet.create({
   confirmBtn:  { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F0FFF4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   cancelBtn:   { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FEF2F2', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   gcalBtn:     { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F9FAFB', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  deleteBtn:   { padding: 8, backgroundColor: '#FEF2F2', borderRadius: 8 },
 });

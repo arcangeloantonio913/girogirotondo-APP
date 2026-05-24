@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
-import DashboardHeader from '../../components/layout/DashboardHeader';
 import api from '../../lib/api';
 
 const C = { bg: '#FFFDD0', white: '#FFFFFF', primary: '#4169E1', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
@@ -25,7 +25,10 @@ const CARDS = [
 
 export default function AdminDashboard({ navigation }: any) {
   const { user, sede, updateSede, logout, isSuperAdmin } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sedeAttiva = sede || user?.sede_id || 'girogirotondo';
   const [stats, setStats] = useState({ users: 0, students: 0, classes: 0 });
+
 
   useEffect(() => {
     Promise.all([api.get('/users'), api.get('/students'), api.get('/classes')])
@@ -35,10 +38,30 @@ export default function AdminDashboard({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.root}>
-      <DashboardHeader navigation={navigation}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      
+      {/* ── Top bar ── */}
+      <View style={s.topBar}>
+        <View style={{ width: 44 }} />
+        <View style={s.topCenter}>
+          <Image
+            source={
+              sedeAttiva === 'il-magico-mondo'
+                ? require('../../../assets/logo-magico-mondo.png')
+                : require('../../../assets/logo-girogirotondo.png')
+            }
+            style={s.topLogo}
+            resizeMode="contain"
+          />
+          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
+        </View>
+        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
+          <Ionicons name="menu" size={26} color={C.text} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        {/* Header */}
+        {/* Header saluto */}
         <View style={s.header}>
           <View>
             <Text style={s.greeting}>Benvenuto/a,</Text>
@@ -47,9 +70,6 @@ export default function AdminDashboard({ navigation }: any) {
               <Text style={s.badgeText}>Amministratore</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={logout} style={s.logoutBtn}>
-            <Ionicons name="log-out-outline" size={20} color={C.muted} />
-          </TouchableOpacity>
         </View>
 
         {/* Sede switcher (solo superadmin) */}
@@ -90,7 +110,7 @@ export default function AdminDashboard({ navigation }: any) {
           </TouchableOpacity>
         ))}
       </ScrollView>
-      </DashboardHeader>
+            <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
     </SafeAreaView>
   );
 }
@@ -103,7 +123,11 @@ const s = StyleSheet.create({
   name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
   badge:  { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
   badgeText:{ color: C.white, fontSize: 11, fontWeight: '700' },
-  logoutBtn:{ padding: 8 },
+  topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  topCenter: { alignItems: 'center', flex: 1 },
+  topLogo:   { width: 36, height: 36, borderRadius: 18 },
+  topSede:   { fontSize: 10, fontWeight: '700', color: '#9CA3AF', marginTop: 2 },
+  menuBtn:   { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
   sedeRow:{ flexDirection: 'row', gap: 10, marginBottom: 16 },
   sedeBtn:{ flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
   sedeBtnText:{ fontSize: 12, fontWeight: '700' },

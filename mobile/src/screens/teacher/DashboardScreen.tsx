@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
-import DashboardHeader from '../../components/layout/DashboardHeader';
 import api from '../../lib/api';
 
 const C = { bg: '#FFFDD0', white: '#FFFFFF', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
@@ -21,6 +21,8 @@ export default function TeacherDashboard({ navigation }: any) {
   const [className, setClassName] = useState('');
   const [studentCount, setStudentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sedeAttiva = user?.sede_id || 'girogirotondo';
 
   useEffect(() => {
     const classIds = user?.class_ids?.length ? user.class_ids : user?.class_id ? [user.class_id] : [];
@@ -34,8 +36,14 @@ export default function TeacherDashboard({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.root}>
-      <DashboardHeader navigation={navigation}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      <View style={s.topBar}>
+        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
+          <Ionicons name="menu" size={26} color={C.text} />
+        </TouchableOpacity>
+        <Text style={s.topTitle}>Girogirotondo</Text>
+        <View style={{ width: 44 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {/* Header */}
         <View style={s.header}>
@@ -49,9 +57,6 @@ export default function TeacherDashboard({ navigation }: any) {
               <Text style={s.subText}>{studentCount} alunni</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={logout} style={s.logoutBtn}>
-            <Ionicons name="log-out-outline" size={20} color={C.muted} />
-          </TouchableOpacity>
         </View>
 
         {/* Cards */}
@@ -70,7 +75,7 @@ export default function TeacherDashboard({ navigation }: any) {
           </TouchableOpacity>
         ))}
       </ScrollView>
-      </DashboardHeader>
+            <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
     </SafeAreaView>
   );
 }
@@ -93,3 +98,4 @@ const s = StyleSheet.create({
   cardSub:{ fontSize: 11, color: C.muted, marginTop: 2 },
   white:  C.white,
 });
+

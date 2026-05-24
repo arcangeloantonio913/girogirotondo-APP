@@ -15,6 +15,9 @@ from middleware.auth import get_current_user
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file, generate_thumbnail
 from utils.push_notifications import notify_class
+try:
+    from utils.expo_push import notify_parents_of_class as expo_notify_class
+except: expo_notify_class = None
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/gallery", tags=["gallery"])

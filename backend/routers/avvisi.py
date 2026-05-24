@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
 
 from services.database import get_db
+from utils.expo_push import notify_role, notify_parents_of_class, notify_users
 from models.avvisi import AvvisoCreate, AvvisoUpdate
 from middleware.auth import get_current_user, validate_admin_sede_access, get_teacher_sede_id
 
@@ -202,6 +203,27 @@ async def create_avviso(
 
     await db.avvisi.insert_one(doc)
     doc.pop("_id", None)
+
+    # ── Push notification ────────────────────────────────────────────────────
+    try:
+        push_title = f"📢 Nuovo avviso: {doc.get('title', '')}"
+        push_body  = (doc.get('body') or doc.get('message') or '')[:120]
+        target_roles = doc.get('target_roles') or ['parent']
+        class_ids    = doc.get('target_class_ids') or []
+        parent_ids   = doc.get('target_parent_ids') or []
+        sede_push    = doc.get('sede_id')
+
+        if parent_ids:
+            await notify_users(db, parent_ids, push_title, push_body)
+        elif class_ids:
+            for cid in class_ids:
+                await notify_parents_of_class(db, cid, push_title, push_body)
+        else:
+            for role in target_roles:
+                await notify_role(db, role, sede_push, push_title, push_body)
+    except Exception:
+        pass  # Push non bloccante
+
     return doc
 
 

@@ -109,3 +109,16 @@ async def send_notification(
 
     sent = send_multicast(tokens, payload.title, payload.body, payload.data)
     return {"sent": sent, "total_tokens": len(tokens)}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/push-tokens  (alias semplificato per il client mobile)
+# ---------------------------------------------------------------------------
+
+@router.post("/register", status_code=201)
+async def register_token_alias(
+    payload: PushTokenRegister,
+    current_user: dict = Depends(get_current_user),
+):
+    """Alias di /register-token — compatibilità client mobile."""
+    return await register_token(payload, current_user)

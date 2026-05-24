@@ -42,7 +42,7 @@ if _SENTRY_DSN:
         send_default_pii=False,   # Nessun dato personale inviato a Sentry (GDPR)
     )
 
-from services.database import seed_database, get_client
+from services.database import seed_database, get_client, ensure_superadmins
 from middleware.error_handler import add_error_handlers
 from middleware.rate_limiter import limiter
 from utils.firebase_client import init_firebase
@@ -61,6 +61,7 @@ from routers.documents import router as documents_router
 from routers.read_receipts import router as read_receipts_router
 from routers.calendar import router as calendar_router
 from routers.notifications import router as notifications_router
+from routers.push_tokens import router as push_tokens_router
 from routers.avvisi import router as avvisi_router
 from routers.sedi import router as sedi_router
 from routers.presenze import router as presenze_router
@@ -103,6 +104,7 @@ app.include_router(documents_router)
 app.include_router(read_receipts_router)
 app.include_router(calendar_router)
 app.include_router(notifications_router)
+app.include_router(push_tokens_router)
 app.include_router(avvisi_router)
 app.include_router(sedi_router)
 app.include_router(presenze_router)
@@ -141,6 +143,14 @@ async def startup():
         init_firebase()
     except Exception as exc:
         logger.warning("Firebase initialization skipped at startup: %s", exc)
+
+    # ensure_superadmins viene eseguito SEMPRE, indipendentemente da altri errori
+    try:
+        await ensure_superadmins()
+        logger.info("[STARTUP] SuperAdmin garantiti OK")
+    except Exception as exc:
+        logger.error("[STARTUP] ensure_superadmins FALLITO: %s", exc)
+
     try:
         await seed_database()
     except Exception as exc:

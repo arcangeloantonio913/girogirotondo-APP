@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
+from utils.expo_push import notify_parents_of_class
 from models.griglia import GrigliaEntry
 from middleware.auth import get_current_user
 
@@ -105,6 +106,13 @@ async def save_griglia(
             await db.griglia.replace_one({"_id": existing["_id"]}, doc)
         else:
             await db.griglia.insert_one(doc)
+            try:
+                cid = doc.get("class_id")
+                if cid:
+                    await notify_parents_of_class(db, cid, "🍝 Griglia pasti aggiornata",
+                        "La maestra ha registrato i pasti di oggi")
+            except Exception:
+                pass
         doc.pop("_id", None)
         entries_created.append(doc)
     return entries_created

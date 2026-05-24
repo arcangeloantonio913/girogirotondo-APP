@@ -67,7 +67,7 @@ interface Props {
 
 export default function Sidebar({ visible, onClose, navigation, currentScreen }: Props) {
   const { user, logout, sede, updateSede, isSuperAdmin, childIds, activeChildId, setActiveChildId } = useAuth();
-  const slideAnim = useRef(new Animated.Value(-SIDEBAR_W)).current;
+  const slideAnim = useRef(new Animated.Value(SIDEBAR_W)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -78,13 +78,14 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: -SIDEBAR_W, duration: 200, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: SIDEBAR_W, duration: 200, useNativeDriver: true }),
         Animated.timing(fadeAnim,  { toValue: 0, duration: 180, useNativeDriver: true }),
       ]).start();
     }
   }, [visible]);
 
-  if (!visible && slideAnim._value === -SIDEBAR_W) return null;
+  // Non renderizzare nulla se non visibile e animazione completata
+  if (!visible && (slideAnim as any)._value >= SIDEBAR_W - 1) return null;
 
   const role = user?.role || 'parent';
   const color = ROLE_COLORS[role] || '#4169E1';
@@ -191,7 +192,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
 const s = StyleSheet.create({
   container:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
   overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  drawer:       { position: 'absolute', top: 0, left: 0, bottom: 0, width: SIDEBAR_W, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 4, height: 0 }, elevation: 20 },
+  drawer:       { position: 'absolute', top: 0, right: 0, bottom: 0, width: SIDEBAR_W, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: -4, height: 0 }, elevation: 20 },
 
   userSection:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, paddingTop: 56, borderBottomWidth: 1 },
   avatar:       { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
@@ -211,7 +212,7 @@ const s = StyleSheet.create({
   navItem:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 12, marginBottom: 2, position: 'relative', overflow: 'hidden' },
   navIconBox:   { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   navLabel:     { fontSize: 14, color: '#374151', fontWeight: '500', flex: 1 },
-  activeBar:    { position: 'absolute', right: 0, top: 8, bottom: 8, width: 3, borderRadius: 2 },
+  activeBar:    { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2 },
 
   logoutBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 8, padding: 12, backgroundColor: '#FEF2F2', borderRadius: 12 },
   logoutText:   { fontSize: 14, color: '#EF4444', fontWeight: '700' },

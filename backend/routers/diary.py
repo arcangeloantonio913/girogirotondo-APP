@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
+from utils.expo_push import notify_parents_of_class, notify_users
 from models.diary import DiaryEntryCreate
 from middleware.auth import get_current_user
 
@@ -67,6 +68,17 @@ async def _create_diary(entry: DiaryEntryCreate, user_id: str):
     doc["created_by"] = user_id
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.diary.insert_one(doc)
+    # Push ai genitori della classe
+    try:
+        class_ids = doc.get("class_ids") or ([doc["class_id"]] if doc.get("class_id") else [])
+        for cid in class_ids:
+            await notify_parents_of_class(
+                db, cid,
+                "📓 Nuovo diario di bordo",
+                f"La maestra ha scritto il diario del {doc.get('date', 'oggi')}"
+            )
+    except Exception:
+        pass
     doc.pop("_id", None)
     return doc
 

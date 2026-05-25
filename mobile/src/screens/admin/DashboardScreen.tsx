@@ -45,20 +45,27 @@ export default function AdminDashboard({ navigation }: any) {
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       
       {/* ── Top bar ── */}
-      <View style={s.topBar}>
-        <View style={{ width: 44 }} />
+            <View style={s.topBar}>
+        {/* Sinistra: spazio */}
+        <View style={{ width: 40 }} />
+
+        {/* Centro: logo + sede */}
         <View style={s.topCenter}>
-          <Image
-            source={
-              sedeAttiva === 'il-magico-mondo'
-                ? require('../../../assets/logo-magico-mondo.png')
-                : require('../../../assets/logo-girogirotondo.png')
-            }
-            style={s.topLogo}
-            resizeMode="contain"
-          />
+          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
+            <Image
+              source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')}
+              style={{ width: 30, height: 30 }}
+              resizeMode="cover"
+            />
+          </View>
           <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
         </View>
+
+        {/* Destra: hamburger */}
+        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
+          <Ionicons name="menu" size={26} color={C.text} />
+        </TouchableOpacity>
+      </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>

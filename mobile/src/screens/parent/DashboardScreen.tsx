@@ -126,17 +126,39 @@ export default function ParentDashboard({ navigation }: any) {
   return (
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+      {/* ── Top bar: campanella sx | logo+sede centro | hamburger dx ── */}
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => navigation.navigate('Notifiche')} style={[s.menuBtn, {backgroundColor: '#32CD3218'}]}>
+        {/* Sinistra: campanella notifiche */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Notifiche')}
+          style={[s.menuBtn, { backgroundColor: '#32CD3218' }]}
+        >
           <Ionicons name="notifications-outline" size={22} color="#32CD32" />
         </TouchableOpacity>
+
+        {/* Centro: logo + nome sede */}
         <View style={s.topCenter}>
-          <View style={{width:28,height:28,borderRadius:14,overflow:'hidden',flexShrink:0}}>
-          <Image source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')} style={{width:28,height:28}} resizeMode="cover" />
+          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
+            <Image
+              source={
+                sedeAttiva === 'il-magico-mondo'
+                  ? require('../../../assets/logo-magico-mondo.png')
+                  : require('../../../assets/logo-girogirotondo.png')
+              }
+              style={{ width: 30, height: 30 }}
+              resizeMode="cover"
+            />
+          </View>
+          <Text style={s.topSede}>
+            {sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}
+          </Text>
         </View>
-          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
-        </View>
-        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
+
+        {/* Destra: hamburger menu */}
+        <TouchableOpacity
+          onPress={() => setSidebarOpen(true)}
+          style={s.menuBtn}
+        >
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>
       </View>
@@ -285,5 +307,9 @@ const s = StyleSheet.create({
   switItemActive: { backgroundColor: '#F0FFF0', borderRadius: 12, paddingHorizontal: 10 },
   switAvatar:  { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   switName:    { flex: 1, fontSize: 15, fontWeight: '600', color: '#1A202C' },
+  topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, height: 52, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  topCenter: { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  topSede:   { fontSize: 13, fontWeight: '700', color: '#1A202C' },
+  menuBtn:   { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
   white: C.white,
 });

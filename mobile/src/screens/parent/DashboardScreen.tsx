@@ -131,7 +131,9 @@ export default function ParentDashboard({ navigation }: any) {
           <Ionicons name="notifications-outline" size={22} color="#32CD32" />
         </TouchableOpacity>
         <View style={s.topCenter}>
-          <Image source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')} style={s.topLogo} resizeMode="contain" />
+          <View style={{width:28,height:28,borderRadius:14,overflow:'hidden',flexShrink:0}}>
+          <Image source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')} style={{width:28,height:28}} resizeMode="cover" />
+        </View>
           <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
         </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>

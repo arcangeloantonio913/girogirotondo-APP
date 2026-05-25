@@ -9,7 +9,6 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 
 const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444', green: '#32CD32' };
-
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
   admin:   { bg: '#EBF0FF', text: '#1a3a9e' },
   teacher: { bg: '#FFF0F7', text: '#BE185D' },
@@ -17,11 +16,11 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 function genPwd(len = 10) {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from({ length: len }, () => c[Math.floor(Math.random() * c.length)]).join('');
+  const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({ length: len }, () => ch[Math.floor(Math.random() * ch.length)]).join('');
 }
 
-type ModalType = 'staff' | 'iscrizione' | null;
+type ModalType = 'staff' | 'iscrizione' | 'edit' | null;
 
 export default function AdminUsers() {
   const { sede } = useAuth();
@@ -31,16 +30,21 @@ export default function AdminUsers() {
   const [search,  setSearch]  = useState('');
   const [modal,   setModal]   = useState<ModalType>(null);
   const [saving,  setSaving]  = useState(false);
+  const [editUser, setEditUser] = useState<any>(null);
+  const [iscResult, setIscResult] = useState<any>(null);
 
   // Form staff
   const [staffForm, setStaff] = useState({ name: '', cognome: '', email: '', role: 'teacher', password: genPwd(), class_id: '' });
   // Form iscrizione
   const [iscForm, setIsc] = useState({
-    bambino_nome: '', bambino_cognome: '', bambino_data_nascita: '',
-    class_id: '',
+    bambino_nome: '', bambino_cognome: '', bambino_data_nascita: '', class_id: '',
     genitore_nome: '', genitore_cognome: '', genitore_email: '', genitore_password: genPwd(),
+    // Secondo genitore (opzionale)
+    genitore2_nome: '', genitore2_cognome: '', genitore2_email: '', genitore2_password: '',
+    show_second_parent: false,
   });
-  const [iscResult, setIscResult] = useState<any>(null);
+  // Edit form
+  const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '' });
 
   useEffect(() => {
     Promise.all([api.get('/users'), api.get('/classes')])
@@ -48,7 +52,30 @@ export default function AdminUsers() {
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
-  const filtered = users.filter(u => `${u.name} ${u.cognome} ${u.email}`.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter(u =>
+    `${u.name} ${u.cognome} ${u.email}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openEdit = (user: any) => {
+    setEditUser(user);
+    setEdit({ name: user.name || '', cognome: user.cognome || '', email: user.email || '', password: '', class_id: user.class_id || '' });
+    setModal('edit');
+  };
+
+  const handleSaveEdit = async () => {
+    setSaving(true);
+    try {
+      const payload: any = { name: editForm.name, cognome: editForm.cognome };
+      if (editForm.email && editForm.email !== editUser.email) payload.email = editForm.email;
+      if (editForm.password) payload.password = editForm.password;
+      if (editForm.class_id) payload.class_id = editForm.class_id;
+      await api.patch(`/users/${editUser.id}`, payload);
+      setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...payload } : u));
+      Alert.alert('Salvato', 'Dati aggiornati con successo');
+      setModal(null);
+    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile aggiornare'); }
+    finally { setSaving(false); }
+  };
 
   const handleCreateStaff = async () => {
     if (!staffForm.name || !staffForm.email) { Alert.alert('Attenzione', 'Nome e email obbligatori'); return; }
@@ -63,16 +90,36 @@ export default function AdminUsers() {
   };
 
   const handleIscrizione = async () => {
-    const { bambino_nome, bambino_cognome, class_id, genitore_email, genitore_password } = iscForm;
-    if (!bambino_nome || !genitore_email) { Alert.alert('Attenzione', 'Nome bambino e email genitore obbligatori'); return; }
+    if (!iscForm.bambino_nome || !iscForm.genitore_email) {
+      Alert.alert('Attenzione', 'Nome bambino e email genitore obbligatori'); return;
+    }
     setSaving(true);
     try {
-      const res = await api.post('/users/iscrizione', { ...iscForm, sede_id: sede });
+      const payload: any = {
+        bambino_nome: iscForm.bambino_nome, bambino_cognome: iscForm.bambino_cognome,
+        bambino_data_nascita: iscForm.bambino_data_nascita, class_id: iscForm.class_id,
+        genitore_nome: iscForm.genitore_nome, genitore_cognome: iscForm.genitore_cognome,
+        genitore_email: iscForm.genitore_email, genitore_password: iscForm.genitore_password,
+        sede_id: sede,
+      };
+      const res = await api.post('/users/iscrizione', payload);
       setIscResult(res.data);
-      // Aggiorna lista utenti
+
+      // Secondo genitore (se inserito)
+      if (iscForm.show_second_parent && iscForm.genitore2_email && res.data.student?.id) {
+        try {
+          await api.post('/users/secondo-genitore', {
+            student_id: res.data.student.id,
+            genitore_email: iscForm.genitore2_email,
+            genitore_nome: iscForm.genitore2_nome,
+            genitore_password: iscForm.genitore2_password || genPwd(),
+          });
+        } catch {}
+      }
+
       const uR = await api.get('/users');
       setUsers(uR.data || []);
-    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile completare l\'iscrizione'); }
+    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile completare'); }
     finally { setSaving(false); }
   };
 
@@ -81,9 +128,17 @@ export default function AdminUsers() {
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
         try { await api.delete(`/users/${id}`); setUsers(prev => prev.filter(u => u.id !== id)); }
-        catch { Alert.alert('Errore', 'Impossibile eliminare'); }
+        catch { Alert.alert('Errore'); }
       }},
     ]);
+  };
+
+  const closeIsc = () => {
+    setModal(null); setIscResult(null);
+    setIsc({ bambino_nome:'',bambino_cognome:'',bambino_data_nascita:'',class_id:'',
+      genitore_nome:'',genitore_cognome:'',genitore_email:'',genitore_password:genPwd(),
+      genitore2_nome:'',genitore2_cognome:'',genitore2_email:'',genitore2_password:'',
+      show_second_parent: false });
   };
 
   return (
@@ -93,15 +148,13 @@ export default function AdminUsers() {
         <TextInput style={s.searchInput} value={search} onChangeText={setSearch}
           placeholder="Cerca utenti..." placeholderTextColor={C.muted} />
       </View>
-
-      {/* Pulsanti azione */}
       <View style={s.actionRow}>
         <TouchableOpacity onPress={() => setModal('staff')} style={[s.actionBtn, { backgroundColor: C.primary }]}>
           <Ionicons name="person-add-outline" size={16} color={C.white} />
           <Text style={s.actionBtnText}>Staff</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => { setIscResult(null); setModal('iscrizione'); }}
-          style={[s.actionBtn, { backgroundColor: '#32CD32' }]}>
+          style={[s.actionBtn, { backgroundColor: C.green }]}>
           <Ionicons name="happy-outline" size={16} color={C.white} />
           <Text style={s.actionBtnText}>Iscrivi Bambino</Text>
         </TouchableOpacity>
@@ -115,31 +168,80 @@ export default function AdminUsers() {
         renderItem={({ item }) => {
           const rc = ROLE_COLORS[item.role] || ROLE_COLORS.parent;
           return (
-            <View style={s.userCard}>
+            <TouchableOpacity onPress={() => openEdit(item)} style={s.userCard} activeOpacity={0.8}>
               <View style={[s.avatar, { backgroundColor: rc.bg }]}>
                 <Text style={[s.avatarText, { color: rc.text }]}>{item.name?.charAt(0) || '?'}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.userName}>{item.name} {item.cognome}</Text>
                 <Text style={s.userEmail}>{item.email}</Text>
-                {item.admin_password && (
-                  <Text style={s.userPwd}>pwd: {item.admin_password}</Text>
-                )}
+                {item.admin_password && <Text style={s.userPwd}>pwd: {item.admin_password}</Text>}
               </View>
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={{ alignItems: 'flex-end', gap: 6 }}>
                 <View style={[s.roleBadge, { backgroundColor: rc.bg }]}>
                   <Text style={[s.roleText, { color: rc.text }]}>{item.role}</Text>
                 </View>
-                <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.delBtn}>
-                  <Ionicons name="trash-outline" size={14} color={C.red} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <View style={s.editHint}><Ionicons name="pencil-outline" size={12} color={C.primary}/></View>
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleDelete(item.id); }} style={s.delBtn}>
+                    <Ionicons name="trash-outline" size={14} color={C.red} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
 
-      {/* Modale Staff */}
+      {/* ── MODIFICA UTENTE ─────────────────────────────────────────────── */}
+      <Modal visible={modal === 'edit'} animationType="slide" presentationStyle="pageSheet"
+        onRequestClose={() => setModal(null)}>
+        <View style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Modifica Utente</Text>
+            <TouchableOpacity onPress={() => setModal(null)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
+          </View>
+          <ScrollView>
+            <View style={[s.userInfoBox, { backgroundColor: ROLE_COLORS[editUser?.role || 'parent'].bg }]}>
+              <Text style={[s.userInfoRole, { color: ROLE_COLORS[editUser?.role || 'parent'].text }]}>
+                {editUser?.role} — {editUser?.email}
+              </Text>
+            </View>
+            {[
+              { key: 'name',     label: 'Nome',             ph: editUser?.name || '' },
+              { key: 'cognome',  label: 'Cognome',          ph: editUser?.cognome || '' },
+              { key: 'email',    label: 'Nuova email',      ph: 'Lascia vuoto per non cambiare', kbd: 'email-address' as any },
+              { key: 'password', label: 'Nuova password',   ph: 'Lascia vuoto per non cambiare' },
+            ].map(f => (
+              <View key={f.key}>
+                <Text style={s.fl}>{f.label}</Text>
+                <TextInput style={s.input} value={(editForm as any)[f.key]}
+                  onChangeText={t => setEdit(p => ({ ...p, [f.key]: t }))}
+                  placeholder={f.ph} keyboardType={f.kbd} autoCapitalize="none"
+                  secureTextEntry={f.key === 'password'} />
+              </View>
+            ))}
+            {editUser?.role === 'teacher' && (
+              <>
+                <Text style={s.fl}>Classe assegnata</Text>
+                <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
+                  {classes.map(cls => (
+                    <TouchableOpacity key={cls.id} onPress={() => setEdit(p => ({ ...p, class_id: cls.id }))}
+                      style={[s.chip, editForm.class_id === cls.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
+                      <Text style={[s.chipText, editForm.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+            <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSaveEdit} disabled={saving}>
+              <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Modifiche'}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── NUOVO STAFF ─────────────────────────────────────────────────── */}
       <Modal visible={modal === 'staff'} animationType="slide" presentationStyle="pageSheet"
         onRequestClose={() => setModal(null)}>
         <View style={s.modal}>
@@ -149,10 +251,10 @@ export default function AdminUsers() {
           </View>
           <ScrollView>
             {[
-              { key: 'name',     label: 'Nome *',         ph: 'Mario' },
-              { key: 'cognome',  label: 'Cognome',        ph: 'Rossi' },
-              { key: 'email',    label: 'Email *',        ph: 'mario@scuola.it', kbd: 'email-address' as any },
-              { key: 'password', label: 'Password',       ph: 'Password auto-generata' },
+              { key: 'name',     label: 'Nome *',   ph: 'Mario' },
+              { key: 'cognome',  label: 'Cognome',  ph: 'Rossi' },
+              { key: 'email',    label: 'Email *',  ph: 'mario@scuola.it', kbd: 'email-address' as any },
+              { key: 'password', label: 'Password', ph: 'Auto-generata' },
             ].map(f => (
               <View key={f.key}>
                 <Text style={s.fl}>{f.label}</Text>
@@ -190,55 +292,47 @@ export default function AdminUsers() {
         </View>
       </Modal>
 
-      {/* Modale Iscrizione Bambino */}
+      {/* ── ISCRIZIONE BAMBINO ──────────────────────────────────────────── */}
       <Modal visible={modal === 'iscrizione'} animationType="slide" presentationStyle="pageSheet"
-        onRequestClose={() => { setModal(null); setIscResult(null); }}>
+        onRequestClose={closeIsc}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>Iscrizione Bambino</Text>
-            <TouchableOpacity onPress={() => { setModal(null); setIscResult(null); }}>
-              <Ionicons name="close" size={24} color={C.text}/>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={closeIsc}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
-
           {iscResult ? (
             <ScrollView>
-              <View style={s.resultBox}>
-                <Text style={{ fontSize: 48, textAlign: 'center' }}>🎉</Text>
-                <Text style={s.resultTitle}>Iscrizione completata!</Text>
-                <View style={s.resultCard}>
-                  <Text style={s.resultLabel}>Bambino</Text>
-                  <Text style={s.resultValue}>{iscResult.student?.name} {iscResult.student?.cognome}</Text>
-                </View>
-                <View style={s.resultCard}>
-                  <Text style={s.resultLabel}>Email genitore</Text>
-                  <Text style={s.resultValue}>{iscResult.parent?.email}</Text>
-                </View>
-                <View style={s.resultCard}>
-                  <Text style={s.resultLabel}>Password genitore</Text>
-                  <Text style={[s.resultValue, { fontFamily: 'monospace', color: C.primary }]}>
-                    {iscResult.new_password || iscForm.genitore_password}
-                  </Text>
-                </View>
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <Text style={{ fontSize: 52 }}>🎉</Text>
+                <Text style={[s.modalTitle, { marginTop: 12 }]}>Iscrizione completata!</Text>
+                {[
+                  { label: 'Bambino', value: `${iscResult.student?.name} ${iscResult.student?.cognome}` },
+                  { label: 'Email genitore', value: iscResult.parent?.email },
+                  { label: 'Password', value: iscResult.new_password || iscForm.genitore_password },
+                ].map((row, i) => (
+                  <View key={i} style={[s.resultRow, { marginTop: 10 }]}>
+                    <Text style={s.fl}>{row.label}</Text>
+                    <Text style={[s.input, { color: C.primary, fontWeight: '700' }]}>{row.value}</Text>
+                  </View>
+                ))}
                 {iscResult.email_inviata && (
-                  <View style={[s.resultCard, { backgroundColor: '#F0FFF4' }]}>
-                    <Text style={{ fontSize: 12, color: '#065F46', fontWeight: '600' }}>
-                      ✅ Email con le credenziali è stata inviata al genitore
-                    </Text>
+                  <View style={[s.input, { backgroundColor: '#F0FFF4', marginTop: 10 }]}>
+                    <Text style={{ color: '#065F46', fontWeight: '600' }}>✅ Email credenziali inviata al genitore</Text>
                   </View>
                 )}
-                <TouchableOpacity style={s.submitBtn} onPress={() => { setModal(null); setIscResult(null); setIsc({ bambino_nome:'',bambino_cognome:'',bambino_data_nascita:'',class_id:'',genitore_nome:'',genitore_cognome:'',genitore_email:'',genitore_password:genPwd() }); }}>
+                <TouchableOpacity style={[s.submitBtn, { marginTop: 20 }]} onPress={closeIsc}>
                   <Text style={s.submitText}>Chiudi</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
           ) : (
             <ScrollView>
-              <Text style={[s.sectionHeader, { color: '#32CD32' }]}>👶 Dati bambino</Text>
+              {/* BAMBINO */}
+              <Text style={[s.sectionHead, { color: C.green }]}>👶 Dati bambino</Text>
               {[
-                { key: 'bambino_nome',            label: 'Nome *',          ph: 'Marco' },
-                { key: 'bambino_cognome',          label: 'Cognome',         ph: 'Rossi' },
-                { key: 'bambino_data_nascita',     label: 'Data di nascita', ph: 'YYYY-MM-DD' },
+                { key: 'bambino_nome',         label: 'Nome *',          ph: 'Marco' },
+                { key: 'bambino_cognome',       label: 'Cognome',         ph: 'Rossi' },
+                { key: 'bambino_data_nascita',  label: 'Data di nascita', ph: 'YYYY-MM-DD' },
               ].map(f => (
                 <View key={f.key}>
                   <Text style={s.fl}>{f.label}</Text>
@@ -250,18 +344,19 @@ export default function AdminUsers() {
               <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
                 {classes.map(cls => (
                   <TouchableOpacity key={cls.id} onPress={() => setIsc(p => ({ ...p, class_id: cls.id }))}
-                    style={[s.chip, iscForm.class_id === cls.id && { backgroundColor: '#32CD32', borderColor: '#32CD32' }]}>
+                    style={[s.chip, iscForm.class_id === cls.id && { backgroundColor: C.green, borderColor: C.green }]}>
                     <Text style={[s.chipText, iscForm.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={[s.sectionHeader, { color: C.primary }]}>👨‍👩‍👦 Genitore</Text>
+              {/* GENITORE 1 */}
+              <Text style={[s.sectionHead, { color: C.primary }]}>👨‍👩‍👦 Genitore</Text>
               {[
-                { key: 'genitore_nome',     label: 'Nome genitore',  ph: 'Luca' },
-                { key: 'genitore_cognome',  label: 'Cognome',        ph: 'Rossi' },
-                { key: 'genitore_email',    label: 'Email *',        ph: 'luca@email.it', kbd: 'email-address' as any },
-                { key: 'genitore_password', label: 'Password',       ph: 'Auto-generata' },
+                { key: 'genitore_nome',     label: 'Nome',     ph: 'Luca' },
+                { key: 'genitore_cognome',  label: 'Cognome',  ph: 'Rossi' },
+                { key: 'genitore_email',    label: 'Email *',  ph: 'luca@email.it', kbd: 'email-address' as any },
+                { key: 'genitore_password', label: 'Password', ph: 'Auto-generata' },
               ].map(f => (
                 <View key={f.key}>
                   <Text style={s.fl}>{f.label}</Text>
@@ -271,7 +366,36 @@ export default function AdminUsers() {
                 </View>
               ))}
 
-              <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#32CD32' }, saving && { opacity: 0.6 }]}
+              {/* SECONDO GENITORE (toggle) */}
+              <TouchableOpacity onPress={() => setIsc(p => ({ ...p, show_second_parent: !p.show_second_parent }))}
+                style={[s.toggleBtn, iscForm.show_second_parent && { backgroundColor: '#EBF0FF', borderColor: C.primary }]}>
+                <Ionicons name={iscForm.show_second_parent ? 'remove-circle-outline' : 'add-circle-outline'} size={18}
+                  color={iscForm.show_second_parent ? C.red : C.primary} />
+                <Text style={{ fontSize: 13, color: iscForm.show_second_parent ? C.red : C.primary, fontWeight: '700' }}>
+                  {iscForm.show_second_parent ? 'Rimuovi secondo genitore' : '+ Aggiungi secondo genitore (separati/divorziati)'}
+                </Text>
+              </TouchableOpacity>
+
+              {iscForm.show_second_parent && (
+                <>
+                  <Text style={[s.sectionHead, { color: '#FF9500' }]}>👤 Secondo Genitore (opzionale)</Text>
+                  {[
+                    { key: 'genitore2_nome',    label: 'Nome',     ph: 'Maria' },
+                    { key: 'genitore2_cognome', label: 'Cognome',  ph: 'Bianchi' },
+                    { key: 'genitore2_email',   label: 'Email *',  ph: 'maria@email.it', kbd: 'email-address' as any },
+                    { key: 'genitore2_password',label: 'Password', ph: 'Auto-generata se vuoto' },
+                  ].map(f => (
+                    <View key={f.key}>
+                      <Text style={s.fl}>{f.label}</Text>
+                      <TextInput style={s.input} value={(iscForm as any)[f.key]}
+                        onChangeText={t => setIsc(p => ({ ...p, [f.key]: t }))}
+                        placeholder={f.ph} keyboardType={f.kbd} autoCapitalize="none" />
+                    </View>
+                  ))}
+                </>
+              )}
+
+              <TouchableOpacity style={[s.submitBtn, { backgroundColor: C.green }, saving && { opacity: 0.6 }]}
                 onPress={handleIscrizione} disabled={saving}>
                 <Text style={s.submitText}>{saving ? 'Iscrizione...' : 'Completa Iscrizione'}</Text>
               </TouchableOpacity>
@@ -284,36 +408,36 @@ export default function AdminUsers() {
 }
 
 const s = StyleSheet.create({
-  searchRow:    { flexDirection: 'row', alignItems: 'center', backgroundColor: C.white, borderRadius: 12, paddingHorizontal: 12, marginHorizontal: 10, marginTop: 10, borderWidth: 0.5, borderColor: C.border, height: 44 },
-  searchInput:  { flex: 1, fontSize: 14, color: C.text },
-  actionRow:    { flexDirection: 'row', gap: 10, padding: 10 },
-  actionBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 12 },
-  actionBtnText:{ color: C.white, fontWeight: '700', fontSize: 13 },
-  empty:        { alignItems: 'center', paddingTop: 50 },
-  emptyText:    { color: C.muted, fontSize: 14, marginTop: 10 },
-  userCard:     { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.white, borderRadius: 12, padding: 10, marginBottom: 6, borderWidth: 0.5, borderColor: C.border },
-  avatar:       { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  avatarText:   { fontSize: 16, fontWeight: '800' },
-  userName:     { fontSize: 13, fontWeight: '700', color: C.text },
-  userEmail:    { fontSize: 11, color: C.muted },
-  userPwd:      { fontSize: 10, color: C.primary, fontWeight: '500', fontFamily: 'monospace' },
-  roleBadge:    { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-  roleText:     { fontSize: 10, fontWeight: '700' },
-  delBtn:       { padding: 4 },
-  modal:        { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
-  modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle:   { fontSize: 20, fontWeight: '800', color: C.text },
-  fl:           { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 6, marginTop: 14 },
-  input:        { borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, backgroundColor: C.white },
-  chipRow:      { flexDirection: 'row', gap: 8 },
-  chip:         { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
-  chipText:     { fontSize: 13, fontWeight: '600', color: C.text },
-  submitBtn:    { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
-  submitText:   { color: C.white, fontWeight: '700', fontSize: 15 },
-  sectionHeader:{ fontSize: 14, fontWeight: '800', marginTop: 20, marginBottom: 4 },
-  resultBox:    { padding: 10 },
-  resultTitle:  { fontSize: 18, fontWeight: '800', color: C.text, textAlign: 'center', marginVertical: 16 },
-  resultCard:   { backgroundColor: C.white, borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 0.5, borderColor: C.border },
-  resultLabel:  { fontSize: 11, color: C.muted, fontWeight: '600', marginBottom: 3 },
-  resultValue:  { fontSize: 14, fontWeight: '700', color: C.text },
+  searchRow:   { flexDirection:'row',alignItems:'center',backgroundColor:C.white,borderRadius:12,paddingHorizontal:12,marginHorizontal:10,marginTop:10,borderWidth:0.5,borderColor:C.border,height:44 },
+  searchInput: { flex:1,fontSize:14,color:C.text },
+  actionRow:   { flexDirection:'row',gap:10,padding:10 },
+  actionBtn:   { flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:11,borderRadius:12 },
+  actionBtnText:{ color:C.white,fontWeight:'700',fontSize:13 },
+  empty:       { alignItems:'center',paddingTop:50 },
+  emptyText:   { color:C.muted,fontSize:14,marginTop:10 },
+  userCard:    { flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:12,padding:10,marginBottom:6,borderWidth:0.5,borderColor:C.border },
+  avatar:      { width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center' },
+  avatarText:  { fontSize:16,fontWeight:'800' },
+  userName:    { fontSize:13,fontWeight:'700',color:C.text },
+  userEmail:   { fontSize:11,color:C.muted },
+  userPwd:     { fontSize:10,color:C.primary,fontWeight:'500' },
+  roleBadge:   { borderRadius:20,paddingHorizontal:8,paddingVertical:2 },
+  roleText:    { fontSize:10,fontWeight:'700' },
+  editHint:    { padding:4,backgroundColor:'#EBF0FF',borderRadius:6 },
+  delBtn:      { padding:4 },
+  modal:       { flex:1,padding:20,backgroundColor:'#FFFDD0' },
+  modalHeader: { flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12 },
+  modalTitle:  { fontSize:20,fontWeight:'800',color:C.text },
+  userInfoBox: { borderRadius:10,padding:10,marginBottom:8 },
+  userInfoRole:{ fontSize:12,fontWeight:'700' },
+  fl:          { fontSize:12,fontWeight:'700',color:'#6B7280',marginBottom:5,marginTop:12 },
+  input:       { borderWidth:1,borderColor:C.border,borderRadius:12,paddingHorizontal:12,paddingVertical:10,fontSize:14,color:C.text,backgroundColor:C.white },
+  chipRow:     { flexDirection:'row',gap:8 },
+  chip:        { paddingHorizontal:12,paddingVertical:7,borderRadius:20,borderWidth:1,borderColor:C.border,backgroundColor:C.white },
+  chipText:    { fontSize:13,fontWeight:'600',color:C.text },
+  submitBtn:   { backgroundColor:C.primary,borderRadius:14,paddingVertical:14,alignItems:'center',marginTop:20 },
+  submitText:  { color:C.white,fontWeight:'700',fontSize:15 },
+  sectionHead: { fontSize:14,fontWeight:'800',marginTop:20,marginBottom:4 },
+  toggleBtn:   { flexDirection:'row',alignItems:'center',gap:8,borderWidth:1,borderColor:C.border,borderRadius:12,padding:12,marginTop:16,backgroundColor:C.white },
+  resultRow:   { width:'100%' },
 });

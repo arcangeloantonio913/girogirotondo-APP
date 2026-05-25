@@ -37,11 +37,13 @@ export default function ScreenLayout({
   const { user, sede } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const accentColor = color || ROLE_COLORS[user?.role || 'parent'] || '#A7C7E7';
-
-  // Sede da mostrare: per admin usa sede attivo, per altri usa sede_id utente
-  const sedeKey = (user?.role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
+  const role = user?.role || 'parent';
+  const accentColor = color || ROLE_COLORS[role] || '#A7C7E7';
+  const sedeKey = (role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
   const logoSrc = LOGOS[sedeKey] || LOGOS['girogirotondo'];
+
+  // Mostra campanella solo per maestre e genitori
+  const showBell = role === 'teacher' || role === 'parent';
 
   const Wrapper = scrollable ? ScrollView : View;
   const wrapperProps = scrollable
@@ -55,16 +57,20 @@ export default function ScreenLayout({
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={s.header}>
 
-        {/* Sinistra: back oppure spazio vuoto */}
+        {/* Sinistra: back OPPURE campanella */}
         {showBack ? (
           <TouchableOpacity onPress={() => nav.goBack()} style={s.iconBtn}>
             <Ionicons name="arrow-back" size={22} color={C.text} />
+          </TouchableOpacity>
+        ) : showBell ? (
+          <TouchableOpacity onPress={() => nav.navigate('Avvisi')} style={s.iconBtn}>
+            <Ionicons name="notifications-outline" size={22} color={accentColor} />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 44 }} />
         )}
 
-        {/* Centro: logo scuola + titolo pagina */}
+        {/* Centro: logo scuola + titolo */}
         <View style={s.center}>
           <Image source={logoSrc} style={s.logo} resizeMode="contain" />
           <View style={s.titleRow}>
@@ -73,7 +79,7 @@ export default function ScreenLayout({
           </View>
         </View>
 
-        {/* Destra: custom action + hamburger (o solo hamburger) */}
+        {/* Destra: custom action + hamburger */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {rightAction}
           <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.iconBtn}>
@@ -88,7 +94,6 @@ export default function ScreenLayout({
         : <Wrapper {...(wrapperProps as any)}>{children}</Wrapper>
       }
 
-      {/* ── Sidebar ────────────────────────────────────────────────────── */}
       <Sidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -104,8 +109,7 @@ const s = StyleSheet.create({
   header:  {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: C.white,
-    borderBottomWidth: 0.5, borderBottomColor: C.border,
+    backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.border,
   },
   iconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
   center:  { flex: 1, alignItems: 'center', gap: 2 },

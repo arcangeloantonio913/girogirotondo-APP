@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
@@ -119,7 +120,7 @@ export default function AdminModulistica() {
           <Text style={s.fieldLabel}>File (immagine)</Text>
           <TouchableOpacity onPress={pickFile} style={s.fileBtn}>
             <Ionicons name="image-outline" size={20} color={C.primary} />
-            <Text style={s.fileBtnText}>{file ? file.name : 'Seleziona file...'}</Text>
+            <Text style={s.fileBtnText}>{file ? file.name : 'PDF, Word, Excel o immagine...'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving}>
             <Text style={s.submitText}>{saving ? 'Caricamento...' : 'Pubblica Documento'}</Text>

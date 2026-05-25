@@ -38,11 +38,16 @@ export default function TeacherDashboard({ navigation }: any) {
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <View style={s.topBar}>
+        <TouchableOpacity onPress={() => navigation.navigate('Avvisi')} style={[s.menuBtn, {backgroundColor: '#FF69B418'}]}>
+          <Ionicons name="notifications-outline" size={22} color="#FF69B4" />
+        </TouchableOpacity>
+        <View style={s.topCenter}>
+          <Image source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')} style={s.topLogo} resizeMode="contain" />
+          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
+        </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Girogirotondo</Text>
-        <View style={{ width: 44 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {/* Header */}

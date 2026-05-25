@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, SafeAreaView,
-  StatusBar, StyleSheet, ActivityIndicator, Image,
+  StatusBar, StyleSheet, ActivityIndicator, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
@@ -59,6 +59,7 @@ export default function ParentDashboard({ navigation }: any) {
   const [loading,  setLoading]  = useState(true);
   const [children, setChildren] = useState<any[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [childSwitcherOpen, setChildSwitcherOpen] = useState(false);
   const sedeAttiva = user?.sede_id || 'girogirotondo';
 
   const today = new Date().toISOString().split('T')[0];
@@ -89,7 +90,29 @@ export default function ParentDashboard({ navigation }: any) {
   if (loading) return (
     <SafeAreaView style={s.root}>
       <ActivityIndicator size="large" color={C.babyBlue} style={{ flex: 1 }} />
-          <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
+          {/* Child Switcher Modal */}
+      <Modal visible={childSwitcherOpen} transparent animationType="fade" onRequestClose={() => setChildSwitcherOpen(false)}>
+        <TouchableOpacity style={s.switOverlay} onPress={() => setChildSwitcherOpen(false)} activeOpacity={1}>
+          <View style={s.switSheet}>
+            <Text style={s.switTitle}>Seleziona bambino</Text>
+            {children.map((ch: any) => {
+              const isActive = ch.id === (activeChildId || childIds[0]);
+              return (
+                <TouchableOpacity key={ch.id} onPress={() => { setActiveChildId(ch.id); setChildSwitcherOpen(false); }}
+                  style={[s.switItem, isActive && s.switItemActive]}>
+                  <View style={[s.switAvatar, isActive && { backgroundColor: '#32CD32' }]}>
+                    <Text style={{ color: isActive ? '#FFF' : '#374151', fontWeight: '800' }}>{ch.name?.charAt(0)}</Text>
+                  </View>
+                  <Text style={[s.switName, isActive && { color: '#32CD32' }]}>{ch.name} {ch.cognome}</Text>
+                  {isActive && <Ionicons name="checkmark-circle" size={20} color="#32CD32" />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
     </SafeAreaView>
   );
 
@@ -104,11 +127,16 @@ export default function ParentDashboard({ navigation }: any) {
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <View style={s.topBar}>
+        <TouchableOpacity onPress={() => navigation.navigate('Avvisi')} style={[s.menuBtn, {backgroundColor: '#32CD3218'}]}>
+          <Ionicons name="notifications-outline" size={22} color="#32CD32" />
+        </TouchableOpacity>
+        <View style={s.topCenter}>
+          <Image source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')} style={s.topLogo} resizeMode="contain" />
+          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
+        </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Girogirotondo</Text>
-        <View style={{ width: 44 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
@@ -246,5 +274,14 @@ const s = StyleSheet.create({
   mealLabel:  { fontSize: 10, color: C.muted, fontWeight: '500' },
   mealValue:  { fontSize: 12, fontWeight: '700', color: C.text, marginTop: 2 },
   fab: { position: 'absolute', bottom: 80, right: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: C.babyBlue, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  childSwitcher: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FFF0', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 6, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#86EFAC' },
+  childSwitcherText: { fontSize: 12, fontWeight: '700', color: '#32CD32' },
+  switOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  switSheet:   { backgroundColor: '#FFFDD0', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
+  switTitle:   { fontSize: 16, fontWeight: '800', color: '#1A202C', marginBottom: 16, textAlign: 'center' },
+  switItem:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  switItemActive: { backgroundColor: '#F0FFF0', borderRadius: 12, paddingHorizontal: 10 },
+  switAvatar:  { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  switName:    { flex: 1, fontSize: 15, fontWeight: '600', color: '#1A202C' },
   white: C.white,
 });

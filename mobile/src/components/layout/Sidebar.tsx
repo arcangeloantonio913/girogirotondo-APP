@@ -91,9 +91,46 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
   const color = ROLE_COLORS[role] || '#4169E1';
   const items = NAV[role] || [];
 
+  // Screens that live inside the BottomTab navigator (need parent nav)
+  const TAB_SCREENS: Record<string, string> = {
+    // Admin tabs
+    'Home': 'AdminTabs', 'Presenze': 'AdminTabs', 'Utenti': 'AdminTabs',
+    'Classi': 'AdminTabs', 'Avvisi': 'AdminTabs',
+    // Teacher tabs
+    'Griglia': 'TeacherTabs', 'Diario': 'TeacherTabs', 'Media': 'TeacherTabs',
+    // Parent tabs
+    'Foto': 'ParentTabs', 'Dieta': 'ParentTabs',
+  };
+
+  const TEACHER_TABS = new Set(['Home','Presenze','Griglia','Diario','Media']);
+  const PARENT_TABS  = new Set(['Home','Foto','Griglia','Dieta','Diario']);
+  const ADMIN_TABS   = new Set(['Home','Presenze','Utenti','Classi','Avvisi']);
+
+  const isTabScreen = (screen: string) => {
+    const role = user?.role;
+    if (role === 'admin')   return ADMIN_TABS.has(screen);
+    if (role === 'teacher') return TEACHER_TABS.has(screen);
+    if (role === 'parent')  return PARENT_TABS.has(screen);
+    return false;
+  };
+
   const navigate = (screen: string) => {
     onClose();
-    setTimeout(() => navigation.navigate(screen), 150);
+    setTimeout(() => {
+      try {
+        if (isTabScreen(screen)) {
+          // Tab screens: navigate via the root navigator
+          const root = navigation.getParent() ?? navigation;
+          root.navigate(screen as never);
+        } else {
+          // Stack screens: navigate directly
+          navigation.navigate(screen as never);
+        }
+      } catch (e) {
+        // Fallback: try both
+        try { navigation.navigate(screen as never); } catch {}
+      }
+    }, 150);
   };
 
   const handleLogout = () => {

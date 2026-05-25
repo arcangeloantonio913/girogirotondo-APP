@@ -10,6 +10,7 @@ import TeacherDiario    from '../screens/teacher/DiarioScreen';
 import TeacherMedia     from '../screens/teacher/MediaScreen';
 import TeacherAvvisi    from '../screens/teacher/AvvisiScreen';
 import TeacherProfile   from '../screens/teacher/ProfileScreen';
+import NotificheScreen  from '../screens/shared/NotificheScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -52,6 +53,7 @@ export default function TeacherNavigator() {
       <Stack.Screen name="TeacherTabs" component={TeacherTabs}/>
       <Stack.Screen name="Avvisi"      component={TeacherAvvisi}/>
       <Stack.Screen name="Profilo"     component={TeacherProfile}/>
+      <Stack.Screen name="Notifiche"   component={NotificheScreen}/>
     </Stack.Navigator>
   );
 }

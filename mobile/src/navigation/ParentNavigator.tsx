@@ -12,6 +12,7 @@ import ParentAvvisi       from '../screens/parent/AvvisiScreen';
 import ParentAppuntamenti from '../screens/parent/AppuntamentiScreen';
 import ParentProfile      from '../screens/parent/ProfileScreen';
 import ParentModulistica  from '../screens/parent/ModulisticaScreen';
+import NotificheScreen    from '../screens/shared/NotificheScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -57,6 +58,7 @@ export default function ParentNavigator() {
       <Stack.Screen name="Appuntamenti"  component={ParentAppuntamenti}/>
       <Stack.Screen name="Profilo"       component={ParentProfile}/>
       <Stack.Screen name="Modulistica"   component={ParentModulistica}/>
+      <Stack.Screen name="Notifiche"     component={NotificheScreen}/>
     </Stack.Navigator>
   );
 }

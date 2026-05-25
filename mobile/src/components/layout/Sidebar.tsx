@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
-  Dimensions, ScrollView, Pressable,
+  Dimensions, ScrollView, Pressable, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
@@ -9,50 +9,47 @@ import { useAuth } from '../../lib/AuthContext';
 const { width: W } = Dimensions.get('window');
 const SIDEBAR_W = Math.min(300, W * 0.82);
 
-// ── Nav items per ruolo ──────────────────────────────────────────────────────
-const NAV: Record<string, { icon: string; label: string; screen: string; tab?: string }[]> = {
+const LOGOS: Record<string, any> = {
+  'girogirotondo':   require('../../../assets/logo-girogirotondo.png'),
+  'il-magico-mondo': require('../../../assets/logo-magico-mondo.png'),
+};
+
+const NAV: Record<string, { icon: string; label: string; screen: string; isTab: boolean }[]> = {
   parent: [
-    { icon: 'home-outline',           label: 'Home',           screen: 'Home'         },
-    { icon: 'images-outline',         label: 'Foto e Video',   screen: 'Foto'         },
-    { icon: 'grid-outline',           label: 'Griglia Pasti',  screen: 'Griglia'      },
-    { icon: 'restaurant-outline',     label: 'Menu Mensa',     screen: 'Dieta'        },
-    { icon: 'book-outline',           label: 'Diario di Bordo',screen: 'Diario'       },
-    { icon: 'megaphone-outline',      label: 'Avvisi',         screen: 'Avvisi'       },
-    { icon: 'calendar-outline',       label: 'Prenotazioni',   screen: 'Appuntamenti' },
-    { icon: 'document-text-outline',  label: 'Modulistica',    screen: 'Modulistica'  },
-    { icon: 'person-outline',         label: 'Il mio Profilo', screen: 'Profilo'      },
+    { icon: 'home-outline',          label: 'Home',            screen: 'Home',          isTab: true  },
+    { icon: 'images-outline',        label: 'Foto e Video',    screen: 'Foto',          isTab: true  },
+    { icon: 'grid-outline',          label: 'Griglia Pasti',   screen: 'Griglia',       isTab: true  },
+    { icon: 'restaurant-outline',    label: 'Menu Mensa',      screen: 'Dieta',         isTab: true  },
+    { icon: 'book-outline',          label: 'Diario di Bordo', screen: 'Diario',        isTab: true  },
+    { icon: 'notifications-outline', label: 'Avvisi & Notifiche', screen: 'Notifiche',  isTab: false },
+    { icon: 'calendar-outline',      label: 'Prenotazioni',    screen: 'Appuntamenti',  isTab: false },
+    { icon: 'document-text-outline', label: 'Modulistica',     screen: 'Modulistica',   isTab: false },
+    { icon: 'person-outline',        label: 'Il mio Profilo',  screen: 'Profilo',       isTab: false },
   ],
   teacher: [
-    { icon: 'home-outline',      label: 'Home',             screen: 'Home'     },
-    { icon: 'clipboard-outline', label: 'Registro Presenze',screen: 'Presenze' },
-    { icon: 'grid-outline',      label: 'Griglia Pasti',    screen: 'Griglia'  },
-    { icon: 'book-outline',      label: 'Diario di Bordo',  screen: 'Diario'   },
-    { icon: 'camera-outline',    label: 'Carica Media',     screen: 'Media'    },
-    { icon: 'megaphone-outline', label: 'Avvisi',           screen: 'Avvisi'   },
-    { icon: 'person-outline',    label: 'Il mio Profilo',   screen: 'Profilo'  },
+    { icon: 'home-outline',      label: 'Home',              screen: 'Home',     isTab: true  },
+    { icon: 'clipboard-outline', label: 'Presenze',          screen: 'Presenze', isTab: true  },
+    { icon: 'grid-outline',      label: 'Griglia Pasti',     screen: 'Griglia',  isTab: true  },
+    { icon: 'book-outline',      label: 'Diario di Bordo',   screen: 'Diario',   isTab: true  },
+    { icon: 'camera-outline',    label: 'Carica Media',      screen: 'Media',    isTab: true  },
+    { icon: 'notifications-outline', label: 'Avvisi & Notifiche', screen: 'Notifiche', isTab: false },
+    { icon: 'person-outline',    label: 'Il mio Profilo',    screen: 'Profilo',  isTab: false },
   ],
   admin: [
-    { icon: 'home-outline',           label: 'Home',            screen: 'Home'         },
-    { icon: 'clipboard-outline',      label: 'Presenze',        screen: 'Presenze'     },
-    { icon: 'people-outline',         label: 'Gestione Utenti', screen: 'Utenti'       },
-    { icon: 'book-outline',           label: 'Gestione Classi', screen: 'Classi'       },
-    { icon: 'megaphone-outline',      label: 'Avvisi',          screen: 'Avvisi'       },
-    { icon: 'calendar-outline',       label: 'Appuntamenti',    screen: 'Appuntamenti' },
-    { icon: 'restaurant-outline',     label: 'Menu Mensa',      screen: 'Mensa'        },
-    { icon: 'document-text-outline',  label: 'Modulistica',     screen: 'Modulistica'  },
-    { icon: 'person-outline',         label: 'Il mio Profilo',  screen: 'Profilo'      },
+    { icon: 'home-outline',           label: 'Home',            screen: 'Home',          isTab: true  },
+    { icon: 'clipboard-outline',      label: 'Presenze',        screen: 'Presenze',      isTab: true  },
+    { icon: 'people-outline',         label: 'Gestione Utenti', screen: 'Utenti',        isTab: true  },
+    { icon: 'book-outline',           label: 'Gestione Classi', screen: 'Classi',        isTab: true  },
+    { icon: 'megaphone-outline',      label: 'Avvisi',          screen: 'Avvisi',        isTab: true  },
+    { icon: 'calendar-outline',       label: 'Appuntamenti',    screen: 'Appuntamenti',  isTab: false },
+    { icon: 'restaurant-outline',     label: 'Menu Mensa',      screen: 'Mensa',         isTab: false },
+    { icon: 'document-text-outline',  label: 'Modulistica',     screen: 'Modulistica',   isTab: false },
+    { icon: 'person-outline',         label: 'Il mio Profilo',  screen: 'Profilo',       isTab: false },
   ],
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  admin:   '#4169E1',
-  teacher: '#FF69B4',
-  parent:  '#32CD32',
-};
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Amministratore', teacher: 'Maestra', parent: 'Genitore',
-};
-
+const ROLE_COLORS: Record<string, string> = { admin: '#4169E1', teacher: '#FF69B4', parent: '#32CD32' };
+const ROLE_LABELS: Record<string, string> = { admin: 'Amministratore', teacher: 'Maestra', parent: 'Genitore' };
 const SEDI = [
   { id: 'girogirotondo',   label: 'Girogirotondo',   color: '#4169E1' },
   { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
@@ -84,53 +81,36 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
     }
   }, [visible]);
 
-  // Non renderizzare nulla se non visibile e animazione completata
   if (!visible && (slideAnim as any)._value >= SIDEBAR_W - 1) return null;
 
   const role = user?.role || 'parent';
-  const color = ROLE_COLORS[role] || '#4169E1';
+  const color = ROLE_COLORS[role];
   const items = NAV[role] || [];
+  const sedeKey = (role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
 
-  // Screens that live inside the BottomTab navigator (need parent nav)
-  const TAB_SCREENS: Record<string, string> = {
-    // Admin tabs
-    'Home': 'AdminTabs', 'Presenze': 'AdminTabs', 'Utenti': 'AdminTabs',
-    'Classi': 'AdminTabs', 'Avvisi': 'AdminTabs',
-    // Teacher tabs
-    'Griglia': 'TeacherTabs', 'Diario': 'TeacherTabs', 'Media': 'TeacherTabs',
-    // Parent tabs
-    'Foto': 'ParentTabs', 'Dieta': 'ParentTabs',
-  };
-
-  const TEACHER_TABS = new Set(['Home','Presenze','Griglia','Diario','Media']);
-  const PARENT_TABS  = new Set(['Home','Foto','Griglia','Dieta','Diario']);
-  const ADMIN_TABS   = new Set(['Home','Presenze','Utenti','Classi','Avvisi']);
-
-  const isTabScreen = (screen: string) => {
-    const role = user?.role;
-    if (role === 'admin')   return ADMIN_TABS.has(screen);
-    if (role === 'teacher') return TEACHER_TABS.has(screen);
-    if (role === 'parent')  return PARENT_TABS.has(screen);
-    return false;
-  };
-
-  const navigate = (screen: string) => {
+  // Navigazione robusta: gestisce tab nested + stack screens
+  const navigate = (screen: string, isTab: boolean) => {
     onClose();
     setTimeout(() => {
       try {
-        if (isTabScreen(screen)) {
-          // Tab screens: navigate via the root navigator
-          const root = navigation.getParent() ?? navigation;
-          root.navigate(screen as never);
+        if (isTab) {
+          // I tab screens sono dentro AdminTabs/TeacherTabs/ParentTabs
+          // Prova navigazione diretta, se fallisce usa il parent
+          try {
+            navigation.navigate(screen as never);
+          } catch {
+            // Siamo in uno stack screen (es. Profilo) — naviga al parent
+            const parent = navigation.getParent();
+            if (parent) parent.navigate(screen as never);
+          }
         } else {
-          // Stack screens: navigate directly
+          // Stack screens: navigazione diretta
           navigation.navigate(screen as never);
         }
       } catch (e) {
-        // Fallback: try both
-        try { navigation.navigate(screen as never); } catch {}
+        console.log('[Sidebar] nav error for', screen, e);
       }
-    }, 150);
+    }, 200);
   };
 
   const handleLogout = () => {
@@ -140,12 +120,10 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
 
   return (
     <View style={s.container} pointerEvents={visible ? 'auto' : 'none'}>
-      {/* Overlay */}
       <Animated.View style={[s.overlay, { opacity: fadeAnim }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
 
-      {/* Drawer */}
       <Animated.View style={[s.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
 
@@ -160,36 +138,22 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
                 <Text style={[s.roleText, { color }]}>{ROLE_LABELS[role]}</Text>
               </View>
             </View>
+            <Image source={LOGOS[sedeKey]} style={s.sedeLogo} resizeMode="contain" />
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
               <Ionicons name="close" size={22} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
 
-          {/* Sede switcher — solo admin */}
+          {/* Sede switcher — solo superadmin */}
           {role === 'admin' && isSuperAdmin && (
             <View style={s.sedeSection}>
               <Text style={s.sectionLabel}>Sede attiva</Text>
-              {SEDI.map(s_ => (
-                <TouchableOpacity key={s_.id} onPress={() => updateSede(s_.id)}
-                  style={[s.sedeItem, sede === s_.id && { backgroundColor: s_.color + '12', borderColor: s_.color }]}>
-                  <View style={[s.sedeDot, { backgroundColor: s_.color }]} />
-                  <Text style={[s.sedeLabel, sede === s_.id && { color: s_.color, fontWeight: '700' }]}>{s_.label}</Text>
-                  {sede === s_.id && <Ionicons name="checkmark" size={16} color={s_.color} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Child switcher — solo genitore con più figli */}
-          {role === 'parent' && childIds.length > 1 && (
-            <View style={s.sedeSection}>
-              <Text style={s.sectionLabel}>Bambino attivo</Text>
-              {childIds.map(cid => (
-                <TouchableOpacity key={cid} onPress={() => setActiveChildId(cid)}
-                  style={[s.sedeItem, activeChildId === cid && { backgroundColor: '#32CD3212', borderColor: '#32CD32' }]}>
-                  <View style={[s.sedeDot, { backgroundColor: '#32CD32' }]} />
-                  <Text style={[s.sedeLabel, activeChildId === cid && { color: '#32CD32', fontWeight: '700' }]}>{cid}</Text>
-                  {activeChildId === cid && <Ionicons name="checkmark" size={16} color="#32CD32" />}
+              {SEDI.map(sd => (
+                <TouchableOpacity key={sd.id} onPress={() => updateSede(sd.id)}
+                  style={[s.sedeItem, sede === sd.id && { backgroundColor: sd.color + '12', borderColor: sd.color }]}>
+                  <Image source={LOGOS[sd.id]} style={s.sedeItemLogo} resizeMode="contain" />
+                  <Text style={[s.sedeLabel, sede === sd.id && { color: sd.color, fontWeight: '700' }]}>{sd.label}</Text>
+                  {sede === sd.id && <Ionicons name="checkmark" size={16} color={sd.color} />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -200,7 +164,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
             {items.map((item, i) => {
               const isActive = currentScreen === item.screen || currentScreen === item.label;
               return (
-                <TouchableOpacity key={i} onPress={() => navigate(item.screen)}
+                <TouchableOpacity key={i} onPress={() => navigate(item.screen, item.isTab)}
                   style={[s.navItem, isActive && { backgroundColor: color + '12' }]}>
                   <View style={[s.navIconBox, isActive && { backgroundColor: color + '20' }]}>
                     <Ionicons name={item.icon as any} size={20} color={isActive ? color : '#9CA3AF'} />
@@ -218,7 +182,6 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
             <Text style={s.logoutText}>Esci dall'account</Text>
           </TouchableOpacity>
 
-          {/* Footer */}
           <Text style={s.footer}>© 2026 Girogirotondo — GDPR compliant</Text>
         </ScrollView>
       </Animated.View>
@@ -230,28 +193,25 @@ const s = StyleSheet.create({
   container:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
   overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   drawer:       { position: 'absolute', top: 0, right: 0, bottom: 0, width: SIDEBAR_W, backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: -4, height: 0 }, elevation: 20 },
-
-  userSection:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, paddingTop: 56, borderBottomWidth: 1 },
-  avatar:       { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarText:   { fontSize: 20, fontWeight: '800' },
-  userName:     { fontSize: 15, fontWeight: '700', color: '#1A202C' },
-  roleBadge:    { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 3 },
+  userSection:  { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 18, paddingTop: 54, borderBottomWidth: 1 },
+  avatar:       { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  avatarText:   { fontSize: 18, fontWeight: '800' },
+  userName:     { fontSize: 14, fontWeight: '700', color: '#1A202C' },
+  roleBadge:    { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 7, paddingVertical: 2, marginTop: 2 },
   roleText:     { fontSize: 10, fontWeight: '700' },
+  sedeLogo:     { width: 32, height: 32, borderRadius: 16 },
   closeBtn:     { padding: 6 },
-
-  sedeSection:  { padding: 16, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  sedeItem:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, marginBottom: 4, borderWidth: 1, borderColor: 'transparent' },
-  sedeDot:      { width: 8, height: 8, borderRadius: 4 },
+  sedeSection:  { padding: 14, paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  sedeItem:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 10, marginBottom: 3, borderWidth: 1, borderColor: 'transparent' },
+  sedeItemLogo: { width: 24, height: 24, borderRadius: 12 },
   sedeLabel:    { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500' },
-
-  navSection:   { padding: 12 },
-  navItem:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 12, marginBottom: 2, position: 'relative', overflow: 'hidden' },
-  navIconBox:   { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  navSection:   { padding: 10 },
+  navItem:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 12, marginBottom: 1, position: 'relative', overflow: 'hidden' },
+  navIconBox:   { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   navLabel:     { fontSize: 14, color: '#374151', fontWeight: '500', flex: 1 },
   activeBar:    { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2 },
-
-  logoutBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 12, marginTop: 8, padding: 12, backgroundColor: '#FEF2F2', borderRadius: 12 },
+  logoutBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 10, marginTop: 6, padding: 12, backgroundColor: '#FEF2F2', borderRadius: 12 },
   logoutText:   { fontSize: 14, color: '#EF4444', fontWeight: '700' },
-  footer:       { fontSize: 10, color: '#D1D5DB', textAlign: 'center', marginTop: 20, paddingHorizontal: 16 },
+  footer:       { fontSize: 10, color: '#D1D5DB', textAlign: 'center', marginTop: 18, paddingHorizontal: 14 },
 });

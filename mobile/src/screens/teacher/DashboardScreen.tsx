@@ -38,7 +38,7 @@ export default function TeacherDashboard({ navigation }: any) {
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => navigation.navigate('Avvisi')} style={[s.menuBtn, {backgroundColor: '#FF69B418'}]}>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifiche')} style={[s.menuBtn, {backgroundColor: '#FF69B418'}]}>
           <Ionicons name="notifications-outline" size={22} color="#FF69B4" />
         </TouchableOpacity>
         <View style={s.topCenter}>

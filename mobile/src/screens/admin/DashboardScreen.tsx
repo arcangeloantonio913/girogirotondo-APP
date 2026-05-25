@@ -32,7 +32,11 @@ export default function AdminDashboard({ navigation }: any) {
 
   useEffect(() => {
     Promise.all([api.get('/users'), api.get('/students'), api.get('/classes')])
-      .then(([uR, sR, cR]) => setStats({ users: uR.data?.length || 0, students: sR.data?.length || 0, classes: cR.data?.length || 0 }))
+      .then(([uR, sR, cR]) => setStats({ 
+        users: uR.data?.length || 0, 
+        students: sR.data?.length || 0, 
+        classes: cR.data?.length || 0 
+      }))
       .catch(() => {});
   }, [sede]);
 

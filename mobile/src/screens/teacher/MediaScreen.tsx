@@ -24,6 +24,18 @@ export default function TeacherMedia() {
       .then(r => setItems(r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, [classId]);
 
+  const handleDelete = (id: string) => {
+    Alert.alert('Elimina foto', 'Sei sicuro?', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: async () => {
+        try {
+          await api.delete(`/gallery/${id}`);
+          setItems(prev => prev.filter(i => i.id !== id));
+        } catch { Alert.alert('Errore', 'Impossibile eliminare la foto'); }
+      }},
+    ]);
+  };
+
   const handlePick = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permesso negato', 'Concedi l\'accesso alla galleria nelle impostazioni'); return; }
@@ -68,6 +80,8 @@ const s = StyleSheet.create({
   uploadBtnText:{ color: C.white, fontWeight: '700', fontSize: 14 },
   empty:      { alignItems: 'center', paddingTop: 60 },
   emptyText:  { fontSize: 14, color: C.muted, marginTop: 12 },
+  thumbWrap:  { width: IMG, height: IMG, margin: 4, borderRadius: 14, overflow: 'hidden', backgroundColor: C.border, position: 'relative' },
   thumb:      { width: IMG, height: IMG, margin: 4, borderRadius: 14, overflow: 'hidden', backgroundColor: C.border },
   thumbImg:   { width: IMG, height: IMG },
+  delImgBtn:  { position: 'absolute', top: 6, right: 6, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
 });

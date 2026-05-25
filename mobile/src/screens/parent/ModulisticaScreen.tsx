@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Linking } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Linking, Modal, ActivityIndicator } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -74,7 +75,7 @@ export default function ParentModulistica() {
                 {(item.file_url || item.data) && (
                   <TouchableOpacity onPress={() => handleDownload(item)} style={s.downloadBtn}>
                     <Ionicons name="download-outline" size={16} color={C.babyBlue} />
-                    <Text style={s.downloadText}>Scarica</Text>
+                    <Text style={s.downloadText}>Apri / Scarica</Text>
                   </TouchableOpacity>
                 )}
                 {isRead ? (

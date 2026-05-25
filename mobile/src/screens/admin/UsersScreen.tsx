@@ -237,6 +237,31 @@ export default function AdminUsers() {
             <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSaveEdit} disabled={saving}>
               <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Modifiche'}</Text>
             </TouchableOpacity>
+            {editUser?.role === 'parent' && (
+              <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#FF9500', marginTop: 8 }]}
+                onPress={() => {
+                  // Trova il bambino associato e aggiungi secondo genitore
+                  const childId = editUser?.child_ids?.[0] || editUser?.child_id;
+                  if (!childId) { Alert.alert('Attenzione', 'Nessun bambino associato a questo genitore'); return; }
+                  Alert.prompt('Aggiungi secondo genitore', 'Email del secondo genitore:', async (email) => {
+                    if (!email) return;
+                    try {
+                      await api.post('/users/secondo-genitore', {
+                        student_id: childId,
+                        genitore_email: email.trim(),
+                      });
+                      Alert.alert('Fatto', 'Secondo genitore aggiunto. Riceverà le credenziali via email.');
+                      const uR = await api.get('/users');
+                      setUsers(uR.data || []);
+                      setModal(null);
+                    } catch (e: any) {
+                      Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile aggiungere');
+                    }
+                  }, 'plain-text', '', 'email-address');
+                }}>
+                <Text style={s.submitText}>+ Aggiungi Secondo Genitore</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </Modal>

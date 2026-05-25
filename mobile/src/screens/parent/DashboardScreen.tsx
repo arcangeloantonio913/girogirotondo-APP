@@ -127,7 +127,7 @@ export default function ParentDashboard({ navigation }: any) {
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => navigation.navigate('Avvisi')} style={[s.menuBtn, {backgroundColor: '#32CD3218'}]}>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifiche')} style={[s.menuBtn, {backgroundColor: '#32CD3218'}]}>
           <Ionicons name="notifications-outline" size={22} color="#32CD32" />
         </TouchableOpacity>
         <View style={s.topCenter}>
@@ -229,7 +229,7 @@ export default function ParentDashboard({ navigation }: any) {
       {/* FAB prenotazione */}
       {/* Bottom actions row */}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, position: 'absolute', bottom: 80, right: 16 }}>
-        <TouchableOpacity style={[s.fab, { backgroundColor: '#FF69B4' }]} onPress={() => navigation.navigate('Avvisi')}>
+        <TouchableOpacity style={[s.fab, { backgroundColor: '#FF69B4' }]} onPress={() => navigation.navigate('Notifiche')}>
           <Ionicons name="megaphone-outline" size={22} color={C.white}/>
         </TouchableOpacity>
         <TouchableOpacity style={[s.fab, { backgroundColor: '#A7C7E7' }]} onPress={() => navigation.navigate('Modulistica')}>

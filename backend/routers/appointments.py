@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
+try:
+    from utils.expo_push import notify_users as expo_notify
+except: expo_notify = None
 from models.appointments import AppointmentCreate, AppointmentStatus
 from middleware.auth import get_current_user
 from services.email_service import send_appointment_email

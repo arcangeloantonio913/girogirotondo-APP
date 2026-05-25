@@ -63,13 +63,7 @@ export default function TeacherPresenze() {
 
   return (
     <ScreenLayout title="Registro Presenze" showBack color={C.primary} loading={loading} scrollable={false}
-      rightAction={
-        tab==='oggi'?(
-          <TouchableOpacity onPress={handleSave} disabled={saving} style={[s.saveBtn,saving&&{opacity:0.5}]}>
-            <Text style={s.saveBtnText}>{saving?'...':'Salva'}</Text>
-          </TouchableOpacity>
-        ):undefined
-      }
+
     >
       {/* Tabs */}
       <View style={s.tabs}>
@@ -145,6 +139,18 @@ export default function TeacherPresenze() {
             </View>
           )}
         />
+      )}
+      {/* Salva in basso al centro */}
+      {tab==='oggi'&&(
+        <View style={{padding:16,backgroundColor:'#FFFDD0'}}>
+          <TouchableOpacity onPress={handleSave} disabled={saving}
+            style={[{backgroundColor:'#4169E1',borderRadius:16,height:52,alignItems:'center',justifyContent:'center',opacity:saving?0.5:1}]}>
+            {saving
+              ? <Text style={{color:'#FFF',fontWeight:'800',fontSize:16}}>Salvataggio...</Text>
+              : <Text style={{color:'#FFF',fontWeight:'800',fontSize:16}}>✓ Salva Presenze</Text>
+            }
+          </TouchableOpacity>
+        </View>
       )}
     </ScreenLayout>
   );

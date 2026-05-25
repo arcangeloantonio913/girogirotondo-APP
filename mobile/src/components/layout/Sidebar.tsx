@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
+import { navigate as globalNavigate, navigateToTab } from '../../navigation/NavigationService';
 
 const { width: W } = Dimensions.get('window');
 const SIDEBAR_W = Math.min(300, W * 0.82);
@@ -88,27 +89,22 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
   const items = NAV[role] || [];
   const sedeKey = (role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
 
-  // Navigazione robusta: gestisce tab nested + stack screens
+  const TAB_CONTAINER: Record<string, string> = {
+    admin: 'AdminTabs', teacher: 'TeacherTabs', parent: 'ParentTabs',
+  };
+
+  // Navigazione tramite ref globale — funziona da qualsiasi schermata
   const navigate = (screen: string, isTab: boolean) => {
     onClose();
+    const role = user?.role || 'parent';
+    const tabsName = TAB_CONTAINER[role];
     setTimeout(() => {
-      try {
-        if (isTab) {
-          // I tab screens sono dentro AdminTabs/TeacherTabs/ParentTabs
-          // Prova navigazione diretta, se fallisce usa il parent
-          try {
-            navigation.navigate(screen as never);
-          } catch {
-            // Siamo in uno stack screen (es. Profilo) — naviga al parent
-            const parent = navigation.getParent();
-            if (parent) parent.navigate(screen as never);
-          }
-        } else {
-          // Stack screens: navigazione diretta
-          navigation.navigate(screen as never);
-        }
-      } catch (e) {
-        console.log('[Sidebar] nav error for', screen, e);
+      if (isTab) {
+        // Per i tab: naviga al container dei tab specificando lo schermo
+        navigateToTab(tabsName, screen);
+      } else {
+        // Per le schermate stack: navigazione globale diretta
+        globalNavigate(screen);
       }
     }, 200);
   };

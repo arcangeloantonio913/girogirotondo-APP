@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
+import { navigate as globalNavigate } from '../../navigation/NavigationService';
 import Sidebar from './Sidebar';
 
 const C = { bg: '#FFFDD0', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };

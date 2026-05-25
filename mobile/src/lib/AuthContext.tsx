@@ -88,10 +88,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Rinnova token Firebase in background
+  // Rinnova token Firebase in background — NON cancella la sessione se Firebase perde lo stato
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) return;
+      if (!fbUser) {
+        // Firebase ha perso lo stato (hot reload, riavvio app)
+        // Non cancellare l'utente se abbiamo ancora un JWT valido
+        const hasJwt = await SecureStore.getItemAsync('ggt_token');
+        if (!hasJwt) {
+          // Solo in questo caso cancella la sessione
+          setUser(null);
+        }
+        return;
+      }
       try {
         const t = await fbUser.getIdToken(false);
         await SecureStore.setItemAsync('ggt_token', t);

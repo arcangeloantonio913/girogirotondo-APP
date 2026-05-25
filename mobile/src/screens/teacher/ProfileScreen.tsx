@@ -10,6 +10,17 @@ const C = { babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA
 export default function TeacherProfile() {
   const { user, logout } = useAuth();
   const [newPwd,    setNewPwd]    = useState('');
+  const [className, setClassName] = useState('');
+
+  useEffect(() => {
+    const ids = user?.class_ids?.length ? user.class_ids : user?.class_id ? [user.class_id] : [];
+    if (ids.length > 0) {
+      api.get('/classes').then(r => {
+        const cls = (r.data || []).filter((c: any) => ids.includes(c.id)).map((c: any) => c.name);
+        setClassName(cls.join(', ') || ids[0]);
+      }).catch(() => {});
+    }
+  }, [user]);
   const [confirmPwd,setConfirmPwd]= useState('');
   const [showPwd,   setShowPwd]   = useState(false);
   const [pwdMsg,    setPwdMsg]    = useState('');

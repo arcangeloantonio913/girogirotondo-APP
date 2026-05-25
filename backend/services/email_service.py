@@ -278,7 +278,17 @@ async def _send_via_smtp(to_email, subject, html_body, plain_body) -> bool:
         return False
 
 
-async def send_credentials_email(
+async APP_INSTALL_GUIDE = """
+        <div style="background:#F0FFF4;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #32CD32;">
+          <h3 style="color:#065F46;margin:0 0 8px 0;">📱 Scarica l'App Girogirotondo</h3>
+          <p style="color:#065F46;margin:4px 0;">1. Apri il <strong>App Store</strong> (iPhone) o <strong>Google Play</strong> (Android)</p>
+          <p style="color:#065F46;margin:4px 0;">2. Cerca <strong>"Girogirotondo App"</strong></p>
+          <p style="color:#065F46;margin:4px 0;">3. Scarica e installa l'app gratuitamente</p>
+          <p style="color:#065F46;margin:4px 0;">4. Accedi con le credenziali qui sotto</p>
+          <p style="color:#065F46;margin:8px 0 0 0;font-size:12px;">✨ Il login rimarrà attivo — non devi reinserire le credenziali ogni volta.</p>
+        </div>"""
+
+def send_credentials_email(
     to_email: str,
     bambino_nome: str,
     bambino_cognome: str,

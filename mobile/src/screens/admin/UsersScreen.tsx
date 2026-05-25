@@ -42,6 +42,7 @@ export default function AdminUsers() {
     // Secondo genitore (opzionale)
     genitore2_nome: '', genitore2_cognome: '', genitore2_email: '', genitore2_password: '',
     show_second_parent: false,
+    bambino2_nome: '', bambino2_cognome: '', bambino2_class_id: '',
   });
   // Edit form
   const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '' });
@@ -113,6 +114,21 @@ export default function AdminUsers() {
             genitore_email: iscForm.genitore2_email,
             genitore_nome: iscForm.genitore2_nome,
             genitore_password: iscForm.genitore2_password || genPwd(),
+          });
+        } catch {}
+      }
+
+      // Secondo bambino (opzionale)
+      if (iscForm.bambino2_nome && res.data.parent?.id && iscForm.bambino2_class_id) {
+        try {
+          await api.post('/users/iscrizione', {
+            bambino_nome: iscForm.bambino2_nome,
+            bambino_cognome: iscForm.bambino2_cognome || iscForm.bambino_cognome,
+            class_id: iscForm.bambino2_class_id,
+            genitore_email: iscForm.genitore_email,
+            genitore_nome: iscForm.genitore_nome,
+            parent_id_existing: res.data.parent?.id, // collega al genitore già creato
+            sede_id: sede,
           });
         } catch {}
       }
@@ -419,6 +435,39 @@ export default function AdminUsers() {
                   ))}
                 </>
               )}
+
+              {/* Secondo bambino (opzionale) */}
+              <Text style={[s.sectionHead, { color: '#FF9500', marginTop: 16 }]}>👶 Secondo bambino (opzionale)</Text>
+              <Text style={{fontSize:11,color:C.muted,marginBottom:8}}>Se la famiglia ha un altro bambino nella stessa scuola, aggiungilo qui e riceverà lo stesso account genitore.</Text>
+              {[
+                { key: 'bambino2_nome',    label: 'Nome secondo bambino',  ph: 'Sofia' },
+                { key: 'bambino2_cognome', label: 'Cognome',               ph: 'Rossi' },
+                { key: 'bambino2_class_id',label: 'Classe',                ph: '' },
+              ].filter(f => f.ph !== 'SKIP').map(f => (
+                f.key === 'bambino2_class_id' ? (
+                  <View key={f.key}>
+                    <Text style={s.fl}>Classe secondo bambino</Text>
+                    <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
+                      <TouchableOpacity onPress={() => setIsc(p => ({ ...p, bambino2_class_id: '' }))}
+                        style={[s.chip, !iscForm.bambino2_class_id && { backgroundColor: '#E5E7EB' }]}>
+                        <Text style={s.chipText}>—</Text>
+                      </TouchableOpacity>
+                      {classes.map(cls => (
+                        <TouchableOpacity key={cls.id} onPress={() => setIsc(p => ({ ...p, bambino2_class_id: cls.id }))}
+                          style={[s.chip, iscForm.bambino2_class_id === cls.id && { backgroundColor: '#FF9500', borderColor: '#FF9500' }]}>
+                          <Text style={[s.chipText, iscForm.bambino2_class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <View key={f.key}>
+                    <Text style={s.fl}>{f.label}</Text>
+                    <TextInput style={s.input} value={(iscForm as any)[f.key] || ''}
+                      onChangeText={t => setIsc(p => ({ ...p, [f.key]: t }))} placeholder={f.ph} />
+                  </View>
+                )
+              ))}
 
               <TouchableOpacity style={[s.submitBtn, { backgroundColor: C.green }, saving && { opacity: 0.6 }]}
                 onPress={handleIscrizione} disabled={saving}>

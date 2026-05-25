@@ -23,18 +23,29 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    // Controlla connessione periodicamente
+    let failures = 0;
     const check = async () => {
       try {
-        const res = await fetch('https://girogirotondo-app-production.up.railway.app/api/', { method: 'HEAD' });
-        setIsOffline(!res.ok && res.status !== 401);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch('https://girogirotondo-app-production.up.railway.app/api/', {
+          method: 'GET', signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok || res.status === 401 || res.status === 405) {
+          failures = 0;
+          setIsOffline(false);
+        }
       } catch {
-        setIsOffline(true);
+        failures++;
+        // Mostra offline solo dopo 2 fallimenti consecutivi (evita falsi positivi)
+        if (failures >= 2) setIsOffline(true);
       }
     };
-    check();
-    const interval = setInterval(check, 30000); // ogni 30s
-    return () => clearInterval(interval);
+    // Prima verifica dopo 3s (attendi che l'app si avvii)
+    const initial = setTimeout(check, 3000);
+    const interval = setInterval(check, 30000);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, []);
 
   return (

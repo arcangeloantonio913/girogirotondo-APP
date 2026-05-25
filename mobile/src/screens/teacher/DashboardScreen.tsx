@@ -101,6 +101,11 @@ const s = StyleSheet.create({
   iconBox:{ width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardTitle:{ fontSize: 14, fontWeight: '800', color: C.text },
   cardSub:{ fontSize: 11, color: C.muted, marginTop: 2 },
+  topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, height: 52, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  topCenter: { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  topLogo:   { width: 28, height: 28, borderRadius: 14 },
+  topSede:   { fontSize: 13, fontWeight: '700', color: '#1A202C' },
+  menuBtn:   { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
   white:  C.white,
 });
 

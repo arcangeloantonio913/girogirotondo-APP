@@ -3,10 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
-import LoginScreen from '../screens/auth/LoginScreen';
-import ParentNavigator from './ParentNavigator';
+import LoginScreen    from '../screens/auth/LoginScreen';
+import ParentNavigator  from './ParentNavigator';
 import TeacherNavigator from './TeacherNavigator';
-import AdminNavigator from './AdminNavigator';
+import AdminNavigator   from './AdminNavigator';
+import { navigationRef } from './NavigationService';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,16 +23,16 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Login"   component={LoginScreen} />
         ) : user.role === 'parent' ? (
-          <Stack.Screen name="Parent" component={ParentNavigator} />
+          <Stack.Screen name="Parent"  component={ParentNavigator} />
         ) : user.role === 'teacher' ? (
           <Stack.Screen name="Teacher" component={TeacherNavigator} />
         ) : (
-          <Stack.Screen name="Admin" component={AdminNavigator} />
+          <Stack.Screen name="Admin"   component={AdminNavigator} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

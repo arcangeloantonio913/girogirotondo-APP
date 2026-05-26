@@ -3,9 +3,6 @@
     "name": "Girogirotondo",
     "slug": "girogirotondo-app",
     "version": "1.0.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -51,6 +48,24 @@
       "eas": {
         "projectId": "DA_INSERIRE_DOPO_eas_build_configure"
       }
-    }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/logo-girogirotondo.png",
+      "name": "Girogirotondo",
+      "shortName": "GGT",
+      "description": "La piattaforma della tua scuola dell'infanzia — accessibile ovunque",
+      "themeColor": "#4169E1",
+      "backgroundColor": "#FFFDD0",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
+    },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ]
   }
 }

@@ -20,7 +20,13 @@
         "NSCameraUsageDescription": "Utilizzata per fotografare i bambini durante le attività.",
         "NSPhotoLibraryUsageDescription": "Consente di caricare foto dalla galleria.",
         "NSPhotoLibraryAddUsageDescription": "Consente di salvare le foto nella galleria.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPrivacyDescription": "Questa app raccoglie dati necessari per la gestione scolastica. Informativa completa: https://girogirotondowebapp.it/privacy"
+      },
+      "config": {
+        "googleSignIn": {
+          "reservedClientId": ""
+        }
       }
     },
     "android": {
@@ -37,7 +43,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
-      ]
+      ],
+      "intentFilters": []
     },
     "plugins": [
       "expo-secure-store",
@@ -47,7 +54,9 @@
     "extra": {
       "eas": {
         "projectId": "DA_INSERIRE_DOPO_eas_build_configure"
-      }
+      },
+      "privacyPolicyUrl": "https://girogirotondowebapp.it/privacy",
+      "supportUrl": "https://girogirotondowebapp.it"
     },
     "web": {
       "bundler": "metro",
@@ -66,6 +75,7 @@
       "ios",
       "android",
       "web"
-    ]
+    ],
+    "description": "Piattaforma gestionale per la Scuola dell'Infanzia Girogirotondo e Il Magico Mondo. Permette a genitori e maestre di comunicare in tempo reale, condividere foto, gestire presenze e menu mensa."
   }
 }

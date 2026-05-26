@@ -122,12 +122,21 @@ Hai inoltre il diritto di proporre reclamo al Garante per la Protezione dei Dati
 Ai sensi dell'art. 2-quinquies del D.Lgs. 196/2003, il consenso al trattamento dei dati dei minori di 14 anni deve essere prestato da chi esercita la responsabilità genitoriale.`,
   },
   {
-    title: '9. Cookie e Tecnologie Simili',
-    content: `La piattaforma utilizza:
+    title: '9. App Mobile, Notifiche Push e Cookie',
+    content: `**App Mobile (iOS e Android):**
+La piattaforma è disponibile come applicazione mobile scaricabile dall'App Store (Apple) e dal Google Play Store (Google). L'app mobile utilizza le stesse credenziali della piattaforma web.
 
-- **Cookie tecnici essenziali:** per il funzionamento dell'autenticazione e della sessione utente. Questi cookie non richiedono consenso.
-- **localStorage:** per mantenere la sessione di accesso e le preferenze dell'utente (es. sede selezionata). I dati vengono eliminati al logout.
-- **Service Worker:** per le funzionalità PWA (installazione come app, notifiche push). Richiede esplicita autorizzazione dell'utente.
+Dati raccolti esclusivamente dall'app mobile:
+- **Token di dispositivo (Push Token):** un identificativo anonimo del dispositivo, necessario per l'invio di notifiche push. Viene memorizzato in modo sicuro e cancellato al logout.
+- **Foto dalla galleria del dispositivo:** solo quando la maestra sceglie esplicitamente di caricare immagini. L'app richiede il permesso dell'utente.
+
+**Notifiche Push:**
+L'app può inviare notifiche push per: nuovi avvisi scolastici, aggiornamenti del diario, conferma di appuntamenti. L'utente può disabilitare le notifiche in qualsiasi momento dalle impostazioni del proprio dispositivo.
+
+**Piattaforma web — Cookie e tecnologie simili:**
+- **Cookie tecnici essenziali:** per il funzionamento dell'autenticazione. Non richiedono consenso.
+- **localStorage:** per la sessione di accesso e preferenze utente. Eliminati al logout.
+- **SecureStore (app mobile):** equivalente sicuro del localStorage su dispositivo mobile, con cifratura nativa.
 
 Non utilizziamo cookie di profilazione o di terze parti per finalità pubblicitarie.`,
   },
@@ -137,7 +146,7 @@ Non utilizziamo cookie di profilazione o di terze parti per finalità pubblicita
 
 La versione più aggiornata è sempre disponibile al seguente indirizzo: girogirotondowebapp.it/privacy
 
-**Ultima revisione:** Aprile 2026`,
+**Ultima revisione:** Maggio 2026`,
   },
 ];
 

@@ -1,44 +1,47 @@
 {
   "cli": {
-    "version": ">= 10.0.0"
+    "version": ">= 10.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": {
-        "simulator": false
-      }
+      "channel": "development",
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" }
     },
     "preview": {
       "distribution": "internal",
-      "ios": {
-        "simulator": false
-      },
-      "android": {
-        "buildType": "apk"
-      }
+      "channel": "preview",
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" },
+      "autoIncrement": true
     },
     "production": {
+      "channel": "production",
       "autoIncrement": true,
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "credentialsSource": "remote"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "credentialsSource": "remote"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "tua@email.com",
-        "ascAppId": "DA_INSERIRE",
-        "appleTeamId": "DA_INSERIRE"
+        "appleId": "INSERISCI_TUA_APPLE_ID@email.com",
+        "ascAppId": "DA_INSERIRE_DOPO_CREAZIONE_APP",
+        "appleTeamId": "DA_INSERIRE_DOPO_ACCOUNT_DEVELOPER"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production"
+        "track": "production",
+        "releaseStatus": "completed"
       }
     }
   }

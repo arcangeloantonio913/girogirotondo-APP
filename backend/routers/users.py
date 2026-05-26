@@ -258,7 +258,7 @@ async def iscrizione_bambino(
         parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
 
     # 3. Email — sincrona per garantire l'invio reale su Railway
-    if sibling_mode:
+    if sibling_mode or getattr(payload, 'skip_email', False):
         email_inviata = False
     else:
         email_inviata = await send_credentials_email(

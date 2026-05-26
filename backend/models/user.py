@@ -55,6 +55,7 @@ class SecondoGenitoreCreate(BaseModel):
     genitore_email: EmailStr
     genitore_nome: Optional[str] = None
     genitore_password: Optional[str] = None
+    skip_email: bool = False              # True = non invia email di benvenuto
 
 
 class IscrizioneCreate(BaseModel):
@@ -67,3 +68,4 @@ class IscrizioneCreate(BaseModel):
     genitore_email: EmailStr
     genitore_nome: Optional[str] = None
     genitore_password: Optional[str] = None
+    skip_email: bool = False              # True = non invia email di benvenuto

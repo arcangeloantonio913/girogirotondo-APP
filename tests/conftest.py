@@ -91,6 +91,10 @@ async def seed_db(mock_db, mock_firebase):
         {"id": "ggt-media-1", "class_id": GGT_CLASS, "sede_id": SEDE_GGT, "student_ids": [GGT_STUDENT], "media_type": "photo", "media_url": "https://x/ggt.jpg", "published": True, "created_at": "2026-01-01T00:00:00+00:00"},
         {"id": "mm-media-1", "class_id": MM_CLASS, "sede_id": SEDE_MM, "student_ids": [MM_STUDENT], "media_type": "photo", "media_url": "https://x/mm.jpg", "published": True, "created_at": "2026-01-01T00:00:00+00:00"},
     ])
+    await db.diary.insert_many([
+        {"id": "ggt-diary-1", "class_id": GGT_CLASS, "sede_id": SEDE_GGT, "date": "2026-01-02", "summary": "Giornata GGT", "created_at": "2026-01-02T00:00:00+00:00"},
+        {"id": "mm-diary-1", "class_id": MM_CLASS, "sede_id": SEDE_MM, "date": "2026-01-02", "summary": "Giornata MM", "created_at": "2026-01-02T00:00:00+00:00"},
+    ])
     yield db
 
 

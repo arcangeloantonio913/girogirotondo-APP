@@ -1,58 +1,50 @@
-"""Diary router — /api/diary and /api/diary/entries (alias)."""
+"""Diary router — /api/diary and /api/diary/entries (alias).
+
+Tenant isolation via get_tenant_context: parents see only their children's class
+diary, teachers/admins only their classes/sede, superadmin all. Denied access -> 404.
+"""
 import re
 import uuid
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.database import get_db
 from utils.expo_push import notify_parents_of_class, notify_users
 from models.diary import DiaryEntryCreate
-from middleware.auth import get_current_user
+from middleware.auth import get_tenant_context, TenantContext, _resolve_class
+from middleware.rate_limiter import limiter
 
 router = APIRouter(tags=["diary"])
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-async def _get_diary(class_id: Optional[str], date: Optional[str], current_user: dict,
+async def _get_diary(class_id: Optional[str], date: Optional[str], ctx: TenantContext,
                      student_id: Optional[str] = None):
     db = get_db()
     query: dict = {}
-    role = current_user.get("role")
 
-    # ── Parent isolation: il genitore vede solo il diario della classe del figlio ─
-    if role == "parent":
-        child_ids = list(current_user.get("child_ids") or [])
-        legacy = current_user.get("child_id")
-        if legacy and legacy not in child_ids:
-            child_ids.append(legacy)
-        if not child_ids:
-            return []
-
-        # Se passato student_id, usa SOLO la classe di quel figlio (figlio attivo)
-        if student_id:
-            if student_id not in child_ids:
-                raise HTTPException(status_code=403, detail="Accesso negato")
-            lookup_ids = [student_id]
+    if student_id:
+        # Narrow to that specific child's/student's class.
+        if ctx.role == "parent":
+            if student_id not in ctx.allowed_student_ids:
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
         else:
-            lookup_ids = child_ids
-
-        students = await db.students.find(
-            {"id": {"$in": lookup_ids}}, {"_id": 0, "class_id": 1}
-        ).to_list(100)
-        allowed_classes = list({s["class_id"] for s in students if s.get("class_id")})
-        if not allowed_classes:
+            await ctx.assert_student(student_id)
+        st = await db.students.find_one({"id": student_id}, {"_id": 0, "class_id": 1})
+        cls = st.get("class_id") if st else None
+        if not cls:
             return []
-        if class_id:
-            if class_id not in allowed_classes:
-                raise HTTPException(status_code=403, detail="Accesso negato")
-            query["class_id"] = class_id
-        else:
-            query["class_id"] = {"$in": allowed_classes}
+        ctx.assert_class(cls)
+        query["class_id"] = cls
+    elif class_id:
+        ctx.assert_class(class_id)
+        query["class_id"] = class_id
     else:
-        if class_id:
-            query["class_id"] = class_id
+        if not ctx.all_access and not ctx.allowed_class_ids:
+            return []
+        query.update(ctx.class_filter())
 
     if date:
         if not _DATE_RE.match(date):
@@ -61,11 +53,15 @@ async def _get_diary(class_id: Optional[str], date: Optional[str], current_user:
     return await db.diary.find(query, {"_id": 0}).to_list(100)
 
 
-async def _create_diary(entry: DiaryEntryCreate, user_id: str):
+async def _create_diary(entry: DiaryEntryCreate, ctx: TenantContext):
     db = get_db()
+    # Caller must own the target class (cross-tenant write protection).
+    ctx.assert_class(entry.class_id)
     doc = entry.model_dump()
+    cls = await _resolve_class(db, entry.class_id)
+    doc["sede_id"] = cls.get("sede_id") if cls else None
     doc["id"] = str(uuid.uuid4())
-    doc["created_by"] = user_id
+    doc["created_by"] = ctx.user_id
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.diary.insert_one(doc)
     # Push ai genitori della classe
@@ -89,18 +85,20 @@ async def get_diary(
     class_id: Optional[str] = None,
     date: Optional[str] = None,
     student_id: Optional[str] = None,   # filtro per figlio attivo (fratellini)
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    return await _get_diary(class_id, date, current_user, student_id)
+    return await _get_diary(class_id, date, ctx, student_id)
 
 
 @router.post("/api/diary", status_code=201)
 @router.post("/api/diary/entries", status_code=201)
+@limiter.limit("120/minute")
 async def create_diary(
+    request: Request,
     entry: DiaryEntryCreate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     # Solo admin e maestre possono scrivere nel diario
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può scrivere nel diario")
-    return await _create_diary(entry, current_user.get("id", ""))
+    return await _create_diary(entry, ctx)

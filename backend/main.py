@@ -79,8 +79,19 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 add_error_handlers(app)
 
-_raw_origins = os.environ.get("CORS_ORIGINS", "*")
-_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] if _raw_origins != "*" else ["*"]
+# CORS: never combine "*" with allow_credentials=True (it lets any site make
+# credentialed requests). Default to an explicit allowlist; CORS_ORIGINS env can
+# extend/override it (comma-separated). A literal "*" is ignored as unsafe here.
+_DEFAULT_ORIGINS = [
+    "https://girogirotondowebapp.it",
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+_raw_origins = os.environ.get("CORS_ORIGINS", "").strip()
+if _raw_origins and _raw_origins != "*":
+    _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+else:
+    _allowed_origins = _DEFAULT_ORIGINS
 
 app.add_middleware(
     CORSMiddleware,

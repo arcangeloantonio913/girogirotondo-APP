@@ -1,4 +1,11 @@
-"""Gallery router — upload to Firebase Storage, signed URLs, publish, delete."""
+"""Gallery router — upload to Firebase Storage, signed URLs, publish, delete.
+
+Tenant isolation: every endpoint is scoped via get_tenant_context.
+- Parents see only their own children's media.
+- Teachers/admins are limited to their assigned classes / their sede.
+- Superadmin has all-access.
+Denied object access returns 404 (not 403) so ids cannot be probed.
+"""
 import re
 import uuid
 import logging
@@ -11,7 +18,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 from services.database import get_db
 from models.gallery import MediaUpload
-from middleware.auth import get_current_user
+from middleware.auth import get_tenant_context, TenantContext, _resolve_class
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file, generate_thumbnail
 from utils.push_notifications import notify_class
@@ -38,12 +45,19 @@ def _refresh_signed_url(item: dict) -> dict:
     return item
 
 
-def _parent_child_ids(current_user: dict) -> list:
-    ids = list(current_user.get("child_ids") or [])
-    legacy = current_user.get("child_id")
-    if legacy and legacy not in ids:
-        ids.append(legacy)
-    return ids
+async def _class_sede(db, class_id: str) -> Optional[str]:
+    cls = await _resolve_class(db, class_id)
+    return cls.get("sede_id") if cls else None
+
+
+async def _students_in_class(db, class_id: str, student_ids: list) -> list:
+    """Keep only the provided student_ids that actually belong to class_id."""
+    if not student_ids:
+        return []
+    rows = await db.students.find(
+        {"id": {"$in": list(student_ids)}, "class_id": class_id}, {"_id": 0, "id": 1}
+    ).to_list(500)
+    return [r["id"] for r in rows]
 
 
 @router.get("")
@@ -54,27 +68,31 @@ async def get_gallery(
     date: Optional[str] = None,
     limit: int = 24,       # max foto per richiesta — evita risposta da centinaia di MB
     offset: int = 0,       # paginazione
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
     query: dict = {}
-    role = current_user.get("role")
 
     # ── Parent isolation ──────────────────────────────────────────────────────
-    if role == "parent":
-        allowed = _parent_child_ids(current_user)
+    if ctx.role == "parent":
+        allowed = ctx.allowed_student_ids
         if not allowed:
             return []
         if student_id:
             if student_id not in allowed:
-                raise HTTPException(status_code=403, detail="Accesso negato")
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
             query["student_ids"] = student_id
         else:
-            query["student_ids"] = {"$in": allowed}
+            query["student_ids"] = {"$in": list(allowed)}
     else:
+        # ── Staff: scope to caller's classes/sede ─────────────────────────────
         if class_id:
+            ctx.assert_class(class_id)
             query["class_id"] = class_id
+        else:
+            query.update(ctx.class_filter())
         if student_id:
+            await ctx.assert_student(student_id)
             query["student_ids"] = student_id
 
     if media_type:
@@ -93,11 +111,19 @@ async def get_gallery(
 
 
 @router.get("/{media_id}")
-async def get_media(media_id: str, current_user: dict = Depends(get_current_user)):
+async def get_media(media_id: str, ctx: TenantContext = Depends(get_tenant_context)):
     db = get_db()
     item = await db.gallery.find_one({"id": media_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Media non trovato")
+
+    # ── Object-level authorization ───────────────────────────────────────────
+    if ctx.role == "parent":
+        if not (set(item.get("student_ids") or []) & ctx.allowed_student_ids):
+            raise HTTPException(status_code=404, detail="Media non trovato")
+    else:
+        ctx.assert_class(item.get("class_id"))
+
     return _refresh_signed_url(item)
 
 
@@ -106,20 +132,30 @@ async def get_media(media_id: str, current_user: dict = Depends(get_current_user
 # ---------------------------------------------------------------------------
 
 @router.post("/upload", status_code=201)
+@limiter.limit("60/minute")
 async def upload_media_file(
+    request: Request,
     class_id: str = Form(...),
     student_ids: str = Form(...),   # comma-separated IDs
     media_type: str = Form(...),    # photo | video
     caption: str = Form(""),
     tags: str = Form(""),           # comma-separated
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
+    # Caller must own the target class (sede/class scoping)
+    ctx.assert_class(class_id)
+    db = get_db()
+    sede_id = await _class_sede(db, class_id)
+
+    requested = [s.strip() for s in student_ids.split(",") if s.strip()]
+    valid_student_ids = await _students_in_class(db, class_id, requested)
 
     file_bytes = await file.read()
-    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin"
+    ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
+    ext = re.sub(r"[^A-Za-z0-9]", "", ext) or "bin"   # sanitize: no path traversal via filename
     media_id = str(uuid.uuid4())
     storage_path = f"gallery/{class_id}/{media_id}.{ext}"
 
@@ -137,11 +173,11 @@ async def upload_media_file(
                 thumb_bytes, thumb_path, file.content_type, "photo"
             )
 
-    db = get_db()
     doc = {
         "id": media_id,
         "class_id": class_id,
-        "student_ids": [s.strip() for s in student_ids.split(",") if s.strip()],
+        "sede_id": sede_id,
+        "student_ids": valid_student_ids,
         "media_url": signed_url,
         "thumbnail_url": thumbnail_url,
         "storage_path": path,
@@ -149,7 +185,7 @@ async def upload_media_file(
         "media_type": media_type,
         "caption": caption,
         "tags": [t.strip() for t in tags.split(",") if t.strip()],
-        "uploaded_by": current_user["id"],
+        "uploaded_by": ctx.user_id,
         "published": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -172,9 +208,11 @@ async def upload_media_file(
 # ---------------------------------------------------------------------------
 
 @router.post("/upload-b64", status_code=201)
+@limiter.limit("60/minute")
 async def upload_media_base64(
+    request: Request,
     payload: dict,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     """
     Endpoint alternativo a /upload. Accetta JSON con:
@@ -182,7 +220,7 @@ async def upload_media_base64(
       class_id, student_ids (list), media_type, caption
     Non richiede multipart — elimina problemi CORS/parsing.
     """
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
 
     media_url   = payload.get("media_url", "")
@@ -193,6 +231,9 @@ async def upload_media_base64(
 
     if not media_url or not class_id:
         raise HTTPException(status_code=400, detail="media_url e class_id obbligatori")
+
+    # Caller must own the target class
+    ctx.assert_class(class_id)
 
     # Limite dimensione: data URL max 12MB (MongoDB document limit 16MB)
     if len(media_url) > 12 * 1024 * 1024:
@@ -206,11 +247,14 @@ async def upload_media_base64(
         student_ids = [s.strip() for s in student_ids.split(",") if s.strip()]
 
     db = get_db()
+    sede_id = await _class_sede(db, class_id)
+    valid_student_ids = await _students_in_class(db, class_id, student_ids)
     media_id = str(uuid.uuid4())
     doc = {
         "id":            media_id,
         "class_id":      class_id,
-        "student_ids":   student_ids,
+        "sede_id":       sede_id,
+        "student_ids":   valid_student_ids,
         "media_url":     media_url,
         "thumbnail_url": None,
         "storage_path":  None,
@@ -218,7 +262,7 @@ async def upload_media_base64(
         "media_type":    media_type,
         "caption":       caption,
         "tags":          [],
-        "uploaded_by":   current_user["id"],
+        "uploaded_by":   ctx.user_id,
         "published":     True,
         "created_at":    datetime.now(timezone.utc).isoformat(),
     }
@@ -241,15 +285,19 @@ async def upload_media_base64(
 @router.post("", status_code=201)
 async def upload_media_url(
     payload: MediaUpload,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     # Solo admin e maestre possono aggiungere media
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     doc = payload.model_dump()
+    # Caller must own the target class
+    ctx.assert_class(doc.get("class_id"))
+    doc["sede_id"] = await _class_sede(db, doc.get("class_id"))
+    doc["student_ids"] = await _students_in_class(db, doc.get("class_id"), doc.get("student_ids") or [])
     doc["id"] = str(uuid.uuid4())
-    doc["uploaded_by"] = current_user.get("id", "")
+    doc["uploaded_by"] = ctx.user_id
     doc["thumbnail_url"] = None
     doc["storage_path"] = None
     doc["thumbnail_path"] = None
@@ -265,13 +313,14 @@ async def upload_media_url(
 # ---------------------------------------------------------------------------
 
 @router.post("/{media_id}/publish")
-async def publish_media(media_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ("admin", "teacher"):
+async def publish_media(media_id: str, ctx: TenantContext = Depends(get_tenant_context)):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     item = await db.gallery.find_one({"id": media_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Media non trovato")
+    ctx.assert_class(item.get("class_id"))   # object-level / cross-tenant check
 
     new_state = not item.get("published", True)
     await db.gallery.update_one({"id": media_id}, {"$set": {"published": new_state}})
@@ -283,13 +332,14 @@ async def publish_media(media_id: str, current_user: dict = Depends(get_current_
 # ---------------------------------------------------------------------------
 
 @router.delete("/{media_id}")
-async def delete_media(media_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ("admin", "teacher"):
+async def delete_media(media_id: str, ctx: TenantContext = Depends(get_tenant_context)):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     item = await db.gallery.find_one({"id": media_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Media non trovato")
+    ctx.assert_class(item.get("class_id"))   # object-level / cross-tenant check
 
     delete_file(item.get("storage_path"))
     delete_file(item.get("thumbnail_path"))

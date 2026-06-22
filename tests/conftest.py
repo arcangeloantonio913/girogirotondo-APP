@@ -95,6 +95,18 @@ async def seed_db(mock_db, mock_firebase):
         {"id": "ggt-diary-1", "class_id": GGT_CLASS, "sede_id": SEDE_GGT, "date": "2026-01-02", "summary": "Giornata GGT", "created_at": "2026-01-02T00:00:00+00:00"},
         {"id": "mm-diary-1", "class_id": MM_CLASS, "sede_id": SEDE_MM, "date": "2026-01-02", "summary": "Giornata MM", "created_at": "2026-01-02T00:00:00+00:00"},
     ])
+    await db.documents.insert_many([
+        {"id": "ggt-doc-1", "title": "Circolare GGT", "classe_id": GGT_CLASS, "sede_id": SEDE_GGT, "categoria": "circolari", "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "mm-doc-1", "title": "Circolare MM", "classe_id": MM_CLASS, "sede_id": SEDE_MM, "categoria": "circolari", "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "ggt-doc-sedewide", "title": "Avviso sede GGT", "classe_id": None, "sede_id": SEDE_GGT, "categoria": "altro", "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "mm-doc-sedewide", "title": "Avviso sede MM", "classe_id": None, "sede_id": SEDE_MM, "categoria": "altro", "created_at": "2026-01-03T00:00:00+00:00"},
+    ])
+    await db.calendar_events.insert_many([
+        {"id": "ggt-ev-1", "titolo": "Festa GGT", "classe_id": GGT_CLASS, "sede_id": SEDE_GGT, "data_inizio": "2026-01-05", "tipo": "festa", "visibile_a": ["parent", "teacher", "admin"], "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "mm-ev-1", "titolo": "Festa MM", "classe_id": MM_CLASS, "sede_id": SEDE_MM, "data_inizio": "2026-01-05", "tipo": "festa", "visibile_a": ["parent", "teacher", "admin"], "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "ggt-ev-sedewide", "titolo": "Chiusura GGT", "classe_id": None, "sede_id": SEDE_GGT, "data_inizio": "2026-01-06", "tipo": "chiusura", "visibile_a": ["parent"], "created_at": "2026-01-03T00:00:00+00:00"},
+        {"id": "mm-ev-sedewide", "titolo": "Chiusura MM", "classe_id": None, "sede_id": SEDE_MM, "data_inizio": "2026-01-06", "tipo": "chiusura", "visibile_a": ["parent"], "created_at": "2026-01-03T00:00:00+00:00"},
+    ])
     yield db
 
 

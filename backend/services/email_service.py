@@ -487,7 +487,8 @@ async def send_reset_password_email(to_email: str, user_name: str, token: str) -
         return True
     if await _send_via_smtp(to_email, subject, html, plain):
         return True
-    logger.warning("[RESET EMAIL] Impossibile inviare reset a %s — link: %s", to_email, reset_link)
+    # Do NOT log the reset link (account-takeover token) or the recipient email.
+    logger.warning("[RESET EMAIL] Invio reset fallito (email e link non loggati per privacy/sicurezza)")
     return False
 
 

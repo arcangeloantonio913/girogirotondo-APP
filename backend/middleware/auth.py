@@ -14,7 +14,7 @@ import logging
 from typing import Optional
 
 import jwt
-from fastapi import HTTPException, Header
+from fastapi import HTTPException, Header, Depends
 
 from services.database import get_db
 from utils.firebase_client import get_auth, is_initialized
@@ -88,8 +88,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 
 
 def require_role(*roles: str):
-    """Dependency factory that checks the user's role."""
-    async def _check(current_user: dict = Header(None)):
+    """Dependency factory that checks the authenticated user's role.
+
+    NOTE: the inner dependency must resolve the user via get_current_user — using
+    Header(None) (the previous behaviour) bound current_user to a non-existent HTTP
+    header, so the check raised AttributeError/500 instead of enforcing the role.
+    """
+    async def _check(current_user: dict = Depends(get_current_user)):
         if current_user.get("role") not in roles:
             raise HTTPException(status_code=403, detail="Permesso negato")
         return current_user

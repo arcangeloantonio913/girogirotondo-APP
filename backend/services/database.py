@@ -239,9 +239,12 @@ async def seed_database():
     # Aggiorna/crea sempre gli account demo (maestre e genitori)
     await ensure_demo_accounts()
 
-    # Rimuovi duplicati utenti e studenti
-    await _deduplicate_users(db)
-    await _deduplicate_students(db)
+    # NOTE (2026-06-23): _deduplicate_users()/_deduplicate_students() were REMOVED
+    # from the startup path. They delete-by-heuristic on every boot — students keyed
+    # on (name, class_id), users on email — and on a deploy restart silently deleted
+    # 14 real student records (two children sharing a common first name in the same
+    # class are NOT duplicates). Dedup must never run unattended against prod data.
+    # The function definitions are retained (unused) for reference only.
 
     # Skip il resto del seed se i dati demo esistono già
     existing = await db.classes.find_one({})

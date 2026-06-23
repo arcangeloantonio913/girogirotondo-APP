@@ -92,6 +92,25 @@ backend/.env
 frontend/.env
 frontend/.env.production
 frontend/.env.local
+
+# --- Secrets & PII — generic coverage (see SECURITY-AUDIT.md) ---
+.env
+.env.*
+!.env.example
+*adminsdk*.json
+*service-account*.json
+*serviceaccount*.json
+google-service-account.json
+*credenziali*.txt
+email_*note.txt
+dati_*.json
+*.bson
+backend/_archive/*.bak
+
+# --- Build artifacts (nested paths, not only repo root) ---
+**/build/
+**/.next/
+**/dist-electron/
 desktop/dist-electron/Girogirotondo-1.0.0-arm64.dmg
 desktop/dist-electron/mac-arm64/Girogirotondo.app/Contents/Frameworks/Electron
 Framework.framework/Versions/A/Electron

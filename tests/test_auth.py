@@ -23,10 +23,10 @@ async def test_me_requires_auth(client):
 
 @pytest.mark.asyncio
 async def test_login_and_me(client):
-    # Seed user exists after startup
+    # Uses a seeded user with a known bcrypt password (see conftest seed_db).
     r = await client.post(
         "/api/auth/login",
-        json={"email": "admin@girogirotondo.it", "password": "admin123"},
+        json={"email": "admin@ggt.it", "password": "admin-pass-123"},
     )
     assert r.status_code == 200
     data = r.json()
@@ -36,4 +36,4 @@ async def test_login_and_me(client):
     token = data["token"]
     me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json()["email"] == "admin@girogirotondo.it"
+    assert me.json()["email"] == "admin@ggt.it"

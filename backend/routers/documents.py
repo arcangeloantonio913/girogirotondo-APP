@@ -5,11 +5,11 @@ import logging
 from typing import Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Header
 
 from services.database import get_db
 from models.documents import DocumentCreate, DocumentCategory
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, get_tenant_context, TenantContext
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file
 from utils.push_notifications import notify_class, notify_role
@@ -31,17 +31,48 @@ _DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _VALID_CATEGORIES = {"circolari", "autorizzazioni", "modulistica", "altro"}
 
 
+def _tenant_scope(ctx: TenantContext) -> dict:
+    """Mongo fragment: documents for one of the caller's classes, OR sede-wide
+    documents (no class) belonging to one of the caller's sedi. Superadmin is
+    all-access and never calls this."""
+    return {"$or": [
+        {"classe_id": {"$in": list(ctx.allowed_class_ids)}},
+        {"classe_id": {"$in": [None, ""]}, "sede_id": {"$in": list(ctx.sede_ids)}},
+    ]}
+
+
+def _assert_doc_visible(ctx: TenantContext, doc: dict) -> None:
+    """404 (not 403) unless the document is within the caller's tenant scope."""
+    if ctx.all_access:
+        return
+    classe_id = doc.get("classe_id")
+    if classe_id:
+        if classe_id in ctx.allowed_class_ids:
+            return
+    elif doc.get("sede_id") in ctx.sede_ids:
+        return
+    raise HTTPException(status_code=404, detail="Documento non trovato")
+
+
+async def _resolve_doc_sede(db, classe_id, current_user, x_sede_id):
+    """Sede a new document belongs to: the class's sede if class-targeted, else
+    the uploader's own sede, else the admin-supplied X-Sede-Id header."""
+    if classe_id:
+        cls = await db.classes.find_one({"id": classe_id}, {"_id": 0, "sede_id": 1})
+        if cls and cls.get("sede_id"):
+            return cls["sede_id"]
+    return current_user.get("sede_id") or (x_sede_id or None)
+
+
 @router.get("")
 async def get_documents(
     classe_id: Optional[str] = None,
     categoria: Optional[str] = None,
     date: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
     query: dict = {}
-    if classe_id:
-        query["classe_id"] = classe_id
     if categoria:
         # Whitelist categoria per evitare injection
         if categoria not in _VALID_CATEGORIES:
@@ -52,16 +83,25 @@ async def get_documents(
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["created_at"] = {"$regex": f"^{date}"}
 
+    # ── Tenant isolation ──────────────────────────────────────────────────────
+    if classe_id:
+        if not ctx.all_access:
+            ctx.assert_class(classe_id)   # 404 if caller doesn't own this class
+        query["classe_id"] = classe_id
+    elif not ctx.all_access:
+        query.update(_tenant_scope(ctx))
+
     docs = await db.documents.find(query, {"_id": 0}).to_list(100)
     return [_refresh_url(d) for d in docs]
 
 
 @router.get("/{doc_id}")
-async def get_document(doc_id: str, current_user: dict = Depends(get_current_user)):
+async def get_document(doc_id: str, ctx: TenantContext = Depends(get_tenant_context)):
     db = get_db()
     doc = await db.documents.find_one({"id": doc_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Documento non trovato")
+    _assert_doc_visible(ctx, doc)   # cross-tenant IDOR guard (404 on denial)
     return _refresh_url(doc)
 
 
@@ -78,6 +118,7 @@ async def upload_document_file(
     scadenza: str = Form(""),
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     if current_user.get("role") not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
@@ -100,6 +141,7 @@ async def upload_document_file(
         "storage_path": path,
         "categoria": categoria,
         "classe_id": classe_id or None,
+        "sede_id": await _resolve_doc_sede(db, classe_id or None, current_user, x_sede_id),
         "uploader_id": current_user["id"],
         "scadenza": scadenza or None,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -134,6 +176,7 @@ async def upload_document_file(
 async def upload_document_base64(
     payload: dict,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     """
     Alternativa a /upload. Accetta JSON con:
@@ -164,6 +207,7 @@ async def upload_document_base64(
         "storage_path":None,
         "categoria":   payload.get("categoria", "modulistica"),
         "classe_id":   payload.get("classe_id") or None,
+        "sede_id":     await _resolve_doc_sede(db, payload.get("classe_id") or None, current_user, x_sede_id),
         "uploader_id": current_user["id"],
         "scadenza":    payload.get("scadenza") or None,
         "created_at":  datetime.now(timezone.utc).isoformat(),
@@ -181,6 +225,7 @@ async def upload_document_base64(
 async def create_document(
     payload: DocumentCreate,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     if current_user.get("role") not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
@@ -188,6 +233,7 @@ async def create_document(
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["storage_path"] = None
+    doc["sede_id"] = await _resolve_doc_sede(db, doc.get("classe_id"), current_user, x_sede_id)
     doc["uploader_id"] = current_user.get("id")
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.documents.insert_one(doc)

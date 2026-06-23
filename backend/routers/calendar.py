@@ -2,14 +2,34 @@
 import uuid
 from typing import Optional
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 
 from services.database import get_db
 from models.calendar import CalendarEventCreate, CalendarEventUpdate
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, get_tenant_context, TenantContext
 from utils.push_notifications import notify_class, notify_role
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
+
+
+def _tenant_scope(ctx: TenantContext) -> list:
+    """Mongo $or fragment: events for one of the caller's classes, OR sede-wide
+    events (no class) belonging to one of the caller's sedi. Superadmin is
+    all-access and never calls this."""
+    return [
+        {"classe_id": {"$in": list(ctx.allowed_class_ids)}},
+        {"classe_id": {"$in": [None, ""]}, "sede_id": {"$in": list(ctx.sede_ids)}},
+    ]
+
+
+async def _resolve_event_sede(db, classe_id, current_user, x_sede_id):
+    """Sede a new event belongs to: the class's sede if class-targeted, else the
+    creator's own sede, else the admin-supplied X-Sede-Id header."""
+    if classe_id:
+        cls = await db.classes.find_one({"id": classe_id}, {"_id": 0, "sede_id": 1})
+        if cls and cls.get("sede_id"):
+            return cls["sede_id"]
+    return current_user.get("sede_id") or (x_sede_id or None)
 
 
 @router.get("/events")
@@ -17,37 +37,51 @@ async def get_events(
     month: Optional[str] = None,   # format: YYYY-MM
     classe_id: Optional[str] = None,
     tipo: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
     query: dict = {}
     if month:
         query["data_inizio"] = {"$regex": f"^{month}"}
-    if classe_id:
-        query["$or"] = [{"classe_id": classe_id}, {"classe_id": None}]
     if tipo:
         query["tipo"] = tipo
 
-    # Filter by visibility
-    role = current_user.get("role", "parent")
+    # Filter by visibility (role is read server-side from the resolved user)
+    role = ctx.role or "parent"
     query["visibile_a"] = role
+
+    # ── Tenant isolation ──────────────────────────────────────────────────────
+    if classe_id:
+        if ctx.all_access:
+            query["$or"] = [{"classe_id": classe_id}, {"classe_id": {"$in": [None, ""]}}]
+        else:
+            ctx.assert_class(classe_id)   # 404 if caller doesn't own this class
+            query["$or"] = [
+                {"classe_id": classe_id},
+                {"classe_id": {"$in": [None, ""]}, "sede_id": {"$in": list(ctx.sede_ids)}},
+            ]
+    elif not ctx.all_access:
+        query["$or"] = _tenant_scope(ctx)
 
     events = await db.calendar_events.find(query, {"_id": 0}).to_list(500)
     return events
 
 
 @router.get("/events/upcoming")
-async def get_upcoming_events(current_user: dict = Depends(get_current_user)):
+async def get_upcoming_events(ctx: TenantContext = Depends(get_tenant_context)):
     """Returns events in the next 7 days."""
     db = get_db()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     in_7_days = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")
 
-    role = current_user.get("role", "parent")
-    query = {
+    role = ctx.role or "parent"
+    query: dict = {
         "data_inizio": {"$gte": today, "$lte": in_7_days},
         "visibile_a": role,
     }
+    if not ctx.all_access:
+        query["$or"] = _tenant_scope(ctx)
+
     events = await db.calendar_events.find(query, {"_id": 0}).to_list(50)
     return events
 
@@ -56,6 +90,7 @@ async def get_upcoming_events(current_user: dict = Depends(get_current_user)):
 async def create_event(
     payload: CalendarEventCreate,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     if current_user.get("role") not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
@@ -65,6 +100,7 @@ async def create_event(
     doc = payload.model_dump()
     doc["id"] = event_id
     doc["creator_id"] = current_user["id"]
+    doc["sede_id"] = await _resolve_event_sede(db, payload.classe_id, current_user, x_sede_id)
     doc["visibile_a"] = [v.value if hasattr(v, "value") else v for v in doc["visibile_a"]]
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.calendar_events.insert_one(doc)

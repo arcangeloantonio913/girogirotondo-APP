@@ -278,7 +278,7 @@ async def _send_via_smtp(to_email, subject, html_body, plain_body) -> bool:
         return False
 
 
-async APP_INSTALL_GUIDE = """
+APP_INSTALL_GUIDE = """
         <div style="background:#F0FFF4;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #32CD32;">
           <h3 style="color:#065F46;margin:0 0 8px 0;">📱 Scarica l'App Girogirotondo</h3>
           <p style="color:#065F46;margin:4px 0;">1. Apri il <strong>App Store</strong> (iPhone) o <strong>Google Play</strong> (Android)</p>
@@ -288,7 +288,7 @@ async APP_INSTALL_GUIDE = """
           <p style="color:#065F46;margin:8px 0 0 0;font-size:12px;">✨ Il login rimarrà attivo — non devi reinserire le credenziali ogni volta.</p>
         </div>"""
 
-def send_credentials_email(
+async def send_credentials_email(
     to_email: str,
     bambino_nome: str,
     bambino_cognome: str,
@@ -487,7 +487,8 @@ async def send_reset_password_email(to_email: str, user_name: str, token: str) -
         return True
     if await _send_via_smtp(to_email, subject, html, plain):
         return True
-    logger.warning("[RESET EMAIL] Impossibile inviare reset a %s — link: %s", to_email, reset_link)
+    # Do NOT log the reset link (account-takeover token) or the recipient email.
+    logger.warning("[RESET EMAIL] Invio reset fallito (email e link non loggati per privacy/sicurezza)")
     return False
 
 

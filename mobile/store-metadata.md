@@ -9,7 +9,7 @@ Girogirotondo Scuola
 Gestionale scolastico
 
 ### Descrizione (4000 caratteri max)
-Girogirotondo è la piattaforma ufficiale della Scuola dell'Infanzia Girogirotondo e Il Magico Mondo di Napoli.
+Girogirotondo è la piattaforma ufficiale della Scuola dell'Infanzia Girogirotondo e Il Magico Mondo di Carini (PA), in Sicilia.
 
 L'app permette a genitori, maestre e personale amministrativo di comunicare e gestire le attività scolastiche quotidiane in modo semplice e immediato.
 
@@ -39,7 +39,7 @@ L'app permette a genitori, maestre e personale amministrativo di comunicare e ge
 Disponibile per entrambe le sedi: Girogirotondo e Il Magico Mondo.
 
 **Sicurezza e Privacy:**
-I dati sono protetti con crittografia end-to-end. Le foto dei bambini sono visibili esclusivamente ai genitori del bambino. Conforme GDPR e normative sulla tutela dei minori.
+I dati sono protetti con crittografia in transito (HTTPS/TLS) e a riposo. Le foto dei bambini sono visibili esclusivamente ai genitori del bambino. Conforme GDPR e normative sulla tutela dei minori.
 
 ### Parole chiave (100 caratteri max)
 scuola infanzia,gestione scolastica,bambini,materna,registro presenze,diario,mensa,famiglia
@@ -90,7 +90,7 @@ https://girogirotondowebapp.it/privacy
 |-----------|-------|---------------------|
 | Indirizzo email | Account e login | No |
 | Nome e cognome | Profilo utente | No |
-| Foto e video | Galleria scolastica | Solo altri genitori della stessa classe |
+| Foto e video | Galleria scolastica | No (visibili solo ai genitori del bambino ritratto) |
 | Token dispositivo | Notifiche push | No |
 | Data di nascita bambino | Profilo scolastico | Solo personale scuola |
 

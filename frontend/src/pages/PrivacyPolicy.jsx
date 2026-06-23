@@ -9,7 +9,7 @@ import { ChevronLeft, Shield } from 'lucide-react';
 const SECTIONS = [
   {
     title: '1. Titolare del Trattamento',
-    content: `Il Titolare del trattamento dei dati personali è la Scuola dell'Infanzia Girogirotondo, gestita da Omnia Studio, con sede in Napoli.
+    content: `Il Titolare del trattamento dei dati personali è la Scuola dell'Infanzia Girogirotondo, gestita da Omnia Studio, con sede in Carini (PA).
 
 Indirizzo e-mail: scuolagirogirotondo@libero.it
 
@@ -74,7 +74,7 @@ Al termine del periodo di conservazione, i dati vengono cancellati in modo sicur
   - Vercel Inc. (hosting frontend) — USA, con garanzie adeguate
   - Railway (hosting backend) — USA, con garanzie adeguate
   - Resend Inc. (invio email) — USA, con garanzie adeguate
-  - Firebase/Google (autenticazione e storage) — USA, con garanzie adeguate (Privacy Shield/SCCs)
+  - Firebase/Google (autenticazione e storage) — USA, con garanzie adeguate (Clausole Contrattuali Standard - SCC)
 - **Autorità pubbliche:** su specifica richiesta di legge
 
 Tutti i fornitori sono vincolati da accordi di protezione dei dati conformi al GDPR.`,
@@ -114,7 +114,7 @@ Hai inoltre il diritto di proporre reclamo al Garante per la Protezione dei Dati
 
 - I dati dei bambini sono accessibili esclusivamente al personale scolastico autorizzato e ai rispettivi genitori/tutori
 - Nessun dato di minori viene condiviso pubblicamente o con terze parti non autorizzate
-- Le immagini e i video dei bambini sono visibili solo agli account della stessa classe
+- Le immagini e i video di ciascun bambino sono visibili esclusivamente ai suoi genitori/tutori e al personale scolastico autorizzato
 - Il consenso per il trattamento dei dati dei minori è sempre richiesto ai genitori o tutori legali
 - I genitori possono in qualsiasi momento richiedere la cancellazione delle immagini del proprio figlio
 - Sono implementati controlli tecnici per garantire che ogni genitore veda solo i dati del proprio figlio

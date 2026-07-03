@@ -114,7 +114,7 @@ async def login(request: Request, payload: dict):
         "exp": datetime.now(timezone.utc) + timedelta(days=3650)  # 10 anni — login permanente,
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    safe_user = {k: v for k, v in user.items() if k != "password"}
+    safe_user = {k: v for k, v in user.items() if k not in ("password", "admin_password")}
     return {"token": token, "user": safe_user}
 
 
@@ -179,11 +179,11 @@ async def reset_password(request: Request, payload: dict):
     if datetime.now(tz.utc) > expires:
         raise HTTPException(status_code=400, detail="Token scaduto. Richiedi un nuovo link di reset")
 
-    # Aggiorna la password + salva in chiaro per admin
+    # Aggiorna la password (solo hash bcrypt; nessuna copia in chiaro)
     new_hash = bcrypt.hashpw(new_pass.encode(), bcrypt.gensalt()).decode()
     await db.users.update_one(
         {"email": record["email"]},
-        {"$set": {"password": new_hash, "admin_password": new_pass}}
+        {"$set": {"password": new_hash}}
     )
     await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
     return {"message": "Password aggiornata con successo"}

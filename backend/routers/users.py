@@ -48,7 +48,7 @@ async def get_users(
     if current_user.get("is_superadmin"):
         query = {"$or": [{"sede_id": sede_id}, {"is_superadmin": True}]}
 
-    users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(1000)
+    users = await db.users.find(query, {"_id": 0, "password": 0, "admin_password": 0}).to_list(1000)
     return users
 
 
@@ -62,7 +62,7 @@ async def get_users_by_class(class_id: str, current_user: dict = Depends(get_cur
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     users = await db.users.find(
-        {"class_id": class_id}, {"_id": 0, "password": 0}
+        {"class_id": class_id}, {"_id": 0, "password": 0, "admin_password": 0}
     ).to_list(500)
     return users
 
@@ -76,7 +76,7 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
     if current_user.get("role") != "admin" and current_user.get("id") != user_id:
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="Utente non trovato")
     return user
@@ -111,7 +111,6 @@ async def create_user(
     user_dict["password"] = bcrypt.hashpw(
         payload.password.encode(), bcrypt.gensalt()
     ).decode()
-    user_dict["admin_password"] = payload.password   # visibile all'admin
 
     # Assegna sede (usa quella del payload se fornita, altrimenti quella attiva)
     user_dict["sede_id"] = payload.sede_id or sede_id
@@ -133,6 +132,7 @@ async def create_user(
     await db.users.insert_one(user_dict)
     user_dict.pop("_id", None)
     user_dict.pop("password", None)
+    user_dict.pop("admin_password", None)
     return user_dict
 
 
@@ -151,6 +151,13 @@ async def update_user(
     db = get_db()
 
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+
+    # Anti privilege-escalation: un utente non-admin (self-service) NON può modificare
+    # sede/classi/figli — altrimenti si auto-concederebbe accesso ad altri tenant/bambini.
+    if current_user.get("role") != "admin":
+        _PRIVILEGED = {"sede_id", "class_id", "class_ids", "child_id", "child_ids"}
+        updates = {k: v for k, v in updates.items() if k not in _PRIVILEGED}
+
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
 
@@ -158,7 +165,7 @@ async def update_user(
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Utente non trovato")
 
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     return user
 
 
@@ -224,7 +231,7 @@ async def iscrizione_bambino(
         )
         # Ricarica il parent aggiornato
         parent = await db.users.find_one(
-            {"email": payload.genitore_email}, {"_id": 0, "password": 0}
+            {"email": payload.genitore_email}, {"_id": 0, "password": 0, "admin_password": 0}
         )
     elif existing_parent:
         # Email usata da un account non-parent (admin/teacher) — rifiuta
@@ -241,7 +248,6 @@ async def iscrizione_bambino(
             "cognome": payload.bambino_cognome,
             "email": payload.genitore_email,
             "password": bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
-            "admin_password": password_plain,   # visibile all'admin
             "role": "parent",
             "is_superadmin": False,
             "sede_id": sede_id,
@@ -255,7 +261,7 @@ async def iscrizione_bambino(
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(parent_doc)
-        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
+        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password", "admin_password")}
 
     # 3. Email — sincrona per garantire l'invio reale su Railway
     if sibling_mode or getattr(payload, 'skip_email', False):
@@ -320,7 +326,7 @@ async def aggiungi_secondo_genitore(
             }
         )
         parent = await db.users.find_one(
-            {"email": payload.genitore_email}, {"_id": 0, "password": 0}
+            {"email": payload.genitore_email}, {"_id": 0, "password": 0, "admin_password": 0}
         )
         email_inviata = False
         created = False
@@ -338,7 +344,6 @@ async def aggiungi_secondo_genitore(
             "cognome":      student.get("cognome", ""),
             "email":        payload.genitore_email,
             "password":     bcrypt.hashpw(password_plain.encode(), bcrypt.gensalt()).decode(),
-            "admin_password": password_plain,
             "role":         "parent",
             "is_superadmin": False,
             "sede_id":      student.get("sede_id"),
@@ -352,7 +357,7 @@ async def aggiungi_secondo_genitore(
             "created_at":   datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(parent_doc)
-        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password")}
+        parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password", "admin_password")}
 
         # Invia email con credenziali — sincrona
         email_inviata = await send_credentials_email(
@@ -406,7 +411,7 @@ async def update_user_email(
         raise HTTPException(status_code=400, detail="Email già in uso da un altro account")
 
     await db.users.update_one({"id": user_id}, {"$set": {"email": new_email}})
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     return user
 
 
@@ -419,9 +424,11 @@ async def update_user_credentials(
     user_id: str,
     payload: dict,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
-    """Aggiorna email e/o password di un utente. Solo admin."""
+    """Aggiorna email e/o password di un utente. Solo admin della stessa sede."""
     _require_admin(current_user)
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     target = await db.users.find_one({"id": user_id})
@@ -429,6 +436,8 @@ async def update_user_credentials(
         raise HTTPException(status_code=404, detail="Utente non trovato")
     if target.get("is_superadmin") and not current_user.get("is_superadmin"):
         raise HTTPException(status_code=403, detail="Non puoi modificare un SuperAmministratore")
+    if not current_user.get("is_superadmin") and target.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Utente non appartiene alla sede selezionata")
 
     updates = {}
     new_email = payload.get("email", "").strip()
@@ -445,13 +454,12 @@ async def update_user_credentials(
         if len(new_password) < 6:
             raise HTTPException(status_code=400, detail="La password deve essere di almeno 6 caratteri")
         updates["password"] = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-        updates["admin_password"] = new_password   # visibile all'admin
 
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
 
     await db.users.update_one({"id": user_id}, {"$set": updates})
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     return user
 
 
@@ -464,14 +472,16 @@ async def resend_credentials(
     user_id: str,
     payload: dict,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     """
     Genera nuova password (o usa quella fornita), aggiorna l'utente
     e invia email con le nuove credenziali.
-    Restituisce la nuova password in chiaro (per consegna manuale).
-    Solo admin.
+    Restituisce la nuova password in chiaro (per consegna manuale, mostrata una volta).
+    Solo admin della stessa sede.
     """
     _require_admin(current_user)
+    sede_id = validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     target = await db.users.find_one({"id": user_id})
@@ -479,6 +489,8 @@ async def resend_credentials(
         raise HTTPException(status_code=404, detail="Utente non trovato")
     if target.get("is_superadmin") and not current_user.get("is_superadmin"):
         raise HTTPException(status_code=403, detail="Non puoi modificare un SuperAmministratore")
+    if not current_user.get("is_superadmin") and target.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Utente non appartiene alla sede selezionata")
 
     new_password = payload.get("password") or _generate_password()
 
@@ -487,7 +499,6 @@ async def resend_credentials(
         {"id": user_id},
         {"$set": {
             "password":       bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode(),
-            "admin_password": new_password,   # visibile all'admin
         }}
     )
 

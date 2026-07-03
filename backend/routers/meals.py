@@ -38,7 +38,7 @@ async def get_meals(
 
     if role == "admin":
         # Admin: filtro per sede attiva
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         query["sede_id"] = sede_id
         if class_id:
             query["class_id"] = class_id
@@ -98,7 +98,7 @@ async def create_meal(
 
     # Determina sede
     if current_user.get("role") == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     else:
         sede_id = get_teacher_sede_id(current_user)
 
@@ -127,7 +127,7 @@ async def delete_meal(
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare menu")
 
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     meal = await db.meals.find_one({"id": meal_id})

@@ -61,7 +61,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             decoded = firebase_auth.verify_id_token(token)
             uid = decoded["uid"]
             user = await db.users.find_one(
-                {"firebase_uid": uid, "active": True}, {"_id": 0, "password": 0}
+                {"firebase_uid": uid, "active": True}, {"_id": 0, "password": 0, "admin_password": 0}
             )
             if not user:
                 raise HTTPException(
@@ -79,7 +79,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         payload = _decode_custom_jwt(token)
         user = await db.users.find_one(
             {"id": payload["user_id"], "active": True},
-            {"_id": 0, "password": 0},
+            {"_id": 0, "password": 0, "admin_password": 0},
         )
         if user:
             return user

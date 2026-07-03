@@ -123,8 +123,19 @@ async def test_default_sede_is_deterministic_oldest(client):
     db = get_db()
     # 2 sedi con stesso created_at → tiebreak id → girogirotondo (deterministico)
     assert await get_default_sede_id(db) == "girogirotondo"
-    # sede con created_at PIÙ VECCHIO inserita DOPO → deve diventare il default (ordine
-    # per created_at, non per ordine naturale/inserimento).
+
+    # SCENARIO REALE "3+ sedi": aggiunta di "Dimensione Bimbo" (sede NUOVA, created_at
+    # recente). Con 3 sedi attive il default resta la più vecchia → girogirotondo.
+    await db.sedi.insert_one({"id": "dimensione-bimbo", "name": "Dimensione Bimbo", "active": True,
+                              "created_at": "2027-01-01T00:00:00+00:00"})
+    try:
+        assert await get_default_sede_id(db) == "girogirotondo"   # NON la sede nuova
+    finally:
+        await db.sedi.delete_many({"id": "dimensione-bimbo"})
+
+    # Assert DISCRIMINANTE: una sede con created_at PIÙ VECCHIO inserita DOPO diventa il
+    # default (ordine per created_at, non per ordine naturale/inserimento) → con
+    # l'implementazione senza sort questo fallirebbe.
     await db.sedi.insert_one({"id": "zzz-storica", "name": "Storica", "active": True,
                               "created_at": "2020-01-01T00:00:00+00:00"})
     try:

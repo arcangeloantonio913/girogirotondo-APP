@@ -68,8 +68,9 @@ async def seed_db(mock_db, mock_firebase):
     admin_pw_hash = bcrypt.hashpw(b"admin-pass-123", bcrypt.gensalt()).decode()
 
     await db.sedi.insert_many([
-        {"id": SEDE_GGT, "name": "Girogirotondo", "active": True},
-        {"id": SEDE_MM, "name": "Il Magico Mondo", "active": True},
+        # stesso created_at (come il seed reale) → il default deterministico dipende dal tiebreak id
+        {"id": SEDE_GGT, "name": "Girogirotondo", "active": True, "created_at": "2026-01-01T00:00:00+00:00"},
+        {"id": SEDE_MM, "name": "Il Magico Mondo", "active": True, "created_at": "2026-01-01T00:00:00+00:00"},
     ])
     await db.classes.insert_many([
         {"id": GGT_CLASS, "name": "Farfalle", "sede_id": SEDE_GGT, "teacher_id": "teacher-test-id"},

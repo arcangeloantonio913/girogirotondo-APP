@@ -122,11 +122,15 @@ async def get_valid_sede_ids(db) -> set:
 
 
 async def get_default_sede_id(db) -> Optional[str]:
-    """Sede di 'atterraggio' quando non è indicata (es. superadmin senza X-Sede-Id):
-    la prima sede attiva (data-driven, non hardcoded). Temporaneo: in Fase C, quando i
-    client invieranno SEMPRE X-Sede-Id, questo caso diventerà un 400 esplicito."""
-    row = await db.sedi.find_one({"active": True}, {"_id": 0, "id": 1})
-    return row["id"] if row else None
+    """Sede di 'atterraggio' DETERMINISTICA quando non è indicata (es. superadmin senza
+    X-Sede-Id): la sede attiva più VECCHIA (sort created_at asc, tiebreak id asc). È
+    stabile anche aggiungendo nuove sedi e riproduce il vecchio default 'girogirotondo'
+    senza hardcoding. NB: senza sort esplicito Mongo userebbe l'ordine naturale (non
+    deterministico). Temporaneo: in Fase C, con i client che inviano sempre X-Sede-Id,
+    questo caso diventerà un 400 esplicito."""
+    rows = await db.sedi.find({"active": True}, {"_id": 0, "id": 1}) \
+        .sort([("created_at", 1), ("id", 1)]).to_list(1)
+    return rows[0]["id"] if rows else None
 
 
 async def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str]) -> str:

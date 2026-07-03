@@ -104,9 +104,33 @@ async def test_inactive_sede_rejected_soft_delete(client, super_headers):
 
 @pytest.mark.asyncio
 async def test_superadmin_without_header_defaults_to_active_sede(client, super_headers):
-    """Fallback data-driven (prima sede active), NON 400 — il superadmin senza header non si rompe."""
+    """Fallback data-driven (prima sede active), NON 400 — e il default è DETERMINISTICO
+    (girogirotondo): la risposta è scoping-ata su quella sede, non sull'altra."""
     r = await client.get("/api/users", headers=super_headers)   # nessun X-Sede-Id
     assert r.status_code == 200
+    ids = {u["id"] for u in r.json()}
+    assert "parent-test-id" in ids       # utente sede girogirotondo → default risolto a GGT
+    assert "mm-parent-id" not in ids     # NON sede il-magico-mondo
+
+
+@pytest.mark.asyncio
+async def test_default_sede_is_deterministic_oldest(client):
+    """get_default_sede_id: sede attiva più vecchia (created_at asc, tiebreak id).
+    Il secondo assert è DISCRIMINANTE: una sede con created_at più vecchio, ma inserita
+    DOPO, diventa il default → con l'implementazione senza sort (ordine d'inserimento)
+    questo fallirebbe."""
+    from middleware.auth import get_default_sede_id
+    db = get_db()
+    # 2 sedi con stesso created_at → tiebreak id → girogirotondo (deterministico)
+    assert await get_default_sede_id(db) == "girogirotondo"
+    # sede con created_at PIÙ VECCHIO inserita DOPO → deve diventare il default (ordine
+    # per created_at, non per ordine naturale/inserimento).
+    await db.sedi.insert_one({"id": "zzz-storica", "name": "Storica", "active": True,
+                              "created_at": "2020-01-01T00:00:00+00:00"})
+    try:
+        assert await get_default_sede_id(db) == "zzz-storica"
+    finally:
+        await db.sedi.delete_many({"id": "zzz-storica"})
 
 
 @pytest.mark.asyncio

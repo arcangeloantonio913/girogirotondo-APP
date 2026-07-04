@@ -101,40 +101,62 @@ def require_role(*roles: str):
     return _check
 
 
+def require_superadmin(current_user: dict = Depends(get_current_user)):
+    """Dependency: consente l'operazione solo al SuperAdmin (is_superadmin=True)."""
+    if not current_user.get("is_superadmin"):
+        raise HTTPException(status_code=403, detail="Solo il SuperAdmin può eseguire questa operazione")
+    return current_user
+
+
 # ---------------------------------------------------------------------------
 # Multi-Tenant: Sede Validation
 # ---------------------------------------------------------------------------
 
-VALID_SEDE_IDS = {"girogirotondo", "il-magico-mondo"}
+# Sedi valide = DATA-DRIVEN da db.sedi (active=True). Nessun set hardcoded: una sede
+# appena creata è valida SUBITO (query diretta, coerente cross-worker; nessuna cache —
+# vedi railway.toml --workers 2, dove una cache in-memory sarebbe per-worker).
+
+async def get_valid_sede_ids(db) -> set:
+    rows = await db.sedi.find({"active": True}, {"_id": 0, "id": 1}).to_list(200)
+    return {r["id"] for r in rows if r.get("id")}
 
 
-def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str]) -> str:
+async def get_default_sede_id(db) -> Optional[str]:
+    """Sede di 'atterraggio' DETERMINISTICA quando non è indicata (es. superadmin senza
+    X-Sede-Id): la sede attiva più VECCHIA (sort created_at asc, tiebreak id asc). È
+    stabile anche aggiungendo nuove sedi e riproduce il vecchio default 'girogirotondo'
+    senza hardcoding. NB: senza sort esplicito Mongo userebbe l'ordine naturale (non
+    deterministico). Temporaneo: in Fase C, con i client che inviano sempre X-Sede-Id,
+    questo caso diventerà un 400 esplicito."""
+    rows = await db.sedi.find({"active": True}, {"_id": 0, "id": 1}) \
+        .sort([("created_at", 1), ("id", 1)]).to_list(1)
+    return rows[0]["id"] if rows else None
+
+
+async def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str]) -> str:
     """
-    Valida l'accesso dell'admin alla sede richiesta tramite header X-Sede-Id.
+    Valida l'accesso dell'admin alla sede richiesta (header X-Sede-Id).
 
-    Regole di sicurezza:
-    - Se l'utente è SuperAdmin (is_superadmin=True): può accedere a qualsiasi sede valida.
-    - Se l'utente è Admin normale: può accedere SOLO alla propria sede.
-    - Se l'header X-Sede-Id manca: usa la sede dell'admin o 'girogirotondo' come default.
-
-    Returns:
-        sede_id validata (stringa)
-    Raises:
-        HTTPException 403 se l'admin non ha accesso alla sede richiesta.
-        HTTPException 400 se la sede_id non esiste.
+    Regole:
+    - SuperAdmin: qualsiasi sede attiva.
+    - Admin normale: SOLO la propria sede.
+    - Nessuna sede indicata: default = prima sede attiva (data-driven, non hardcoded).
     """
     role = current_user.get("role")
     if role != "admin":
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono specificare la sede")
 
-    # Normalizza: converti None/vuoto al default
-    requested_sede = (x_sede_id or "").strip() or current_user.get("sede_id") or "girogirotondo"
+    db = get_db()
+    valid = await get_valid_sede_ids(db)
 
-    if requested_sede not in VALID_SEDE_IDS:
+    requested_sede = (x_sede_id or "").strip() or current_user.get("sede_id")
+    if not requested_sede:
+        requested_sede = await get_default_sede_id(db)
+
+    if not requested_sede or requested_sede not in valid:
         raise HTTPException(status_code=400, detail=f"Sede non valida: {requested_sede}")
 
-    is_superadmin = current_user.get("is_superadmin", False)
-    if not is_superadmin:
+    if not current_user.get("is_superadmin", False):
         # Admin normale: può accedere solo alla propria sede
         user_sede = current_user.get("sede_id")
         if user_sede and user_sede != requested_sede:
@@ -150,11 +172,14 @@ def get_teacher_sede_id(current_user: dict) -> str:
     """
     Restituisce la sede_id della maestra dal proprio profilo.
     NON accetta input esterno — sicurezza cross-tenant garantita.
+    Deny esplicito se il profilo non ha sede (niente più fallback hardcoded a 'girogirotondo').
     """
     sede_id = current_user.get("sede_id")
     if not sede_id:
-        # Fallback: deriva dalla prima classe assegnata (compatibilità legacy)
-        return "girogirotondo"
+        raise HTTPException(
+            status_code=403,
+            detail="Profilo maestra senza sede assegnata — contattare l'amministratore",
+        )
     return sede_id
 
 
@@ -241,7 +266,7 @@ async def get_tenant_context(
     ctx = TenantContext(db, current_user)
 
     if ctx.all_access:
-        ctx.sede_ids = list(VALID_SEDE_IDS)
+        ctx.sede_ids = list(await get_valid_sede_ids(db))
         return ctx
 
     role = ctx.role
@@ -267,7 +292,7 @@ async def get_tenant_context(
             class_ids.append(legacy)
         ctx.allowed_class_ids = set(class_ids)
     elif role == "admin":
-        sede = validate_admin_sede_access(current_user, x_sede_id)
+        sede = await validate_admin_sede_access(current_user, x_sede_id)
         ctx.sede_ids = [sede]
         classes = await db.classes.find({"sede_id": sede}, {"_id": 0, "id": 1}).to_list(2000)
         ctx.allowed_class_ids = {c["id"] for c in classes if c.get("id")}

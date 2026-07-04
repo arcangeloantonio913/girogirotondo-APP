@@ -68,7 +68,7 @@ async def get_avvisi(
 
     # Recupera tutti gli avvisi accessibili per sede, poi filtra per targeting
     if role == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         # Admin vede tutti gli avvisi della sede attiva + quelli multi-sede che la includono
         all_avvisi = await db.avvisi.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
         avvisi = [
@@ -149,7 +149,7 @@ async def create_avviso(
 
     if role == "admin":
         # Admin: usa sede attiva + eventuali sedi extra dal targeting
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         doc["sede_id"] = sede_id
 
         # target_sedi: se non specificato, usa solo la sede attiva
@@ -246,7 +246,7 @@ async def update_avviso(
 
     # Solo admin o l'autore possono modificare
     if role == "admin":
-        validate_admin_sede_access(current_user, x_sede_id)
+        await validate_admin_sede_access(current_user, x_sede_id)
     elif avviso.get("author_id") != current_user.get("id"):
         raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
 
@@ -277,7 +277,7 @@ async def delete_avviso(
         raise HTTPException(status_code=404, detail="Avviso non trovato")
 
     if role == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if avviso.get("sede_id") != sede_id and sede_id not in (avviso.get("target_sedi") or []):
             raise HTTPException(status_code=403, detail="Avviso non appartiene alla sede selezionata")
     elif avviso.get("author_id") != current_user.get("id"):

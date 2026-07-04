@@ -37,7 +37,7 @@ async def get_users(
     x_sede_id: Optional[str] = Header(None),
 ):
     _require_admin(current_user)
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     # SuperAdmin che non ha sede_id fissa — filtra per header
@@ -93,7 +93,7 @@ async def create_user(
     x_sede_id: Optional[str] = Header(None),
 ):
     _require_admin(current_user)
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     existing = await db.users.find_one({"email": payload.email})
@@ -186,7 +186,7 @@ async def iscrizione_bambino(
     _require_admin(current_user)
 
     # Valida sede: usa sede_id dal payload, verificando che l'admin abbia accesso
-    sede_id = validate_admin_sede_access(current_user, payload.sede_id or x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, payload.sede_id or x_sede_id)
 
     db = get_db()
 
@@ -428,7 +428,7 @@ async def update_user_credentials(
 ):
     """Aggiorna email e/o password di un utente. Solo admin della stessa sede."""
     _require_admin(current_user)
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     target = await db.users.find_one({"id": user_id})
@@ -481,7 +481,7 @@ async def resend_credentials(
     Solo admin della stessa sede.
     """
     _require_admin(current_user)
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     target = await db.users.find_one({"id": user_id})
@@ -532,7 +532,7 @@ async def delete_user(
     if current_user.get("id") == user_id:
         raise HTTPException(status_code=400, detail="Non puoi eliminare il tuo account")
 
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     # Verifica che l'utente appartenga alla sede (SuperAdmin esclusi)

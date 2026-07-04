@@ -58,7 +58,7 @@ async def get_students(
     else:
         # Admin: filtra per classi della sede attiva (non solo per sede_id sul bambino,
         # per garantire coerenza con teacher che filtra per class_id)
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if class_id:
             cls = await db.classes.find_one({"id": class_id, "sede_id": sede_id})
             if not cls:
@@ -107,7 +107,7 @@ async def get_student(
         return student
 
     else:
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         student = await db.students.find_one({"id": student_id, "sede_id": sede_id}, {"_id": 0})
         if not student:
             raise HTTPException(status_code=404, detail="Studente non trovato")
@@ -134,7 +134,7 @@ async def create_student(
     db = get_db()
 
     if current_user.get("role") == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     else:
         sede_id = get_teacher_sede_id(current_user)
 
@@ -181,7 +181,7 @@ async def update_student(
         # Maestra può modificare solo campi anagrafici, non la classe
         allowed_fields = {"name", "cognome", "date_of_birth", "allergies", "notes"}
     else:
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if student.get("sede_id") != sede_id:
             raise HTTPException(status_code=403, detail="Studente non appartiene alla sede selezionata")
         allowed_fields = {"name", "cognome", "date_of_birth", "allergies", "notes", "class_id", "parent_id"}
@@ -220,7 +220,7 @@ async def delete_student(
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare studenti")
 
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     student = await db.students.find_one({"id": student_id})
@@ -267,7 +267,7 @@ async def remove_student_from_class(
         raise HTTPException(status_code=404, detail="Studente non trovato")
 
     if role == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if student.get("sede_id") != sede_id:
             raise HTTPException(status_code=403, detail="Accesso negato")
     elif role == "teacher":

@@ -29,7 +29,7 @@ async def get_classes(
     role = current_user.get("role")
 
     if role == "admin":
-        sede_id = validate_admin_sede_access(current_user, x_sede_id)
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         classes = await db.classes.find({"sede_id": sede_id}, {"_id": 0}).to_list(100)
 
     elif role == "teacher":
@@ -75,7 +75,7 @@ async def create_class(
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono creare classi")
 
     # Valida sede e ottieni sede_id
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
 
     db = get_db()
     class_dict = payload.model_dump()
@@ -97,7 +97,7 @@ async def update_class(
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Permesso negato")
 
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
     cls = await db.classes.find_one({"id": class_id})
@@ -141,7 +141,7 @@ async def delete_class(
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Permesso negato")
 
-    sede_id = validate_admin_sede_access(current_user, x_sede_id)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
 
     db = get_db()
     # Verifica che la classe appartenga alla sede attiva (prevenzione cross-tenant)

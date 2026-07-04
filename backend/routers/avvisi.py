@@ -7,7 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from services.database import get_db
 from utils.expo_push import notify_role, notify_parents_of_class, notify_users
 from models.avvisi import AvvisoCreate, AvvisoUpdate
-from middleware.auth import get_current_user, validate_admin_sede_access, get_teacher_sede_id
+from middleware.auth import (
+    get_current_user, get_tenant_context, TenantContext,
+    validate_admin_sede_access, get_teacher_sede_id,
+)
 
 router = APIRouter(prefix="/api/avvisi", tags=["avvisi"])
 
@@ -29,8 +32,13 @@ def _avviso_visible_to(avviso: dict, role: str, user_id: str,
     if role not in a_roles:
         return False
 
-    # 2. Verifica sede
-    if a_sedi and user_sede_id and user_sede_id not in a_sedi:
+    # 2. Verifica sede — FAIL-CLOSED NELL'HELPER STESSO: un avviso senza attribuzione di
+    #    sede (né target_sedi né sede_id → a_sedi vuoto) NON è visibile ad alcuno. Non ci
+    #    affidiamo al pre-filtro della query per compensare: l'helper è condiviso e un path
+    #    futuro senza pre-filtro riaprirebbe il buco. Difesa in profondità.
+    if not a_sedi:
+        return False
+    if user_sede_id and user_sede_id not in a_sedi:
         return False
 
     # 3. Verifica classe
@@ -132,31 +140,38 @@ async def get_avvisi(
 @router.post("", status_code=201)
 async def create_avviso(
     payload: AvvisoCreate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    role = current_user.get("role")
+    role = ctx.role
     if role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Solo admin o maestra possono creare avvisi")
 
     db = get_db()
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
-    doc["author_id"]   = current_user.get("id", "")
-    doc["author_name"] = current_user.get("name", "")
+    doc["author_id"]   = ctx.user_id
+    doc["author_name"] = ctx.user.get("name", "")
     doc["author_role"] = role
     doc["created_at"]  = datetime.now(timezone.utc).isoformat()
 
     if role == "admin":
-        # Admin: usa sede attiva + eventuali sedi extra dal targeting
-        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        # sede "home" dell'avviso: SEMPRE derivata server-side (X-Sede-Id validato), mai dal body.
+        sede_id = await validate_admin_sede_access(ctx.user, x_sede_id)
         doc["sede_id"] = sede_id
 
-        # target_sedi: se non specificato, usa solo la sede attiva
-        if not doc.get("target_sedi"):
-            doc["target_sedi"] = [sede_id]
+        # target_sedi: default = solo la sede attiva. ALL-OR-NOTHING: ogni sede richiesta
+        # dev'essere consentita al caller (admin → propria; superadmin → tutte). Anche UNA
+        # sede non consentita ⇒ 404 e NESSUN avviso creato (entità persistita, intent esplicito).
+        requested_sedi = doc.get("target_sedi") or [sede_id]
+        if not ctx.all_access:
+            for s in requested_sedi:
+                if s not in ctx.sede_ids:
+                    raise HTTPException(status_code=404, detail="Sede non consentita nel target")
+        doc["target_sedi"] = requested_sedi
 
-        # Verifica che le classi target appartengano alle sedi selezionate
+        # target_class_ids: devono appartenere alle target_sedi (ora scopate). ALL-OR-NOTHING:
+        # una classe fuori dalle sedi consentite ⇒ 404 (non filtrata silenziosamente).
         if doc.get("target_class_ids"):
             valid_classes = await db.classes.find(
                 {"id": {"$in": doc["target_class_ids"]},
@@ -164,13 +179,14 @@ async def create_avviso(
                 {"_id": 0, "id": 1}
             ).to_list(100)
             valid_ids = {c["id"] for c in valid_classes}
-            doc["target_class_ids"] = [c for c in doc["target_class_ids"] if c in valid_ids]
+            if any(c not in valid_ids for c in doc["target_class_ids"]):
+                raise HTTPException(status_code=404, detail="Classe non consentita nel target")
 
     else:
         # Maestra: sede e classi fisse dal profilo — targeting solo genitori
-        sede_id = get_teacher_sede_id(current_user)
-        teacher_class_ids = list(current_user.get("class_ids") or [])
-        legacy = current_user.get("class_id")
+        sede_id = get_teacher_sede_id(ctx.user)
+        teacher_class_ids = list(ctx.user.get("class_ids") or [])
+        legacy = ctx.user.get("class_id")
         if legacy and legacy not in teacher_class_ids:
             teacher_class_ids.append(legacy)
 
@@ -219,8 +235,8 @@ async def create_avviso(
             for cid in class_ids:
                 await notify_parents_of_class(db, cid, push_title, push_body)
         else:
-            for role in target_roles:
-                await notify_role(db, role, sede_push, push_title, push_body)
+            for push_role in target_roles:
+                await notify_role(db, push_role, sede_push, push_title, push_body)
     except Exception:
         pass  # Push non bloccante
 
@@ -235,25 +251,38 @@ async def create_avviso(
 async def update_avviso(
     avviso_id: str,
     payload: AvvisoUpdate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    role = current_user.get("role")
+    role = ctx.role
     db = get_db()
     avviso = await db.avvisi.find_one({"id": avviso_id}, {"_id": 0})
     if not avviso:
         raise HTTPException(status_code=404, detail="Avviso non trovato")
 
-    # Solo admin o l'autore possono modificare
+    # (1) OWNERSHIP: l'avviso dev'essere nella sede del caller. Cross-tenant → 404 (non 403:
+    #     non riveliamo l'esistenza). Per non-admin: solo l'autore può modificare.
     if role == "admin":
-        await validate_admin_sede_access(current_user, x_sede_id)
-    elif avviso.get("author_id") != current_user.get("id"):
+        if not ctx.all_access and avviso.get("sede_id") not in ctx.sede_ids:
+            raise HTTPException(status_code=404, detail="Avviso non trovato")
+    elif avviso.get("author_id") != ctx.user_id:
         raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
 
     updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    # (3) sede_id IMMUTABILE via body: nessun tenant-move (come il fix calendar). AvvisoUpdate
+    #     non espone sede_id, ma lo rimuoviamo comunque per difesa in profondità.
+    updates.pop("sede_id", None)
+
+    # (2) NO TARGET-EXPANSION: il target_sedi RISULTANTE dev'essere ⊆ sedi consentite. Anche
+    #     UNA sede non consentita ⇒ 404 e avviso INVARIATO (update_one non viene eseguito).
+    if "target_sedi" in updates and not ctx.all_access:
+        for s in (updates["target_sedi"] or []):
+            if s not in ctx.sede_ids:
+                raise HTTPException(status_code=404, detail="Sede non consentita nel target")
+
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.avvisi.update_one({"id": avviso_id}, {"$set": updates})
     updated = await db.avvisi.find_one({"id": avviso_id}, {"_id": 0})
@@ -279,7 +308,7 @@ async def delete_avviso(
     if role == "admin":
         sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if avviso.get("sede_id") != sede_id and sede_id not in (avviso.get("target_sedi") or []):
-            raise HTTPException(status_code=403, detail="Avviso non appartiene alla sede selezionata")
+            raise HTTPException(status_code=404, detail="Avviso non trovato")   # 404 cross-tenant (convenzione uniforme)
     elif avviso.get("author_id") != current_user.get("id"):
         raise HTTPException(status_code=403, detail="Permesso negato")
 

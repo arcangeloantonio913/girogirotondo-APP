@@ -7,7 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 
 from services.database import get_db
 from models.meals import MealCreate
-from middleware.auth import get_current_user, validate_admin_sede_access, get_teacher_sede_id
+from middleware.auth import (
+    get_current_user, get_tenant_context, TenantContext,
+    validate_admin_sede_access, get_teacher_sede_id,
+)
 
 router = APIRouter(tags=["meals"])
 
@@ -19,69 +22,57 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 async def get_meals(
     class_id: Optional[str] = None,
     date: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
-    x_sede_id: Optional[str] = Header(None),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
     query: dict = {}
-    role = current_user.get("role")
 
-    # Filtro data: cerca menu con data singola OPPURE range che include la data
+    # ── Tenant scope. meals è scopato per SEDE. Gli "universali" (class_id vuoto/null)
+    #    sono sede-wide → filtrati per la sede del caller (mai globali). Un universale
+    #    SENZA sede_id non matcha nessuno: {sede_id: {$in: [...]}} esclude i null (FAIL-CLOSED).
+    if ctx.role == "admin":
+        if not ctx.all_access:
+            query["sede_id"] = {"$in": list(ctx.sede_ids)}   # universali + class-specific della sede A
+        if class_id:
+            query["class_id"] = class_id
+
+    elif ctx.role == "teacher":
+        universal = {"class_id": {"$in": ["", None]}, "sede_id": {"$in": list(ctx.sede_ids)}}
+        if class_id:
+            if class_id not in ctx.allowed_class_ids:
+                raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
+            query["$or"] = [{"class_id": class_id}, universal]
+        else:
+            query["$or"] = [{"class_id": {"$in": list(ctx.allowed_class_ids)}}, universal]
+
+    elif ctx.role == "parent":
+        if not ctx.allowed_student_ids:
+            return []
+        universal = {"class_id": {"$in": ["", None]}, "sede_id": {"$in": list(ctx.sede_ids)}}
+        if class_id:
+            if class_id in ctx.allowed_class_ids:
+                query["$or"] = [{"class_id": class_id}, universal]
+            else:
+                query["$or"] = [universal]   # classe non autorizzata → solo universali della propria sede
+        else:
+            query["$or"] = [{"class_id": {"$in": list(ctx.allowed_class_ids)}}, universal]
+
+    else:
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    # ── Filtro data: singola data OPPURE range. Combina con l'$or del tenant via $and. ──
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
-        # Menu singolo-giorno (vecchio formato) OPPURE range che include la data
-        query["$or"] = [
+        date_or = [
             {"date": date},
             {"date_from": {"$lte": date}, "date_to": {"$gte": date}},
         ]
-
-    if role == "admin":
-        # Admin: filtro per sede attiva
-        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
-        query["sede_id"] = sede_id
-        if class_id:
-            query["class_id"] = class_id
-
-    elif role == "teacher":
-        # Maestra: vede solo menu delle sue classi (sede implicita)
-        teacher_class_ids = list(current_user.get("class_ids") or [])
-        legacy = current_user.get("class_id")
-        if legacy and legacy not in teacher_class_ids:
-            teacher_class_ids.append(legacy)
-        if class_id:
-            if class_id not in teacher_class_ids:
-                raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
-            query["class_id"] = class_id
-        elif teacher_class_ids:
-            query["class_id"] = {"$in": teacher_class_ids}
-
-    else:
-        # Parent: vede SOLO il menu della classe del proprio figlio
-        # + menu universali (class_id vuoto = per tutte le classi)
-        child_ids = list(current_user.get("child_ids") or [])
-        legacy = current_user.get("child_id")
-        if legacy and legacy not in child_ids:
-            child_ids.append(legacy)
-        if child_ids:
-            students = await db.students.find(
-                {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1}
-            ).to_list(100)
-            parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
-
-            if class_id:
-                # Il frontend ha richiesto una classe specifica:
-                # la mostriamo SOLO se appartiene ai figli del genitore
-                if class_id in parent_class_ids:
-                    allowed = [class_id, "", None]
-                else:
-                    # classe non autorizzata → mostra solo universali
-                    allowed = ["", None]
-            else:
-                # Nessuna classe specificata → tutte le classi dei figli + universali
-                allowed = parent_class_ids + ["", None]
-
-            query["class_id"] = {"$in": allowed}
+        if "$or" in query:
+            tenant_or = query.pop("$or")
+            query["$and"] = [{"$or": tenant_or}, {"$or": date_or}]
+        else:
+            query["$or"] = date_or
 
     meals = await db.meals.find(query, {"_id": 0}).to_list(100)
     return meals
@@ -90,17 +81,22 @@ async def get_meals(
 @router.post("/api/meals/menu", status_code=201)
 async def create_meal(
     payload: MealCreate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può creare menu")
 
-    # Determina sede
-    if current_user.get("role") == "admin":
-        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+    # Class-specific: la classe dev'essere del caller (404 cross-sede) PRIMA di creare.
+    if payload.class_id:
+        ctx.assert_class(payload.class_id)
+
+    # sede_id SEMPRE dal creatore (mai dal body); l'universale (class_id nullo) porta comunque
+    # la sede del creatore -> mai universale globale per omissione.
+    if ctx.role == "admin":
+        sede_id = await validate_admin_sede_access(ctx.user, x_sede_id)
     else:
-        sede_id = get_teacher_sede_id(current_user)
+        sede_id = get_teacher_sede_id(ctx.user)
 
     db = get_db()
     doc = payload.model_dump()
@@ -134,7 +130,7 @@ async def delete_meal(
     if not meal:
         raise HTTPException(status_code=404, detail="Menu non trovato")
     if meal.get("sede_id") and meal.get("sede_id") != sede_id:
-        raise HTTPException(status_code=403, detail="Menu non appartiene alla sede selezionata")
+        raise HTTPException(status_code=404, detail="Menu non trovato")   # 404 cross-tenant (convenzione)
 
     await db.meals.delete_one({"id": meal_id})
     return {"message": "Menu eliminato"}

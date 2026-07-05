@@ -116,19 +116,27 @@ def require_superadmin(current_user: dict = Depends(get_current_user)):
 # appena creata è valida SUBITO (query diretta, coerente cross-worker; nessuna cache —
 # vedi railway.toml --workers 2, dove una cache in-memory sarebbe per-worker).
 
-async def get_valid_sede_ids(db) -> set:
-    rows = await db.sedi.find({"active": True}, {"_id": 0, "id": 1}).to_list(200)
+async def get_valid_sede_ids(db, org_id: Optional[str] = None) -> set:
+    """Sedi attive valide. Se `org_id` è passato → SOLO le sedi di quella org (isolamento
+    cross-org). Se None → tutte le attive (FALLBACK pre-backfill: comportamento identico a
+    prima del livello org, così il codice può essere deployato PRIMA della migrazione)."""
+    q = {"active": True}
+    if org_id:
+        q["org_id"] = org_id
+    rows = await db.sedi.find(q, {"_id": 0, "id": 1}).to_list(200)
     return {r["id"] for r in rows if r.get("id")}
 
 
-async def get_default_sede_id(db) -> Optional[str]:
+async def get_default_sede_id(db, org_id: Optional[str] = None) -> Optional[str]:
     """Sede di 'atterraggio' DETERMINISTICA quando non è indicata (es. superadmin senza
-    X-Sede-Id): la sede attiva più VECCHIA (sort created_at asc, tiebreak id asc). È
-    stabile anche aggiungendo nuove sedi e riproduce il vecchio default 'girogirotondo'
-    senza hardcoding. NB: senza sort esplicito Mongo userebbe l'ordine naturale (non
-    deterministico). Temporaneo: in Fase C, con i client che inviano sempre X-Sede-Id,
-    questo caso diventerà un 400 esplicito."""
-    rows = await db.sedi.find({"active": True}, {"_id": 0, "id": 1}) \
+    X-Sede-Id): la sede attiva più VECCHIA (sort created_at asc, tiebreak id asc), ristretta
+    all'org del caller se `org_id` è passato (None = tutte, fallback pre-backfill). È stabile
+    anche aggiungendo nuove sedi e riproduce il vecchio default 'girogirotondo' senza
+    hardcoding. NB: senza sort esplicito Mongo userebbe l'ordine naturale (non deterministico)."""
+    q = {"active": True}
+    if org_id:
+        q["org_id"] = org_id
+    rows = await db.sedi.find(q, {"_id": 0, "id": 1}) \
         .sort([("created_at", 1), ("id", 1)]).to_list(1)
     return rows[0]["id"] if rows else None
 
@@ -147,11 +155,15 @@ async def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono specificare la sede")
 
     db = get_db()
-    valid = await get_valid_sede_ids(db)
+    # Org del caller: se assente (dati non ancora backfillati) → None = nessun filtro org
+    # (FALLBACK di rollout: identico a oggi). Post-backfill → le sedi valide sono SOLO quelle
+    # della propria org, quindi una X-Sede-Id di un'altra org cade fuori da `valid` → rifiutata.
+    caller_org = current_user.get("org_id")
+    valid = await get_valid_sede_ids(db, caller_org)
 
     requested_sede = (x_sede_id or "").strip() or current_user.get("sede_id")
     if not requested_sede:
-        requested_sede = await get_default_sede_id(db)
+        requested_sede = await get_default_sede_id(db, caller_org)
 
     if not requested_sede or requested_sede not in valid:
         raise HTTPException(status_code=400, detail=f"Sede non valida: {requested_sede}")
@@ -218,7 +230,11 @@ class TenantContext:
         self.role = user.get("role")
         self.user_id = user.get("id")
         self.is_superadmin = bool(user.get("is_superadmin"))
-        self.all_access = self.is_superadmin
+        self.org_id = user.get("org_id")     # org del caller (None finché non backfillato)
+        # all_access NON è più legato a is_superadmin: il superadmin viene reso un caller
+        # multi-sede BOUNDED alla propria org (vedi get_tenant_context). Resta True solo nel
+        # fallback pre-backfill (superadmin senza org_id) per non regredire.
+        self.all_access = False
         self.sede_ids: list = []
         self.allowed_class_ids: set = set()
         self.allowed_student_ids: set = set()
@@ -265,8 +281,22 @@ async def get_tenant_context(
     db = get_db()
     ctx = TenantContext(db, current_user)
 
-    if ctx.all_access:
-        ctx.sede_ids = list(await get_valid_sede_ids(db))
+    if ctx.is_superadmin:
+        if ctx.org_id:
+            # SuperAdmin BOUNDED alla propria org: vede TUTTE le sedi/classi della sua org,
+            # NESSUNA di un'altra org. all_access resta False → i ~24 siti dei router che fanno
+            # `if not ctx.all_access: filtra per ctx.sede_ids/allowed_class_ids` diventano
+            # org-corretti senza modifiche.
+            ctx.sede_ids = list(await get_valid_sede_ids(db, ctx.org_id))
+            classes = await db.classes.find(
+                {"sede_id": {"$in": ctx.sede_ids}}, {"_id": 0, "id": 1}
+            ).to_list(5000)
+            ctx.allowed_class_ids = {c["id"] for c in classes if c.get("id")}
+        else:
+            # FALLBACK pre-backfill (org_id assente): comportamento IDENTICO a oggi —
+            # accesso globale a tutte le sedi. Si spegne da sé appena il backfill stampa org_id.
+            ctx.all_access = True
+            ctx.sede_ids = list(await get_valid_sede_ids(db))
         return ctx
 
     role = ctx.role

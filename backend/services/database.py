@@ -256,6 +256,16 @@ async def seed_database():
     now = datetime.now(timezone.utc).isoformat()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+    # ── 0. ORGS (livello organizzazione sopra le sedi) ───────────────────────
+    # Solo seed fresco (dev/test). In PROD la org 1 viene creata dal backfill mongosh.
+    await db.orgs.drop()
+    await db.orgs.insert_one({
+        "id": "girogirotondo-group",
+        "name": "Gruppo Girogirotondo",
+        "active": True,
+        "created_at": now,
+    })
+
     # ── 1. SEDI ──────────────────────────────────────────────────────────────
 
     sedi = [
@@ -265,6 +275,7 @@ async def seed_database():
             "color": "#4169E1",
             "indirizzo": "Via Roma 12, Napoli",
             "active": True,
+            "org_id": "girogirotondo-group",
             "created_at": now,
         },
         {
@@ -273,6 +284,7 @@ async def seed_database():
             "color": "#FF69B4",
             "indirizzo": "Via Nazionale 45, Napoli",
             "active": True,
+            "org_id": "girogirotondo-group",
             "created_at": now,
         },
     ]
@@ -292,6 +304,7 @@ async def seed_database():
             "password": hash_password("Mariagrazia2026!"),
             "role": "admin",
             "is_superadmin": True,
+            "org_id": "girogirotondo-group",
             "sede_id": None,            # SuperAdmin: nessuna sede fissa
             "class_id": None,
             "class_ids": [],
@@ -310,6 +323,7 @@ async def seed_database():
             "password": hash_password("Teresa2026!"),
             "role": "admin",
             "is_superadmin": True,
+            "org_id": "girogirotondo-group",
             "sede_id": None,
             "class_id": None,
             "class_ids": [],

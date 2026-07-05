@@ -31,6 +31,13 @@ MM_CLASS = "mm-class-1"
 GGT_STUDENT = "ggt-student-1"
 MM_STUDENT = "mm-student-1"
 
+# ── Livello org (faseB-org): org 1 = Girogirotondo+MM, org 2 = Dimensione Bimbo ──
+ORG1 = "girogirotondo-group"
+ORG2 = "dimensione-bimbo"
+SEDE_DB2 = "db-sede-1"          # id sede org 2 — DISTINTO da "dimensione-bimbo" (usato da test_sedi)
+DB2_CLASS = "db-class-1"
+DB2_STUDENT = "db-student-1"
+
 
 @pytest.fixture(scope="session")
 def mock_firebase():
@@ -67,26 +74,38 @@ async def seed_db(mock_db, mock_firebase):
     db = mock_db[os.environ["DB_NAME"]]
     admin_pw_hash = bcrypt.hashpw(b"admin-pass-123", bcrypt.gensalt()).decode()
 
+    await db.orgs.insert_many([
+        {"id": ORG1, "name": "Gruppo Girogirotondo", "active": True, "created_at": "2026-01-01T00:00:00+00:00"},
+        {"id": ORG2, "name": "Dimensione Bimbo",      "active": True, "created_at": "2026-06-01T00:00:00+00:00"},
+    ])
     await db.sedi.insert_many([
-        # stesso created_at (come il seed reale) → il default deterministico dipende dal tiebreak id
-        {"id": SEDE_GGT, "name": "Girogirotondo", "active": True, "created_at": "2026-01-01T00:00:00+00:00"},
-        {"id": SEDE_MM, "name": "Il Magico Mondo", "active": True, "created_at": "2026-01-01T00:00:00+00:00"},
+        # org 1: stesso created_at → il default deterministico dipende dal tiebreak id
+        {"id": SEDE_GGT, "name": "Girogirotondo",  "active": True, "org_id": ORG1, "created_at": "2026-01-01T00:00:00+00:00"},
+        {"id": SEDE_MM,  "name": "Il Magico Mondo", "active": True, "org_id": ORG1, "created_at": "2026-01-01T00:00:00+00:00"},
+        # org 2: created_at PIÙ RECENTE → non diventa mai il default globale "più vecchio"
+        {"id": SEDE_DB2, "name": "Dimensione Bimbo Centro", "active": True, "org_id": ORG2, "created_at": "2026-06-01T00:00:00+00:00"},
     ])
     await db.classes.insert_many([
         {"id": GGT_CLASS, "name": "Farfalle", "sede_id": SEDE_GGT, "teacher_id": "teacher-test-id"},
         {"id": MM_CLASS, "name": "Stelline", "sede_id": SEDE_MM, "teacher_id": "mm-teacher-id"},
+        {"id": DB2_CLASS, "name": "Orsetti", "sede_id": SEDE_DB2, "teacher_id": "db2-teacher-id"},
     ])
     await db.students.insert_many([
         {"id": GGT_STUDENT, "name": "Luca", "cognome": "Bianchi", "class_id": GGT_CLASS, "sede_id": SEDE_GGT, "parent_id": "parent-test-id"},
         {"id": MM_STUDENT, "name": "Alice", "cognome": "Fontana", "class_id": MM_CLASS, "sede_id": SEDE_MM, "parent_id": "mm-parent-id"},
+        {"id": DB2_STUDENT, "name": "Marco", "cognome": "Rossi", "class_id": DB2_CLASS, "sede_id": SEDE_DB2, "parent_id": "db2-parent-id"},
     ])
     await db.users.insert_many([
-        {"id": "admin-test-id", "role": "admin", "is_superadmin": False, "sede_id": SEDE_GGT, "active": True, "email": "admin@ggt.it", "password": admin_pw_hash},
-        {"id": "teacher-test-id", "role": "teacher", "sede_id": SEDE_GGT, "class_ids": [GGT_CLASS], "active": True, "email": "t@ggt.it"},
-        {"id": "parent-test-id", "role": "parent", "sede_id": SEDE_GGT, "child_ids": [GGT_STUDENT], "active": True, "email": "p@ggt.it"},
-        {"id": "mm-teacher-id", "role": "teacher", "sede_id": SEDE_MM, "class_ids": [MM_CLASS], "active": True, "email": "t@mm.it"},
-        {"id": "mm-parent-id", "role": "parent", "sede_id": SEDE_MM, "child_ids": [MM_STUDENT], "active": True, "email": "p@mm.it"},
-        {"id": "super-test-id", "role": "admin", "is_superadmin": True, "sede_id": None, "active": True, "email": "super@ggt.it"},
+        {"id": "admin-test-id", "role": "admin", "is_superadmin": False, "sede_id": SEDE_GGT, "org_id": ORG1, "active": True, "email": "admin@ggt.it", "password": admin_pw_hash},
+        {"id": "teacher-test-id", "role": "teacher", "sede_id": SEDE_GGT, "org_id": ORG1, "class_ids": [GGT_CLASS], "active": True, "email": "t@ggt.it"},
+        {"id": "parent-test-id", "role": "parent", "sede_id": SEDE_GGT, "org_id": ORG1, "child_ids": [GGT_STUDENT], "active": True, "email": "p@ggt.it"},
+        {"id": "mm-teacher-id", "role": "teacher", "sede_id": SEDE_MM, "org_id": ORG1, "class_ids": [MM_CLASS], "active": True, "email": "t@mm.it"},
+        {"id": "mm-parent-id", "role": "parent", "sede_id": SEDE_MM, "org_id": ORG1, "child_ids": [MM_STUDENT], "active": True, "email": "p@mm.it"},
+        {"id": "super-test-id", "role": "admin", "is_superadmin": True, "sede_id": None, "org_id": ORG1, "active": True, "email": "super@ggt.it"},
+        # ── Org 2 (Dimensione Bimbo) — per i test cross-org ──
+        {"id": "super2-test-id", "role": "admin", "is_superadmin": True, "sede_id": None, "org_id": ORG2, "active": True, "email": "super2@db.it"},
+        {"id": "db2-admin-id", "role": "admin", "is_superadmin": False, "sede_id": SEDE_DB2, "org_id": ORG2, "active": True, "email": "admin@db2.it"},
+        {"id": "db2-parent-id", "role": "parent", "sede_id": SEDE_DB2, "org_id": ORG2, "child_ids": [DB2_STUDENT], "active": True, "email": "p@db2.it"},
     ])
     await db.gallery.insert_many([
         {"id": "ggt-media-1", "class_id": GGT_CLASS, "sede_id": SEDE_GGT, "student_ids": [GGT_STUDENT], "media_type": "photo", "media_url": "https://x/ggt.jpg", "published": True, "created_at": "2026-01-01T00:00:00+00:00"},
@@ -172,3 +191,15 @@ def mm_parent_headers():
 @pytest.fixture
 def super_headers():
     return _headers("super-test-id", "admin")
+
+
+@pytest.fixture
+def super2_headers():
+    """SuperAdmin di org 2 (Dimensione Bimbo)."""
+    return _headers("super2-test-id", "admin")
+
+
+@pytest.fixture
+def db2_admin_headers():
+    """Admin normale di org 2 (sede db-sede-1)."""
+    return _headers("db2-admin-id", "admin")

@@ -44,9 +44,14 @@ async def get_users(
     # Admin normale — filtra per la propria sede
     query: dict = {"sede_id": sede_id}
 
-    # Includi anche i superadmin nella lista (sede_id=None)
+    # Includi anche i superadmin nella lista (sede_id=None), MA solo quelli della propria org
+    # (post-backfill). Fallback pre-backfill (caller senza org_id): tutti i superadmin (odierno).
     if current_user.get("is_superadmin"):
-        query = {"$or": [{"sede_id": sede_id}, {"is_superadmin": True}]}
+        caller_org = current_user.get("org_id")
+        super_clause = {"is_superadmin": True}
+        if caller_org:
+            super_clause["org_id"] = caller_org
+        query = {"$or": [{"sede_id": sede_id}, super_clause]}
 
     users = await db.users.find(query, {"_id": 0, "password": 0, "admin_password": 0}).to_list(1000)
     return users

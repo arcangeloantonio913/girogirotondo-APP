@@ -1,4 +1,9 @@
-"""Griglia (daily activity grid) router."""
+"""Griglia (daily activity grid) router — tenant isolation via get_tenant_context.
+
+La griglia è per-STUDENTE: il genitore vede solo i propri figli; teacher/admin solo
+le proprie classi; superadmin tutto. Denial -> 404. sede_id è denormalizzato sui
+nuovi doc per audit/erasure GDPR (il filtro di lettura resta su class_id).
+"""
 import re
 import uuid
 from typing import Optional
@@ -8,19 +13,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from services.database import get_db
 from utils.expo_push import notify_parents_of_class
 from models.griglia import GrigliaEntry
-from middleware.auth import get_current_user
+from middleware.auth import get_tenant_context, TenantContext, _resolve_class
 
 router = APIRouter(prefix="/api/griglia", tags=["griglia"])
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
-def _parent_child_ids(current_user: dict) -> list:
-    ids = list(current_user.get("child_ids") or [])
-    legacy = current_user.get("child_id")
-    if legacy and legacy not in ids:
-        ids.append(legacy)
-    return ids
 
 
 @router.get("")
@@ -28,26 +25,32 @@ async def get_griglia(
     class_id: Optional[str] = None,
     date: Optional[str] = None,
     student_id: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
     query: dict = {}
-    role = current_user.get("role")
 
-    if role == "parent":
-        allowed = _parent_child_ids(current_user)
+    if ctx.role == "parent":
+        # Per-studente: il genitore vede SOLO i propri figli (student_id derivato dal profilo).
+        allowed = ctx.allowed_student_ids
         if not allowed:
             return []
         if student_id:
             if student_id not in allowed:
-                raise HTTPException(status_code=403, detail="Accesso negato")
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
             query["student_id"] = student_id
         else:
-            query["student_id"] = {"$in": allowed}
+            query["student_id"] = {"$in": list(allowed)}
     else:
+        # teacher/admin/superadmin: base SEMPRE le classi del caller (mai {} per non-super).
+        if not ctx.all_access and not ctx.allowed_class_ids:
+            return []
+        query.update(ctx.class_filter())
         if class_id:
+            ctx.assert_class(class_id)              # 404 se la classe non è del caller
             query["class_id"] = class_id
         if student_id:
+            await ctx.assert_student(student_id)    # 404 se lo studente non è nello scope del caller
             query["student_id"] = student_id
 
     if date:
@@ -62,15 +65,25 @@ async def get_griglia(
 @router.post("")
 async def save_griglia(
     entry: GrigliaEntry,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
+
+    # ── Validazione ATOMICA dell'intero batch: NESSUNA scrittura/notifica finché OGNI id
+    #    del batch non è validato (all-or-nothing, indipendente dall'ordine dell'array).
+    ctx.assert_class(entry.class_id)                # la classe target dev'essere del caller (404)
+    for sid in entry.student_ids:
+        await ctx.assert_student(sid)               # ogni studente dev'essere nello scope (404)
+
+    # ── Solo ora che TUTTO il batch è valido: sede + scritture + notifiche.
+    cls = await _resolve_class(db, entry.class_id)
+    sede_id = cls.get("sede_id") if cls else None   # audit/erasure GDPR (il filtro resta su class_id)
+
     entries_created = []
 
-    # Deriva boolean da qty se qty è impostato
-    # "no" = esplicitamente non mangiato → boolean False
+    # Deriva boolean da qty se qty è impostato ("no" = esplicitamente non mangiato -> False)
     def _active(flag: bool, qty: str) -> bool:
         if qty == "no": return False
         return bool(qty) or flag
@@ -82,6 +95,7 @@ async def save_griglia(
         doc = {
             "id": str(uuid.uuid4()) if not existing else existing.get("id", str(uuid.uuid4())),
             "class_id":    entry.class_id,
+            "sede_id":     sede_id,
             "student_id":  sid,
             "date":        entry.date,
             # boolean (true se qty impostata e non "no", o flag esplicito)

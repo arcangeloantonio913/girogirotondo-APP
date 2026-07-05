@@ -1,4 +1,9 @@
-"""Registro Presenze/Assenze router."""
+"""Registro Presenze/Assenze router — tenant isolation via get_tenant_context.
+
+Solo staff (teacher/admin). Scoping per CLASSE: i doc presenze non hanno sede_id, il
+POST lo denormalizza sui NUOVI doc per audit/erasure GDPR ma il filtro di lettura resta
+su class_id (presente al 100%). Denial -> 404. Superadmin all-access.
+"""
 import re
 import uuid
 from typing import Optional
@@ -7,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from services.database import get_db
 from models.presenze import PresenzaDay
-from middleware.auth import get_current_user, validate_admin_sede_access
+from middleware.auth import get_tenant_context, TenantContext, _resolve_class
 
 router = APIRouter(prefix="/api/presenze", tags=["presenze"])
 
@@ -16,54 +21,49 @@ _MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 _YEAR_RE  = re.compile(r"^\d{4}$")
 
 
-def _teacher_class_ids(u: dict) -> list:
-    ids = list(u.get("class_ids") or [])
-    if u.get("class_id") and u["class_id"] not in ids:
-        ids.append(u["class_id"])
-    return ids
-
-
 # ---------------------------------------------------------------------------
-# POST /api/presenze  — salva registro giornaliero (maestra o admin)
+# POST /api/presenze — salva registro giornaliero (maestra o admin) — ALL-OR-NOTHING
 # ---------------------------------------------------------------------------
 
 @router.post("", status_code=201)
 async def save_presenze(
     payload: PresenzaDay,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    role = current_user.get("role")
-    if role not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
-
-    # Maestra: può salvare solo per le proprie classi
-    if role == "teacher":
-        allowed = _teacher_class_ids(current_user)
-        if payload.class_id not in allowed:
-            raise HTTPException(status_code=403, detail="Classe non autorizzata")
-
     if not _DATE_RE.match(payload.date):
         raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
 
     db = get_db()
 
-    # Salva/aggiorna ogni record come documento separato
+    # ── Validazione ATOMICA dell'intero batch: NESSUNA scrittura finché la classe e OGNI
+    #    studente non sono validati (all-or-nothing, indipendente dall'ordine dell'array).
+    ctx.assert_class(payload.class_id)                 # 404 se la classe non è del caller
+    for rec in payload.records:
+        await ctx.assert_student(rec.student_id)       # 404 se lo studente non è nello scope del caller
+
+    # ── Solo ora che TUTTO il batch è valido: sede + scritture.
+    cls = await _resolve_class(db, payload.class_id)
+    sede_id = cls.get("sede_id") if cls else None      # audit/erasure GDPR (il filtro resta su class_id)
+
     saved = []
     for rec in payload.records:
         existing = await db.presenze.find_one({
-            "class_id":  payload.class_id,
-            "date":      payload.date,
+            "class_id":   payload.class_id,
+            "date":       payload.date,
             "student_id": rec.student_id,
         })
         doc = {
             "id":         str(uuid.uuid4()) if not existing else existing.get("id", str(uuid.uuid4())),
-            "class_id":  payload.class_id,
-            "date":      payload.date,
+            "class_id":   payload.class_id,
+            "sede_id":    sede_id,
+            "date":       payload.date,
             "student_id": rec.student_id,
-            "presente":  rec.presente,
-            "nota":      rec.nota,
-            "saved_by":  current_user["id"],
-            "saved_at":  datetime.now(timezone.utc).isoformat(),
+            "presente":   rec.presente,
+            "nota":       rec.nota,
+            "saved_by":   ctx.user_id,
+            "saved_at":   datetime.now(timezone.utc).isoformat(),
         }
         if existing:
             await db.presenze.replace_one({"_id": existing["_id"]}, doc)
@@ -76,7 +76,7 @@ async def save_presenze(
 
 
 # ---------------------------------------------------------------------------
-# GET /api/presenze  — recupera presenze (giorno / mese / anno)
+# GET /api/presenze — recupera presenze (giorno / mese / anno) — .find()
 # ---------------------------------------------------------------------------
 
 @router.get("")
@@ -85,34 +85,22 @@ async def get_presenze(
     date:      Optional[str] = None,   # YYYY-MM-DD  → giorno esatto
     mese:      Optional[str] = None,   # YYYY-MM     → tutto il mese
     anno:      Optional[str] = None,   # YYYY        → tutto l'anno
-    current_user: dict = Depends(get_current_user),
-    x_sede_id: Optional[str] = None,
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    role = current_user.get("role")
-    db   = get_db()
-
-    # Costruisce il filtro per le classi autorizzate
-    if role == "teacher":
-        allowed = _teacher_class_ids(current_user)
-        if not allowed:
-            return []
-        if class_id:
-            if class_id not in allowed:
-                raise HTTPException(status_code=403, detail="Classe non autorizzata")
-            query = {"class_id": class_id}
-        else:
-            query = {"class_id": {"$in": allowed}}
-    elif role == "admin":
-        # Admin vede tutte le classi della propria sede
-        from fastapi import Header
-        query = {}
-        if class_id:
-            query["class_id"] = class_id
-        # nessun filtro di sede sui record (la sede è implicita nell'ID classe)
-    else:
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
+    db = get_db()
 
-    # Filtro temporale
+    # base SEMPRE le classi del caller (mai {} per non-super; superadmin -> {})
+    if not ctx.all_access and not ctx.allowed_class_ids:
+        return []
+    query: dict = {}
+    query.update(ctx.class_filter())          # .find(): scope iniettato nel FILTRO
+    if class_id:
+        ctx.assert_class(class_id)            # 404 se la classe non è del caller
+        query["class_id"] = class_id
+
+    # Filtro temporale (vincolo aggiuntivo)
     if date:
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
@@ -131,16 +119,16 @@ async def get_presenze(
 
 
 # ---------------------------------------------------------------------------
-# GET /api/presenze/classi-summary  — riepilogo admin: tutte le classi oggi
+# GET /api/presenze/classi-summary — riepilogo admin (classi della SUA sede) — .find()
 # ---------------------------------------------------------------------------
 
 @router.get("/classi-summary")
 async def get_classi_summary(
     date: Optional[str] = None,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
 ):
-    """Admin only: quante presenze/assenze per ogni classe in una data."""
-    if current_user.get("role") != "admin":
+    """Admin only: presenze/assenze per ogni classe (della propria sede) in una data."""
+    if ctx.role != "admin":
         raise HTTPException(status_code=403, detail="Solo admin")
 
     today = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -148,7 +136,11 @@ async def get_classi_summary(
         raise HTTPException(status_code=400, detail="Formato data non valido")
 
     db = get_db()
-    records = await db.presenze.find({"date": today}, {"_id": 0}).to_list(5000)
+    # NB: aggregazione fatta in Python su una .find() (NON una pipeline aggregate):
+    #     lo scope va nel FILTRO della find, non in uno $match.
+    q: dict = {"date": today}
+    q.update(ctx.class_filter())
+    records = await db.presenze.find(q, {"_id": 0}).to_list(5000)
 
     summary: dict = {}
     for r in records:

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, R
 
 from services.database import get_db
 from models.documents import DocumentCreate, DocumentCategory
-from middleware.auth import get_current_user, get_tenant_context, TenantContext
+from middleware.auth import get_tenant_context, TenantContext
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file
 from utils.push_notifications import notify_class, notify_role
@@ -117,11 +117,14 @@ async def upload_document_file(
     classe_id: str = Form(""),
     scadenza: str = Form(""),
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
+    # Cross-tenant create protection: PRIMA di caricare il file / creare / notificare.
+    if classe_id:
+        ctx.assert_class(classe_id)   # 404 se la classe è di un'altra sede
 
     file_bytes = await file.read()
     ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin"
@@ -141,8 +144,8 @@ async def upload_document_file(
         "storage_path": path,
         "categoria": categoria,
         "classe_id": classe_id or None,
-        "sede_id": await _resolve_doc_sede(db, classe_id or None, current_user, x_sede_id),
-        "uploader_id": current_user["id"],
+        "sede_id": await _resolve_doc_sede(db, classe_id or None, ctx.user, x_sede_id),
+        "uploader_id": ctx.user_id,
         "scadenza": scadenza or None,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -175,7 +178,7 @@ async def upload_document_file(
 @router.post("/upload-b64", status_code=201)
 async def upload_document_base64(
     payload: dict,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
     """
@@ -184,7 +187,7 @@ async def upload_document_base64(
       file_type: MIME type (es. "application/pdf")
       title, description, categoria, classe_id, scadenza
     """
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
 
     file_b64  = payload.get("file_b64", "")
@@ -193,6 +196,10 @@ async def upload_document_base64(
 
     if not file_b64 or not title:
         raise HTTPException(status_code=400, detail="file_b64 e title obbligatori")
+
+    classe_id = payload.get("classe_id") or None
+    if classe_id:
+        ctx.assert_class(classe_id)   # 404 se la classe è di un'altra sede — PRIMA di creare
 
     # Costruisci data URL
     file_url = f"data:{file_type};base64,{file_b64}"
@@ -206,9 +213,9 @@ async def upload_document_base64(
         "file_url":    file_url,
         "storage_path":None,
         "categoria":   payload.get("categoria", "modulistica"),
-        "classe_id":   payload.get("classe_id") or None,
-        "sede_id":     await _resolve_doc_sede(db, payload.get("classe_id") or None, current_user, x_sede_id),
-        "uploader_id": current_user["id"],
+        "classe_id":   classe_id,
+        "sede_id":     await _resolve_doc_sede(db, classe_id, ctx.user, x_sede_id),
+        "uploader_id": ctx.user_id,
         "scadenza":    payload.get("scadenza") or None,
         "created_at":  datetime.now(timezone.utc).isoformat(),
     }
@@ -224,17 +231,19 @@ async def upload_document_base64(
 @router.post("", status_code=201)
 async def create_document(
     payload: DocumentCreate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     doc = payload.model_dump()
+    if doc.get("classe_id"):
+        ctx.assert_class(doc["classe_id"])   # 404 se la classe è di un'altra sede
     doc["id"] = str(uuid.uuid4())
     doc["storage_path"] = None
-    doc["sede_id"] = await _resolve_doc_sede(db, doc.get("classe_id"), current_user, x_sede_id)
-    doc["uploader_id"] = current_user.get("id")
+    doc["sede_id"] = await _resolve_doc_sede(db, doc.get("classe_id"), ctx.user, x_sede_id)
+    doc["uploader_id"] = ctx.user_id
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
@@ -242,13 +251,14 @@ async def create_document(
 
 
 @router.delete("/{doc_id}")
-async def delete_document(doc_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ("admin",):
+async def delete_document(doc_id: str, ctx: TenantContext = Depends(get_tenant_context)):
+    if ctx.role != "admin":
         raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare documenti")
     db = get_db()
     doc = await db.documents.find_one({"id": doc_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Documento non trovato")
+    _assert_doc_visible(ctx, doc)   # 404 cross-tenant PRIMA di distruggere file+riga+read_receipts
 
     delete_file(doc.get("storage_path"))
     await db.documents.delete_one({"id": doc_id})

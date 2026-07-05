@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 
 from services.database import get_db
 from models.calendar import CalendarEventCreate, CalendarEventUpdate
-from middleware.auth import get_current_user, get_tenant_context, TenantContext
+from middleware.auth import get_tenant_context, TenantContext
 from utils.push_notifications import notify_class, notify_role
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
@@ -30,6 +30,20 @@ async def _resolve_event_sede(db, classe_id, current_user, x_sede_id):
         if cls and cls.get("sede_id"):
             return cls["sede_id"]
     return current_user.get("sede_id") or (x_sede_id or None)
+
+
+def _assert_event_visible(ctx: TenantContext, event: dict) -> None:
+    """404 (non 403) se l'evento non è nel tenant del caller (ownership object-level).
+    Class-targeted -> per classe; sede-wide (classe_id vuoto) -> per sede."""
+    if ctx.all_access:
+        return
+    classe_id = event.get("classe_id")
+    if classe_id:
+        if classe_id in ctx.allowed_class_ids:
+            return
+    elif event.get("sede_id") in ctx.sede_ids:
+        return
+    raise HTTPException(status_code=404, detail="Evento non trovato")
 
 
 @router.get("/events")
@@ -89,18 +103,21 @@ async def get_upcoming_events(ctx: TenantContext = Depends(get_tenant_context)):
 @router.post("/events", status_code=201)
 async def create_event(
     payload: CalendarEventCreate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
 
     db = get_db()
+    # Cross-tenant create protection: la classe target dev'essere del caller — PRIMA di creare/notificare.
+    if payload.classe_id:
+        ctx.assert_class(payload.classe_id)   # 404 se la classe è di un'altra sede
     event_id = str(uuid.uuid4())
     doc = payload.model_dump()
     doc["id"] = event_id
-    doc["creator_id"] = current_user["id"]
-    doc["sede_id"] = await _resolve_event_sede(db, payload.classe_id, current_user, x_sede_id)
+    doc["creator_id"] = ctx.user_id
+    doc["sede_id"] = await _resolve_event_sede(db, payload.classe_id, ctx.user, x_sede_id)
     doc["visibile_a"] = [v.value if hasattr(v, "value") else v for v in doc["visibile_a"]]
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.calendar_events.insert_one(doc)
@@ -131,13 +148,28 @@ async def create_event(
 async def update_event(
     event_id: str,
     payload: CalendarEventUpdate,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
+    x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") not in ("admin", "teacher"):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
 
     db = get_db()
+    # Ownership object-level: carica il target e verifica il tenant PRIMA di mutare.
+    event = await db.calendar_events.find_one({"id": event_id}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Evento non trovato")
+    _assert_event_visible(ctx, event)                 # 404 cross-tenant
+
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    updates.pop("sede_id", None)                      # sede_id MAI dal body: sempre derivato
+
+    # classe_id dal body: AMMESSO ma ri-validato; se cambia, ricalcola sede_id dalla nuova classe.
+    new_class = updates.get("classe_id")
+    if new_class:
+        ctx.assert_class(new_class)                   # 404 se di altra sede; ok se altra classe propria
+        updates["sede_id"] = await _resolve_event_sede(db, new_class, ctx.user, x_sede_id)
+
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
 
@@ -146,20 +178,20 @@ async def update_event(
             v.value if hasattr(v, "value") else v for v in updates["visibile_a"]
         ]
 
-    result = await db.calendar_events.update_one({"id": event_id}, {"$set": updates})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Evento non trovato")
-
+    await db.calendar_events.update_one({"id": event_id}, {"$set": updates})
     event = await db.calendar_events.find_one({"id": event_id}, {"_id": 0})
     return event
 
 
 @router.delete("/events/{event_id}")
-async def delete_event(event_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ("admin", "teacher"):
+async def delete_event(event_id: str, ctx: TenantContext = Depends(get_tenant_context)):
+    if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
-    result = await db.calendar_events.delete_one({"id": event_id})
-    if result.deleted_count == 0:
+    # Ownership object-level: carica e verifica il tenant PRIMA di cancellare.
+    event = await db.calendar_events.find_one({"id": event_id}, {"_id": 0})
+    if not event:
         raise HTTPException(status_code=404, detail="Evento non trovato")
+    _assert_event_visible(ctx, event)                 # 404 cross-tenant
+    await db.calendar_events.delete_one({"id": event_id})
     return {"message": "Evento eliminato"}

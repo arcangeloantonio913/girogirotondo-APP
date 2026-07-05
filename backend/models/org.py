@@ -1,4 +1,7 @@
-"""Sede model — Multi-Tenant entity."""
+"""Org model — livello "organizzazione" sopra le sedi (un cliente = una org).
+
+Un admin/superadmin vede SOLO le sedi della propria org. Stesso pattern di sede.py.
+"""
 import re
 from typing import Optional
 from pydantic import BaseModel, field_validator
@@ -6,16 +9,10 @@ from pydantic import BaseModel, field_validator
 _SLUG_RE = re.compile(r"^[a-z0-9-]{2,40}$")
 
 
-class SedeCreate(BaseModel):
-    id: str           # slug: es. "girogirotondo", "il-magico-mondo"
+class OrgCreate(BaseModel):
+    id: str           # slug: es. "girogirotondo-group", "dimensione-bimbo"
     name: str
-    color: str = "#4169E1"
-    indirizzo: Optional[str] = None
     active: bool = True
-    # org_id: sorgente SERVER-SIDE (org del superadmin creatore). Opzionale nel body ma
-    # OBBLIGATORIO sul documento persistito — create_sede lo impone (409/400 se assente).
-    # NON in SedeUpdate: una sede non cambia org.
-    org_id: Optional[str] = None
 
     @field_validator("id")
     @classmethod
@@ -33,9 +30,7 @@ class SedeCreate(BaseModel):
         return v.strip()
 
 
-class SedeUpdate(BaseModel):
-    """Aggiornamento sede — non modifica lo slug/id."""
+class OrgUpdate(BaseModel):
+    """Aggiornamento org — non modifica lo slug/id."""
     name: Optional[str] = None
-    color: Optional[str] = None
-    indirizzo: Optional[str] = None
     active: Optional[bool] = None

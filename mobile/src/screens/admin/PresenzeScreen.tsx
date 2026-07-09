@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', green: '#32CD32', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 const TODAY = new Date().toISOString().split('T')[0];
 
 export default function AdminPresenze() {
@@ -16,6 +17,7 @@ export default function AdminPresenze() {
   const [students, setStudents]   = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [date, setDate]           = useState(TODAY);
+  const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
     Promise.all([api.get('/classes'), api.get('/students')])
@@ -31,9 +33,53 @@ export default function AdminPresenze() {
   const presentCount = records.filter(r => r.presente).length;
   const classStudents = students.filter(s => s.class_id === selected || s.class_ids?.includes(selected));
 
+  // Toggle ottimistico dello stato locale (nessuna POST qui)
+  const togglePresente = (studentId: string) => {
+    setRecords(prev => {
+      const idx = prev.findIndex(r => r.student_id === studentId);
+      if (idx === -1) return [...prev, { student_id: studentId, presente: true, nota: null }];
+      const next = [...prev];
+      next[idx] = { ...next[idx], presente: !next[idx].presente };
+      return next;
+    });
+  };
+
+  // Salva TUTTA la classe in un'unica POST (anche gli alunni mai toccati = assenti)
+  const handleSave = async () => {
+    // Guardia: nessuna classe selezionata → non costruire nulla
+    if (!selected) { Alert.alert('Nessuna classe selezionata'); return; }
+    setSaving(true);
+    try {
+      // Guardia: date non deve essere undefined/null
+      let safeDate = date;
+      if (!safeDate) { console.log('[PRESENZE] date mancante, uso TODAY'); safeDate = TODAY; }
+
+      // Costruzione batch difensiva: salta studenti senza id, valori sempre definiti
+      const batch = (classStudents || [])
+        .filter(stu => stu && stu.id)
+        .map(stu => {
+          const rec = records?.find(r => r.student_id === stu.id);
+          return { student_id: stu.id, presente: (rec?.presente) ?? false, nota: (rec?.nota) ?? '' };
+        });
+
+      console.log('[PRESENZE] save payload:', JSON.stringify({ class_id: selected, date: safeDate, count: records?.length }));
+      console.log('[PRESENZE] classStudents:', classStudents?.length, 'records:', records?.length);
+
+      const payload = { class_id: selected, date: safeDate, records: batch };
+      await api.post('/presenze', payload);
+      Alert.alert('Presenze salvate', `${batch.filter(r => r.presente).length} presenti su ${batch.length}`);
+    } catch (e: any) {
+      console.log('[PRESENZE] SAVE ERROR:', e?.message, '| status:', e?.response?.status, '| detail:', JSON.stringify(e?.response?.data));
+      Alert.alert('Errore salvataggio', e?.response?.data?.detail || e?.message || 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <ScreenLayout title="Presenze" showBack color={C.primary} loading={loading} scrollable={false}>
       <FlatList
+        style={{ flex: 1 }}
         data={selected ? classStudents : classes}
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 12 }}
@@ -72,19 +118,27 @@ export default function AdminPresenze() {
           }
           const rec = records.find(r => r.student_id === item.id);
           return (
-            <View style={s.studentCard}>
-              <View style={[s.statusDot, { backgroundColor: rec?.presente ? C.green : C.red }]} />
+            <TouchableOpacity style={s.studentCard} activeOpacity={0.7} onPress={() => togglePresente(item.id)}>
+              <View style={[s.statusDot, { backgroundColor: rec?.presente ? C.accentGreen : C.red }]} />
               <View style={{ flex: 1 }}>
                 <Text style={s.studentName}>{item.name} {item.cognome}</Text>
                 {rec?.nota && <Text style={s.nota}>{rec.nota}</Text>}
               </View>
-              <Text style={[s.statusText, { color: rec?.presente ? C.green : C.red }]}>
+              <Text style={[s.statusText, { color: rec?.presente ? C.accentGreen : C.red }]}>
                 {rec?.presente ? 'Presente' : 'Assente'}
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
+      {selected && (
+        <View style={s.saveBar}>
+          <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
+            <Ionicons name="checkmark-circle-outline" size={18} color={C.white} />
+            <Text style={s.saveBtnText}>{saving ? 'Salvataggio...' : 'Salva presenze'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScreenLayout>
   );
 }
@@ -106,4 +160,7 @@ const s = StyleSheet.create({
   studentName: { fontSize: 14, fontWeight: '700', color: C.text },
   nota:        { fontSize: 12, color: C.muted, marginTop: 2 },
   statusText:  { fontSize: 12, fontWeight: '700' },
+  saveBar:     { padding: 12, paddingTop: 8, backgroundColor: C.white, borderTopWidth: 0.5, borderTopColor: C.border },
+  saveBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14 },
+  saveBtnText: { color: C.white, fontWeight: '700', fontSize: 15 },
 });

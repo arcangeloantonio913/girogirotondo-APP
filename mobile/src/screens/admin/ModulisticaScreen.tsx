@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function AdminModulistica() {
   const { sede } = useAuth();
@@ -29,12 +30,17 @@ export default function AdminModulistica() {
   const pickFile = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permesso negato'); return; }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (res.canceled || !res.assets?.[0]) return;
-    const uri = res.assets[0].uri;
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    const name = uri.split('/').pop() || 'documento.jpg';
-    setFile({ name, base64: `data:image/jpeg;base64,${base64}` });
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      if (res.canceled || !res.assets?.[0]) return;
+      const uri = res.assets[0].uri;
+      const base64 = await new FileSystem.File(uri).base64();
+      const name = uri.split('/').pop() || 'documento.jpg';
+      setFile({ name, base64: `data:image/jpeg;base64,${base64}` });
+    } catch (e: any) {
+      console.log('[MODULISTICA] pickFile error:', e?.message);
+      Alert.alert('Errore selezione file', e?.message || 'Errore sconosciuto');
+    }
   };
 
   const handleCreate = async () => {

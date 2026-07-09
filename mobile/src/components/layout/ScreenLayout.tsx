@@ -8,8 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
 import { navigate as globalNavigate } from '../../navigation/NavigationService';
 import Sidebar from './Sidebar';
+import { tenant } from '../../config/tenant';
 
-const C = { bg: '#FFFDD0', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const ROLE_COLORS: Record<string, string> = {
   admin: '#4169E1', teacher: '#FF69B4', parent: '#32CD32',
@@ -41,7 +42,7 @@ export default function ScreenLayout({
   const role = user?.role || 'parent';
   const accentColor = color || ROLE_COLORS[role] || '#A7C7E7';
   const sedeKey = (role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
-  const logoSrc = LOGOS[sedeKey] || LOGOS['girogirotondo'];
+  const logoSrc = LOGOS[sedeKey] ?? tenant.logo;
 
   // Mostra campanella solo per maestre e genitori
   const showBell = role === 'teacher' || role === 'parent';
@@ -73,7 +74,13 @@ export default function ScreenLayout({
 
         {/* Centro: logo scuola + titolo */}
         <View style={s.center}>
-          <Image source={logoSrc} style={s.logo} resizeMode="contain" />
+          {logoSrc ? (
+            <Image source={logoSrc} style={s.logo} resizeMode="contain" />
+          ) : (
+            <View style={[s.logo, { backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }]}>
+              <Text style={{ color: C.white, fontWeight: '700', fontSize: 12 }}>{tenant.appName.charAt(0)}</Text>
+            </View>
+          )}
           <View style={s.titleRow}>
             <View style={[s.dot, { backgroundColor: accentColor }]} />
             <Text style={s.title} numberOfLines={1}>{title}</Text>

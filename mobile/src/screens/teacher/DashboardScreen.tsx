@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { bg: '#FFFDD0', white: '#FFFFFF', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const CARDS = [
   { id: 'griglia',  icon: 'grid-outline',       color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera',   sub: 'Gestisci le attività quotidiane', tab: 'Griglia' },
@@ -23,6 +24,7 @@ export default function TeacherDashboard({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sedeAttiva = user?.sede_id || 'girogirotondo';
+  const sedeInfo = tenant.sedi.find(x => x.id === sedeAttiva);
 
   useEffect(() => {
     const classIds = user?.class_ids?.length ? user.class_ids : user?.class_id ? [user.class_id] : [];
@@ -45,23 +47,20 @@ export default function TeacherDashboard({ navigation }: any) {
 
         {/* Centro: logo + sede */}
         <View style={s.topCenter}>
-          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
-            <Image
-              source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')}
-              style={{ width: 30, height: 30 }}
-              resizeMode="cover"
-            />
+          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden',
+                         backgroundColor: C.babyBlue, alignItems: 'center', justifyContent: 'center' }}>
+            {sedeInfo?.logo ? (
+              <Image source={sedeInfo.logo} style={{ width: 30, height: 30 }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: C.white, fontWeight: '700' }}>
+                {(sedeInfo?.name ?? tenant.appName).charAt(0)}
+              </Text>
+            )}
           </View>
-          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
+          <Text style={s.topSede}>{sedeInfo?.name ?? tenant.appName}</Text>
         </View>
 
         {/* Destra: hamburger */}
-        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
-          <Ionicons name="menu" size={26} color={C.text} />
-        </TouchableOpacity>
-      </View>
-          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
-        </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>

@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyBlue: '#A7C7E7', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', green: '#32CD32' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function ParentModulistica() {
   const { user } = useAuth();
@@ -80,7 +81,7 @@ export default function ParentModulistica() {
                 )}
                 {isRead ? (
                   <View style={s.readBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={C.green} />
+                    <Ionicons name="checkmark-circle" size={16} color={C.accentGreen} />
                     <Text style={s.readText}>Letto</Text>
                   </View>
                 ) : (
@@ -113,7 +114,7 @@ const s = StyleSheet.create({
   downloadBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.babyBlue },
   downloadText: { fontSize: 12, color: C.babyBlue, fontWeight: '600' },
   readBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#F0FFF4' },
-  readText:     { fontSize: 12, color: C.green, fontWeight: '600' },
+  readText:     { fontSize: 12, color: C.accentGreen, fontWeight: '600' },
   ackBtn:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: C.babyBlue },
   ackText:      { fontSize: 12, color: C.white, fontWeight: '600' },
 });

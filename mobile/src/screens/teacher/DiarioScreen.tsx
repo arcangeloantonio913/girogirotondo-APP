@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyBlue: '#A7C7E7', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 const MOODS = ['😊','😢','😴','🤒','😤','🎉','😍','😮'];
 const ACTIVITIES = ['Lettura','Pittura','Musica','Sport','Natura','Cucina','Teatro','Puzzle','Danza','Canto'];
 const TODAY = new Date().toISOString().split('T')[0];

@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyGreen: '#32CD32', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', blue: '#4169E1' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function ParentProfile() {
   const { user, refreshUser, sede } = useAuth();
@@ -33,7 +34,7 @@ export default function ParentProfile() {
   const child = user; // il profilo genitore include i dati del figlio tramite child_ids
 
   return (
-    <ScreenLayout title="Il mio Profilo" showBack color={C.babyGreen}>
+    <ScreenLayout title="Il mio Profilo" showBack color={C.accentGreen}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         {/* Avatar */}
@@ -71,7 +72,7 @@ export default function ParentProfile() {
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => { setEditingEmail(true); setNewEmail(user?.email || ''); }}>
-                  <Ionicons name="pencil-outline" size={18} color={C.babyGreen} />
+                  <Ionicons name="pencil-outline" size={18} color={C.accentGreen} />
                 </TouchableOpacity>
               )}
             </View>
@@ -91,7 +92,7 @@ export default function ParentProfile() {
                 <Ionicons name={item.icon as any} size={18} color={C.muted} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={s.label}>{item.label}</Text>
-                  <Text style={[s.value, { color: C.blue }]}>{item.value}</Text>
+                  <Text style={[s.value, { color: C.primary }]}>{item.value}</Text>
                 </View>
               </View>
             ))}
@@ -121,8 +122,8 @@ const s = StyleSheet.create({
   row:          { flexDirection: 'row', alignItems: 'center' },
   label:        { fontSize: 11, color: C.muted, fontWeight: '500' },
   value:        { fontSize: 14, color: C.text, fontWeight: '600', marginTop: 1 },
-  input:        { fontSize: 14, color: C.text, borderBottomWidth: 1, borderBottomColor: C.babyGreen, paddingBottom: 2, marginTop: 1 },
-  saveBtn:      { backgroundColor: C.babyGreen, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  input:        { fontSize: 14, color: C.text, borderBottomWidth: 1, borderBottomColor: C.accentGreen, paddingBottom: 2, marginTop: 1 },
+  saveBtn:      { backgroundColor: C.accentGreen, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   cancelBtn:    { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   msg:          { fontSize: 12, marginTop: 8 },
   privacyBox:   { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 12, marginTop: 8 },

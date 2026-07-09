@@ -60,7 +60,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/logo-girogirotondo.png",
       "name": "Girogirotondo",
       "shortName": "GGT",

@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, TextInput,
+  View, Text, SectionList, TouchableOpacity, TextInput,
   StyleSheet, Alert, Modal, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444', green: '#32CD32' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
-  admin:   { bg: '#EBF0FF', text: '#1a3a9e' },
-  teacher: { bg: '#FFF0F7', text: '#BE185D' },
-  parent:  { bg: '#F0FFF0', text: '#065F46' },
+  admin:   { bg: C.tintBlue,  text: C.primary },
+  teacher: { bg: C.tintPink,  text: C.accentPink },
+  parent:  { bg: C.tintGreen, text: C.accentGreen },
 };
+const CHILD_COLOR = { bg: C.tintOrange, text: C.accentOrange };
+const ROLE_LABEL: Record<string, string> = { admin: 'Amministratore', teacher: 'Maestra', parent: 'Genitore' };
+
+type Section = { title: string; kind: 'user' | 'child'; color: { bg: string; text: string }; data: any[] };
 
 function genPwd(len = 10) {
   const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -26,6 +31,7 @@ export default function AdminUsers() {
   const { sede } = useAuth();
   const [users,   setUsers]   = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState('');
   const [modal,   setModal]   = useState<ModalType>(null);
@@ -48,14 +54,22 @@ export default function AdminUsers() {
   const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '' });
 
   useEffect(() => {
-    Promise.all([api.get('/users'), api.get('/classes')])
-      .then(([uR, cR]) => { setUsers(uR.data || []); setClasses(cR.data || []); })
+    Promise.all([api.get('/users'), api.get('/classes'), api.get('/students')])
+      .then(([uR, cR, sR]) => { setUsers(uR.data || []); setClasses(cR.data || []); setStudents(sR.data || []); })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
-  const filtered = users.filter(u =>
-    `${u.name} ${u.cognome} ${u.email}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.toLowerCase();
+  const matchUser = (u: any) => `${u.name} ${u.cognome} ${u.email}`.toLowerCase().includes(q);
+  const matchChild = (c: any) => `${c.name} ${c.cognome}`.toLowerCase().includes(q);
+
+  const allSections: Section[] = [
+    { title: 'Amministrazione', kind: 'user',  color: ROLE_COLORS.admin,   data: users.filter(u => u.role === 'admin'   && matchUser(u)) },
+    { title: 'Maestre',         kind: 'user',  color: ROLE_COLORS.teacher, data: users.filter(u => u.role === 'teacher' && matchUser(u)) },
+    { title: 'Genitori',        kind: 'user',  color: ROLE_COLORS.parent,  data: users.filter(u => u.role === 'parent'  && matchUser(u)) },
+    { title: 'Bambini',         kind: 'child', color: CHILD_COLOR,         data: students.filter(matchChild) },
+  ];
+  const sections = allSections.filter(sec => sec.data.length > 0);
 
   const openEdit = (user: any) => {
     setEditUser(user);
@@ -149,6 +163,16 @@ export default function AdminUsers() {
     ]);
   };
 
+  const handleDeleteStudent = (id: string) => {
+    Alert.alert('Elimina bambino', 'Questa azione è irreversibile.', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Elimina', style: 'destructive', onPress: async () => {
+        try { await api.delete(`/students/${id}`); setStudents(prev => prev.filter(x => x.id !== id)); }
+        catch { Alert.alert('Errore'); }
+      }},
+    ]);
+  };
+
   const closeIsc = () => {
     setModal(null); setIscResult(null);
     setIsc({ bambino_nome:'',bambino_cognome:'',bambino_data_nascita:'',class_id:'',
@@ -170,18 +194,41 @@ export default function AdminUsers() {
           <Text style={s.actionBtnText}>Staff</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => { setIscResult(null); setModal('iscrizione'); }}
-          style={[s.actionBtn, { backgroundColor: C.green }]}>
+          style={[s.actionBtn, { backgroundColor: C.accentGreen }]}>
           <Ionicons name="happy-outline" size={16} color={C.white} />
           <Text style={s.actionBtnText}>Iscrivi Bambino</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={u => u.id}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => (item.role ? 'u' : 'c') + item.id}
+        stickySectionHeadersEnabled={false}
         contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
         ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 40 }}>👥</Text><Text style={s.emptyText}>Nessun utente</Text></View>}
-        renderItem={({ item }) => {
+        renderSectionHeader={({ section }) => (
+          <View style={[s.sectionHeader, { backgroundColor: section.color.bg }]}>
+            <Text style={[s.sectionHeaderText, { color: section.color.text }]}>{section.title} ({section.data.length})</Text>
+          </View>
+        )}
+        renderItem={({ item, section }) => {
+          if (section.kind === 'child') {
+            const cls = classes.find(c => c.id === item.class_id);
+            return (
+              <View style={s.userCard}>
+                <View style={[s.avatar, { backgroundColor: CHILD_COLOR.bg }]}>
+                  <Text style={[s.avatarText, { color: CHILD_COLOR.text }]}>{item.name?.charAt(0) || '?'}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.userName}>{item.name} {item.cognome}</Text>
+                  <Text style={s.userEmail}>{cls?.name || 'Nessuna classe'}</Text>
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteStudent(item.id)} style={s.delBtn}>
+                  <Ionicons name="trash-outline" size={14} color={C.red} />
+                </TouchableOpacity>
+              </View>
+            );
+          }
           const rc = ROLE_COLORS[item.role] || ROLE_COLORS.parent;
           return (
             <TouchableOpacity onPress={() => openEdit(item)} style={s.userCard} activeOpacity={0.8}>
@@ -195,7 +242,7 @@ export default function AdminUsers() {
               </View>
               <View style={{ alignItems: 'flex-end', gap: 6 }}>
                 <View style={[s.roleBadge, { backgroundColor: rc.bg }]}>
-                  <Text style={[s.roleText, { color: rc.text }]}>{item.role}</Text>
+                  <Text style={[s.roleText, { color: rc.text }]}>{ROLE_LABEL[item.role] ?? item.role}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   <View style={s.editHint}><Ionicons name="pencil-outline" size={12} color={C.primary}/></View>
@@ -369,7 +416,7 @@ export default function AdminUsers() {
           ) : (
             <ScrollView>
               {/* BAMBINO */}
-              <Text style={[s.sectionHead, { color: C.green }]}>👶 Dati bambino</Text>
+              <Text style={[s.sectionHead, { color: C.accentGreen }]}>👶 Dati bambino</Text>
               {[
                 { key: 'bambino_nome',         label: 'Nome *',          ph: 'Marco' },
                 { key: 'bambino_cognome',       label: 'Cognome',         ph: 'Rossi' },
@@ -385,7 +432,7 @@ export default function AdminUsers() {
               <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
                 {classes.map(cls => (
                   <TouchableOpacity key={cls.id} onPress={() => setIsc(p => ({ ...p, class_id: cls.id }))}
-                    style={[s.chip, iscForm.class_id === cls.id && { backgroundColor: C.green, borderColor: C.green }]}>
+                    style={[s.chip, iscForm.class_id === cls.id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }]}>
                     <Text style={[s.chipText, iscForm.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                   </TouchableOpacity>
                 ))}
@@ -469,7 +516,7 @@ export default function AdminUsers() {
                 )
               ))}
 
-              <TouchableOpacity style={[s.submitBtn, { backgroundColor: C.green }, saving && { opacity: 0.6 }]}
+              <TouchableOpacity style={[s.submitBtn, { backgroundColor: C.accentGreen }, saving && { opacity: 0.6 }]}
                 onPress={handleIscrizione} disabled={saving}>
                 <Text style={s.submitText}>{saving ? 'Iscrizione...' : 'Completa Iscrizione'}</Text>
               </TouchableOpacity>
@@ -489,6 +536,8 @@ const s = StyleSheet.create({
   actionBtnText:{ color:C.white,fontWeight:'700',fontSize:13 },
   empty:       { alignItems:'center',paddingTop:50 },
   emptyText:   { color:C.muted,fontSize:14,marginTop:10 },
+  sectionHeader:{ paddingHorizontal:12,paddingVertical:6,borderRadius:8,marginTop:10,marginBottom:6 },
+  sectionHeaderText:{ fontSize:13,fontWeight:'800' },
   userCard:    { flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:12,padding:10,marginBottom:6,borderWidth:0.5,borderColor:C.border },
   avatar:      { width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center' },
   avatarText:  { fontSize:16,fontWeight:'800' },

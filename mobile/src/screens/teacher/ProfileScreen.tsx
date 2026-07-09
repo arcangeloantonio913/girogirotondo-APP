@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function TeacherProfile() {
   const { user, logout } = useAuth();
@@ -40,7 +41,7 @@ export default function TeacherProfile() {
   };
 
   return (
-    <ScreenLayout title="Il mio Profilo" showBack color={C.babyPink}>
+    <ScreenLayout title="Il mio Profilo" showBack color={C.accentPink}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         <View style={s.avatarSection}>
@@ -118,7 +119,7 @@ const s = StyleSheet.create({
   inputRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, height: 44 },
   input:        { flex: 1, fontSize: 14, color: '#1A202C' },
   msg:          { fontSize: 12, marginTop: 8 },
-  saveBtn:      { backgroundColor: C.babyPink, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
+  saveBtn:      { backgroundColor: C.accentPink, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
   saveBtnText:  { color: C.white, fontWeight: '700', fontSize: 14 },
   logoutBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginTop: 8, padding: 14, backgroundColor: '#FEF2F2', borderRadius: 14, borderWidth: 0.5, borderColor: '#FECACA' },
   logoutText:   { color: C.red, fontWeight: '700', fontSize: 14 },

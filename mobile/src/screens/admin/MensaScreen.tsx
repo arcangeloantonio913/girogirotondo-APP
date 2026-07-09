@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { green: '#32CD32', primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -100,7 +101,7 @@ export default function AdminMensa() {
   };
 
   return (
-    <ScreenLayout title="Menu Mensa" showBack color={C.green} loading={loading} scrollable={false}>
+    <ScreenLayout title="Menu Mensa" showBack color={C.accentGreen} loading={loading} scrollable={false}>
       {/* Navigazione date */}
       <View style={s.dateNav}>
         <TouchableOpacity onPress={() => {
@@ -187,13 +188,13 @@ export default function AdminMensa() {
             {/* Classe */}
             <Text style={s.fl}>Classi</Text>
             <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_id: '' }))}
-              style={[s.chip, !form.class_id && { backgroundColor: C.green, borderColor: C.green }, { marginBottom: 6 }]}>
+              style={[s.chip, !form.class_id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }, { marginBottom: 6 }]}>
               <Text style={[s.chipText, !form.class_id && { color: C.white }]}>✓ Tutte le classi</Text>
             </TouchableOpacity>
             <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
               {classes.map(cls => (
                 <TouchableOpacity key={cls.id} onPress={() => setForm(p => ({ ...p, class_id: cls.id }))}
-                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.green, borderColor: C.green }]}>
+                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }]}>
                   <Text style={[s.chipText, form.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -248,9 +249,9 @@ const s = StyleSheet.create({
   dateNav:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.border },
   navBtn:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   dateText:      { fontSize: 14, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
-  todayBadge:    { backgroundColor: C.green, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
+  todayBadge:    { backgroundColor: C.accentGreen, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
   todayText:     { fontSize: 10, color: C.white, fontWeight: '700' },
-  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.green, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
+  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:    { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:         { alignItems: 'center', paddingTop: 50 },
   emptyText:     { fontSize: 14, color: C.muted, marginTop: 12, textAlign: 'center' },
@@ -271,12 +272,12 @@ const s = StyleSheet.create({
   chipRow:       { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip:          { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
   chipText:      { fontSize: 13, fontWeight: '600', color: C.text },
-  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.green, backgroundColor: C.white },
-  presetText:    { fontSize: 12, fontWeight: '600', color: C.green },
+  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.accentGreen, backgroundColor: C.white },
+  presetText:    { fontSize: 12, fontWeight: '600', color: C.accentGreen },
   pastoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   pastoInputIcon:{ fontSize: 24, width: 36, textAlign: 'center' },
   pastoInputLabel:{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 3 },
   pastoInput:    { borderWidth: 0.5, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: C.text, backgroundColor: C.white },
-  submitBtn:     { backgroundColor: C.green, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitBtn:     { backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   submitText:    { color: C.white, fontWeight: '700', fontSize: 15 },
 });

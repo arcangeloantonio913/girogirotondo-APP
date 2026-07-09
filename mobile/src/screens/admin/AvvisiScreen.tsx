@@ -10,8 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const SEDI = [
   { id: 'girogirotondo',   label: 'Girogirotondo',   color: '#4169E1' },
@@ -83,7 +84,7 @@ export default function AdminAvvisi() {
       });
       if (res.canceled || !res.assets?.[0]) return;
       const asset = res.assets[0];
-      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
       setAllegati(prev => [...prev, {
         name: asset.name,
         mime: asset.mimeType || 'application/octet-stream',
@@ -97,11 +98,11 @@ export default function AdminAvvisi() {
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permesso negato'); return; }
-    const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
     const name = asset.uri.split('/').pop() || 'immagine.jpg';
-    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
     setAllegati(prev => [...prev, {
       name,
       mime: 'image/jpeg',

@@ -1,10 +1,12 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
   Dimensions, ScrollView, Pressable, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
+import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 import { navigate as globalNavigate, navigateToTab } from '../../navigation/NavigationService';
 
 const { width: W } = Dimensions.get('window');
@@ -51,10 +53,8 @@ const NAV: Record<string, { icon: string; label: string; screen: string; isTab: 
 
 const ROLE_COLORS: Record<string, string> = { admin: '#4169E1', teacher: '#FF69B4', parent: '#32CD32' };
 const ROLE_LABELS: Record<string, string> = { admin: 'Amministratore', teacher: 'Maestra', parent: 'Genitore' };
-const SEDI = [
-  { id: 'girogirotondo',   label: 'Girogirotondo',   color: '#4169E1' },
-  { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
-];
+
+type Sede = { id: string; name: string; color?: string };
 
 interface Props {
   visible: boolean;
@@ -67,6 +67,13 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
   const { user, logout, sede, updateSede, isSuperAdmin, childIds, activeChildId, setActiveChildId } = useAuth();
   const slideAnim = useRef(new Animated.Value(SIDEBAR_W)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const [sedi, setSedi] = useState<Sede[]>([]);
+
+  useEffect(() => {
+    api.get('/api/sedi')
+      .then(r => setSedi(r.data ?? []))
+      .catch(() => setSedi([]));   // fail-closed
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -134,7 +141,13 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
                 <Text style={[s.roleText, { color }]}>{ROLE_LABELS[role]}</Text>
               </View>
             </View>
-            <Image source={LOGOS[sedeKey]} style={s.sedeLogo} resizeMode="contain" />
+            {(LOGOS[sedeKey] ?? tenant.logo) ? (
+              <Image source={LOGOS[sedeKey] ?? tenant.logo} style={s.sedeLogo} resizeMode="contain" />
+            ) : (
+              <View style={[s.sedeLogo, { backgroundColor: tenant.colors.primary, alignItems: 'center', justifyContent: 'center' }]}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>{tenant.appName.charAt(0)}</Text>
+              </View>
+            )}
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
               <Ionicons name="close" size={22} color="#9CA3AF" />
             </TouchableOpacity>
@@ -144,14 +157,23 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
           {role === 'admin' && isSuperAdmin && (
             <View style={s.sedeSection}>
               <Text style={s.sectionLabel}>Sede attiva</Text>
-              {SEDI.map(sd => (
-                <TouchableOpacity key={sd.id} onPress={() => updateSede(sd.id)}
-                  style={[s.sedeItem, sede === sd.id && { backgroundColor: sd.color + '12', borderColor: sd.color }]}>
-                  <Image source={LOGOS[sd.id]} style={s.sedeItemLogo} resizeMode="contain" />
-                  <Text style={[s.sedeLabel, sede === sd.id && { color: sd.color, fontWeight: '700' }]}>{sd.label}</Text>
-                  {sede === sd.id && <Ionicons name="checkmark" size={16} color={sd.color} />}
-                </TouchableOpacity>
-              ))}
+              {sedi.map(sd => {
+                const sdColor = sd.color ?? '#4169E1';
+                return (
+                  <TouchableOpacity key={sd.id} onPress={() => updateSede(sd.id)}
+                    style={[s.sedeItem, sede === sd.id && { backgroundColor: sdColor + '12', borderColor: sdColor }]}>
+                    {LOGOS[sd.id] ? (
+                      <Image source={LOGOS[sd.id]} style={s.sedeItemLogo} resizeMode="contain" />
+                    ) : (
+                      <View style={[s.sedeItemLogo, { backgroundColor: sd.color ?? '#9CA3AF', alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>{sd.name.charAt(0)}</Text>
+                      </View>
+                    )}
+                    <Text style={[s.sedeLabel, sede === sd.id && { color: sdColor, fontWeight: '700' }]}>{sd.name}</Text>
+                    {sede === sd.id && <Ionicons name="checkmark" size={16} color={sdColor} />}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
@@ -178,7 +200,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
             <Text style={s.logoutText}>Esci dall'account</Text>
           </TouchableOpacity>
 
-          <Text style={s.footer}>© 2026 Girogirotondo — GDPR compliant</Text>
+          <Text style={s.footer}>© 2026 {tenant.appName} — GDPR compliant</Text>
         </ScrollView>
       </Animated.View>
     </View>

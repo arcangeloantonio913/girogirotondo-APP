@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 const QTY = ['tutto','bis','metà','mangiata_poca','lasciata_poca','no'];
 const QTY_LABELS: Record<string,string> = { tutto:'Tutto',bis:'Bis','metà':'Metà',mangiata_poca:'Poca',lasciata_poca:'Lasciata',no:'No' };
 const QTY_COLORS: Record<string,{bg:string;text:string}> = {
@@ -82,7 +83,7 @@ export default function TeacherGriglia() {
   };
 
   return (
-    <ScreenLayout title="Griglia Pasti" showBack color={C.babyPink} loading={loading} scrollable={false}
+    <ScreenLayout title="Griglia Pasti" showBack color={C.accentPink} loading={loading} scrollable={false}
       rightAction={
         <TouchableOpacity onPress={handleSave} disabled={saving}
           style={[s.saveBtn,saving&&{opacity:0.5}]}>
@@ -133,7 +134,7 @@ export default function TeacherGriglia() {
       {/* Select all row */}
       <View style={s.selectRow}>
         <TouchableOpacity onPress={selected.size===students.length?deselectAll:selectAll} style={s.selectAllBtn}>
-          <Ionicons name={selected.size===students.length?'checkbox':'square-outline'} size={18} color={C.babyPink}/>
+          <Ionicons name={selected.size===students.length?'checkbox':'square-outline'} size={18} color={C.accentPink}/>
           <Text style={{fontSize:12,color:C.muted}}>{selected.size===students.length?'Deseleziona tutti':'Seleziona tutti'}</Text>
         </TouchableOpacity>
       </View>
@@ -150,7 +151,7 @@ export default function TeacherGriglia() {
             <View style={[s.studentCard,isSelected&&s.studentCardSelected]}>
               <View style={s.studentHeader}>
                 <TouchableOpacity onPress={()=>toggleSelect(item.id)} style={{padding:4}}>
-                  <Ionicons name={isSelected?'checkbox':'square-outline'} size={20} color={isSelected?C.babyPink:C.muted}/>
+                  <Ionicons name={isSelected?'checkbox':'square-outline'} size={20} color={isSelected?C.accentPink:C.muted}/>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={()=>setExpanded(isOpen?null:item.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}>
                   <Text style={s.studentName}>{item.name} {item.cognome}</Text>
@@ -192,7 +193,7 @@ export default function TeacherGriglia() {
                       <TouchableOpacity key={b.key} onPress={()=>updateField(item.id,b.key,!g[b.key])}
                         style={[s.boolBtn,g[b.key]&&s.boolBtnActive]}>
                         <Text style={{fontSize:18}}>{b.icon}</Text>
-                        <Text style={[s.boolText,g[b.key]&&{color:C.babyPink}]}>{b.label}</Text>
+                        <Text style={[s.boolText,g[b.key]&&{color:C.accentPink}]}>{b.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -210,22 +211,22 @@ export default function TeacherGriglia() {
 }
 
 const s=StyleSheet.create({
-  saveBtn:      {flexDirection:'row',alignItems:'center',gap:4,backgroundColor:C.babyPink,borderRadius:10,paddingHorizontal:12,paddingVertical:6},
+  saveBtn:      {flexDirection:'row',alignItems:'center',gap:4,backgroundColor:C.accentPink,borderRadius:10,paddingHorizontal:12,paddingVertical:6},
   dateNav:      {flexDirection:'row',alignItems:'center',justifyContent:'space-between',padding:12,backgroundColor:C.white,borderBottomWidth:0.5,borderBottomColor:C.border},
   navBtn:       {width:32,height:32,alignItems:'center',justifyContent:'center'},
   dateText:     {fontSize:14,fontWeight:'700',color:C.text,textTransform:'capitalize'},
   bulkBar:      {margin:8,backgroundColor:'#FFF0F7',borderRadius:12,padding:10},
-  bulkLabel:    {fontSize:12,fontWeight:'600',color:C.babyPink},
+  bulkLabel:    {fontSize:12,fontWeight:'600',color:C.accentPink},
   qtyMini:      {paddingHorizontal:6,paddingVertical:3,borderRadius:6},
   qtyMiniText:  {fontSize:10,fontWeight:'600'},
   selectRow:    {paddingHorizontal:12,paddingVertical:4},
   selectAllBtn: {flexDirection:'row',alignItems:'center',gap:6},
   studentCard:  {backgroundColor:C.white,borderRadius:12,marginBottom:6,borderWidth:0.5,borderColor:C.border,overflow:'hidden'},
-  studentCardSelected:{borderColor:C.babyPink},
+  studentCardSelected:{borderColor:C.accentPink},
   studentHeader:{flexDirection:'row',alignItems:'center',padding:10},
   studentName:  {fontSize:14,fontWeight:'700',color:C.text},
   miniBadge:    {backgroundColor:'#FFF0F7',borderRadius:20,paddingHorizontal:8,paddingVertical:2},
-  miniBadgeText:{fontSize:10,color:C.babyPink,fontWeight:'600'},
+  miniBadgeText:{fontSize:10,color:C.accentPink,fontWeight:'600'},
   fields:       {borderTopWidth:0.5,borderTopColor:C.border,padding:10},
   mealRow:      {flexDirection:'row',alignItems:'center',marginBottom:8},
   mealIcon:     {fontSize:18,width:28},
@@ -234,7 +235,7 @@ const s=StyleSheet.create({
   qtyBtnText:   {fontSize:11,fontWeight:'600'},
   boolRow:      {flexDirection:'row',gap:10,marginTop:4,marginBottom:8},
   boolBtn:      {flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:6,paddingVertical:10,borderRadius:10,backgroundColor:'#F9FAFB',borderWidth:0.5,borderColor:C.border},
-  boolBtnActive:{backgroundColor:'#FFF0F7',borderColor:C.babyPink},
+  boolBtnActive:{backgroundColor:'#FFF0F7',borderColor:C.accentPink},
   boolText:     {fontSize:13,fontWeight:'600',color:C.muted},
   noteInput:    {borderWidth:0.5,borderColor:C.border,borderRadius:8,padding:8,fontSize:12,color:C.text,minHeight:40},
 });

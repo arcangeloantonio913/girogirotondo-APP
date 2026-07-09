@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function TeacherAvvisi() {
   const { user } = useAuth();
@@ -79,7 +80,7 @@ export default function TeacherAvvisi() {
     setSelParents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   return (
-    <ScreenLayout title="Avvisi" showBack color={C.babyPink} loading={loading} scrollable={false}>
+    <ScreenLayout title="Avvisi" showBack color={C.accentPink} loading={loading} scrollable={false}>
       <FlatList
         data={avvisi}
         keyExtractor={(_, i) => String(i)}
@@ -148,7 +149,7 @@ export default function TeacherAvvisi() {
             <Text style={s.fl}>A chi è rivolto</Text>
             <TouchableOpacity onPress={() => { setTargetType('class'); setSelParents([]); }}
               style={[s.targetBtn, targetType === 'class' && s.targetBtnActive]}>
-              <Ionicons name="people-outline" size={18} color={targetType === 'class' ? C.white : C.babyPink} />
+              <Ionicons name="people-outline" size={18} color={targetType === 'class' ? C.white : C.accentPink} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.targetBtnTitle, targetType === 'class' && { color: C.white }]}>Tutta la classe</Text>
                 <Text style={[s.targetBtnSub, targetType === 'class' && { color: 'rgba(255,255,255,0.8)' }]}>
@@ -160,7 +161,7 @@ export default function TeacherAvvisi() {
 
             <TouchableOpacity onPress={() => setTargetType('specific')}
               style={[s.targetBtn, targetType === 'specific' && s.targetBtnActive]}>
-              <Ionicons name="person-outline" size={18} color={targetType === 'specific' ? C.white : C.babyPink} />
+              <Ionicons name="person-outline" size={18} color={targetType === 'specific' ? C.white : C.accentPink} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.targetBtnTitle, targetType === 'specific' && { color: C.white }]}>Famiglie specifiche</Text>
                 <Text style={[s.targetBtnSub, targetType === 'specific' && { color: 'rgba(255,255,255,0.8)' }]}>
@@ -181,7 +182,7 @@ export default function TeacherAvvisi() {
                     {parents.map(p => (
                       <TouchableOpacity key={p.id} onPress={() => toggleParent(p.id)}
                         style={[s.parentRow, selParents.includes(p.id) && s.parentRowActive]}>
-                        <View style={[s.parentAvatar, selParents.includes(p.id) && { backgroundColor: C.babyPink }]}>
+                        <View style={[s.parentAvatar, selParents.includes(p.id) && { backgroundColor: C.accentPink }]}>
                           <Text style={{ fontSize: 14, fontWeight: '700', color: selParents.includes(p.id) ? C.white : '#374151' }}>
                             {p.name?.charAt(0) || '?'}
                           </Text>
@@ -190,13 +191,13 @@ export default function TeacherAvvisi() {
                           <Text style={s.parentName}>{p.name} {p.cognome}</Text>
                           <Text style={s.parentEmail}>{p.email}</Text>
                         </View>
-                        {selParents.includes(p.id) && <Ionicons name="checkmark-circle" size={20} color={C.babyPink} />}
+                        {selParents.includes(p.id) && <Ionicons name="checkmark-circle" size={20} color={C.accentPink} />}
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
                 {selParents.length > 0 && (
-                  <Text style={{ fontSize: 12, color: C.babyPink, fontWeight: '600', marginTop: 8 }}>
+                  <Text style={{ fontSize: 12, color: C.accentPink, fontWeight: '600', marginTop: 8 }}>
                     {selParents.length} famili{selParents.length === 1 ? 'a' : 'e'} selezionata/e
                   </Text>
                 )}
@@ -215,7 +216,7 @@ export default function TeacherAvvisi() {
 }
 
 const s = StyleSheet.create({
-  addBtn:          { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.babyPink, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
+  addBtn:          { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.accentPink, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:      { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:           { alignItems: 'center', paddingTop: 60 },
   emptyText:       { fontSize: 14, color: C.muted, marginTop: 12 },
@@ -225,7 +226,7 @@ const s = StyleSheet.create({
   cardTitle:       { fontSize: 14, fontWeight: '700', color: C.text },
   cardBody:        { fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 17 },
   targetBadge:     { backgroundColor: '#FFF0F7', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-  targetText:      { fontSize: 10, color: C.babyPink, fontWeight: '700' },
+  targetText:      { fontSize: 10, color: C.accentPink, fontWeight: '700' },
   deleteBtn:       { padding: 8, backgroundColor: '#FEF2F2', borderRadius: 8, alignSelf: 'flex-start' },
   modal:           { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
   modalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -233,14 +234,14 @@ const s = StyleSheet.create({
   fl:              { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 7, marginTop: 14 },
   input:           { borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text, backgroundColor: C.white },
   targetBtn:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.white, marginBottom: 8 },
-  targetBtnActive: { backgroundColor: C.babyPink, borderColor: C.babyPink },
+  targetBtnActive: { backgroundColor: C.accentPink, borderColor: C.accentPink },
   targetBtnTitle:  { fontSize: 14, fontWeight: '700', color: C.text },
   targetBtnSub:    { fontSize: 11, color: C.muted, marginTop: 2 },
   parentRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12, borderWidth: 0.5, borderColor: C.border, backgroundColor: C.white },
-  parentRowActive: { borderColor: C.babyPink, backgroundColor: '#FFF0F7' },
+  parentRowActive: { borderColor: C.accentPink, backgroundColor: '#FFF0F7' },
   parentAvatar:    { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   parentName:      { fontSize: 13, fontWeight: '700', color: C.text },
   parentEmail:     { fontSize: 11, color: C.muted },
-  submitBtn:       { backgroundColor: C.babyPink, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitBtn:       { backgroundColor: C.accentPink, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   submitText:      { color: C.white, fontWeight: '700', fontSize: 15 },
 });

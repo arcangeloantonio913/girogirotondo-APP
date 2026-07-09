@@ -6,26 +6,9 @@ import {
 } from 'react-native';
 import { useAuth } from '../../lib/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { tenant } from '../../config/tenant';
 
-const C = {
-  bg: '#FFFDD0', white: '#FFFFFF', primary: '#4169E1',
-  babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98',
-  text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280',
-  red: '#EF4444', redBg: '#FEF2F2', border: '#E5E7EB',
-};
-
-const SCHOOLS = [
-  {
-    id: 'girogirotondo',
-    name: 'Girogirotondo',
-    logo: require('../../../assets/logo-girogirotondo.png'),
-  },
-  {
-    id: 'il-magico-mondo',
-    name: 'Il Magico Mondo',
-    logo: require('../../../assets/logo-magico-mondo.png'),
-  },
-];
+const C = tenant.colors;
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -92,7 +75,7 @@ export default function LoginScreen() {
         <View style={s.inner}>
           {/* School Selector con loghi reali */}
           <View style={s.schoolRow}>
-            {SCHOOLS.map((school) => {
+            {tenant.sedi.map((school) => {
               const isSelected = selectedSchool === school.id;
               const isOther    = !!selectedSchool && selectedSchool !== school.id;
               return (
@@ -110,11 +93,19 @@ export default function LoginScreen() {
                       transform: [{ scale: 1.08 }],
                     },
                   ]}>
-                    <Image
-                      source={school.logo}
-                      style={s.logoImg}
-                      resizeMode="cover"
-                    />
+                    {school.logo ? (
+                      <Image
+                        source={school.logo}
+                        style={s.logoImg}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[s.logoImg, { backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={{ color: C.white, fontSize: 26, fontWeight: '800' }}>
+                          {school.name.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={[s.schoolName, { color: isSelected ? C.primary : C.muted }]}>
                     {school.name}
@@ -127,11 +118,13 @@ export default function LoginScreen() {
           {/* Titolo */}
           <View style={s.titleRow}>
             <Text style={s.title}>
-              <Text style={{ color: '#4169E1' }}>Giro</Text>
-              <Text style={{ color: '#FF69B4' }}>giro</Text>
-              <Text style={{ color: '#32CD32' }}>tondo</Text>
+              {tenant.wordmark
+                ? tenant.wordmark.map((seg, i) => (
+                    <Text key={i} style={{ color: seg.color }}>{seg.text}</Text>
+                  ))
+                : <Text style={{ color: C.primary }}>{tenant.appName}</Text>}
             </Text>
-            <Text style={s.subtitle}>La tua scuola a portata di mano</Text>
+            <Text style={s.subtitle}>{tenant.tagline}</Text>
           </View>
 
           {/* Card login / reset */}
@@ -258,10 +251,7 @@ export default function LoginScreen() {
           </View>
 
           {/* Footer */}
-          <Text style={s.footer}>
-            © 2026 Piattaforma Istituzionale Girogirotondo — Conforme GDPR e normative EU.{'\n'}
-            Realizzato da Omnia
-          </Text>
+          <Text style={s.footer}>{tenant.footer}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

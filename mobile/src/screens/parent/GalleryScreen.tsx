@@ -6,11 +6,12 @@ import * as Sharing from 'expo-sharing';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
 const { width, height } = Dimensions.get('window');
 const IMG = (width - 48) / 2;
 const PAGE = 24;
-const C = { babyPink: '#F4C2C2', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function ParentGallery() {
   const { activeChildId, user } = useAuth();
@@ -53,12 +54,12 @@ export default function ParentGallery() {
       if (url.startsWith('data:')) {
         // base64 — share directly
         const ext = url.includes('image/png') ? 'png' : 'jpg';
-        const path = `${FileSystem.cacheDirectory}foto.${ext}`;
+        const path = new FileSystem.File(FileSystem.Paths.cache, `foto.${ext}`).uri;
         const base64 = url.split(',')[1];
-        await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
+        await FileSystem.writeAsStringAsync(path, base64, { encoding: 'base64' });
         await Sharing.shareAsync(path, { mimeType: `image/${ext}` });
       } else {
-        const path = `${FileSystem.cacheDirectory}foto.jpg`;
+        const path = new FileSystem.File(FileSystem.Paths.cache, 'foto.jpg').uri;
         await FileSystem.downloadAsync(url, path);
         await Sharing.shareAsync(path, { mimeType: 'image/jpeg' });
       }

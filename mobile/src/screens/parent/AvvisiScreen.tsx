@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyPink: '#F4C2C2', text: '#1A202C', muted: '#9CA3AF', white: '#FFFFFF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function ParentAvvisi() {
   const [avvisi, setAvvisi] = useState<any[]>([]);

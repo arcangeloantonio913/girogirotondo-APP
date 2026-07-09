@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', green: '#32CD32', red: '#EF4444' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 function addDays(n:number){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 
@@ -93,9 +94,9 @@ export default function TeacherPresenze() {
 
           {/* Bulk */}
           <View style={s.bulkRow}>
-            <TouchableOpacity onPress={()=>setAll(true)} style={[s.bulkBtn,{borderColor:C.green}]}>
-              <Ionicons name="checkmark-circle-outline" size={16} color={C.green}/>
-              <Text style={{fontSize:12,color:C.green,fontWeight:'700'}}>Tutti presenti</Text>
+            <TouchableOpacity onPress={()=>setAll(true)} style={[s.bulkBtn,{borderColor:C.accentGreen}]}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={C.accentGreen}/>
+              <Text style={{fontSize:12,color:C.accentGreen,fontWeight:'700'}}>Tutti presenti</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={()=>setAll(false)} style={[s.bulkBtn,{borderColor:C.red}]}>
               <Ionicons name="close-circle-outline" size={16} color={C.red}/>
@@ -118,7 +119,7 @@ export default function TeacherPresenze() {
                         placeholder="Nota assenza..." placeholderTextColor={C.muted}/>
                     )}
                   </View>
-                  <View style={[s.statusDot,{backgroundColor:p?.presente?C.green:C.red}]}/>
+                  <View style={[s.statusDot,{backgroundColor:p?.presente?C.accentGreen:C.red}]}/>
                 </View>
               );
             }}
@@ -133,7 +134,7 @@ export default function TeacherPresenze() {
             <View style={s.archCard}>
               <Text style={s.archDate}>{item.date||item.month}</Text>
               <View style={{flexDirection:'row',gap:12}}>
-                <Text style={{fontSize:12,color:C.green}}>✓ {item.presenti||0} presenti</Text>
+                <Text style={{fontSize:12,color:C.accentGreen}}>✓ {item.presenti||0} presenti</Text>
                 <Text style={{fontSize:12,color:C.red}}>✗ {item.assenti||0} assenti</Text>
               </View>
             </View>
@@ -172,7 +173,7 @@ const s=StyleSheet.create({
   bulkBtn:      {flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:8,borderRadius:10,borderWidth:1,backgroundColor:C.white},
   studentCard:  {flexDirection:'row',alignItems:'center',gap:10,backgroundColor:C.white,borderRadius:12,padding:10,marginBottom:6,borderWidth:0.5,borderColor:C.border},
   checkbox:     {width:28,height:28,borderRadius:8,borderWidth:2,borderColor:C.border,alignItems:'center',justifyContent:'center'},
-  checkboxActive:{backgroundColor:C.green,borderColor:C.green},
+  checkboxActive:{backgroundColor:C.accentGreen,borderColor:C.accentGreen},
   studentName:  {fontSize:14,fontWeight:'700'},
   noteInput:    {fontSize:12,color:C.text,borderBottomWidth:0.5,borderBottomColor:C.border,marginTop:3,paddingBottom:1},
   statusDot:    {width:10,height:10,borderRadius:5},

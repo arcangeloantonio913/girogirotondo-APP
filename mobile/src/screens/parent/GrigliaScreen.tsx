@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyPink: '#F4C2C2', text: '#1A202C', muted: '#9CA3AF', white: '#FFFFFF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const QTY_MAP: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
   tutto:         { label: 'Tutto',         color: '#065F46', bg: '#D1FAE5', emoji: '😋' },

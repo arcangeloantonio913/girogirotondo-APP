@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { primary: '#4169E1', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string }> = {
   pending:    { label: 'In attesa', bg: '#FFF7E6', text: '#B45309' },

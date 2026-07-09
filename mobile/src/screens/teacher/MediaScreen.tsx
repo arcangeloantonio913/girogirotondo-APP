@@ -9,10 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
 const { width } = Dimensions.get('window');
 const IMG  = (width - 48) / 2;
-const C = { green: '#32CD32', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6', pink: '#FF69B4' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function TeacherMedia() {
   const { user } = useAuth();
@@ -46,15 +47,20 @@ export default function TeacherMedia() {
       Alert.alert('Permesso negato', 'Vai in Impostazioni > Privacy > Foto e concedi l\'accesso');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.4, // bassa qualità per upload veloce
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const uri = result.assets[0].uri;
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    setPickedImage({ uri, base64 });
-    setShowModal(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.4, // bassa qualità per upload veloce
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const uri = result.assets[0].uri;
+      const base64 = await new FileSystem.File(uri).base64();
+      setPickedImage({ uri, base64 });
+      setShowModal(true);
+    } catch (e: any) {
+      console.log('[MEDIA] pickImage error:', e?.message);
+      Alert.alert('Errore selezione foto', e?.message || 'Errore sconosciuto');
+    }
   };
 
   const toggleStudent = (id: string) => {
@@ -109,7 +115,7 @@ export default function TeacherMedia() {
   };
 
   return (
-    <ScreenLayout title="Carica Media" showBack color={C.green} loading={loading} scrollable={false}>
+    <ScreenLayout title="Carica Media" showBack color={C.accentGreen} loading={loading} scrollable={false}>
       <FlatList
         data={items}
         numColumns={2}
@@ -160,12 +166,12 @@ export default function TeacherMedia() {
             <Text style={s.fl}>Visibile a</Text>
             <TouchableOpacity onPress={() => { setAllStudents(true); setSelStudents([]); }}
               style={[s.optBtn, allStudents && s.optBtnActive]}>
-              <Ionicons name="people-outline" size={18} color={allStudents ? C.white : C.green} />
+              <Ionicons name="people-outline" size={18} color={allStudents ? C.white : C.accentGreen} />
               <Text style={[s.optText, allStudents && { color: C.white }]}>Tutta la classe ({students.length} bambini)</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setAllStudents(false)}
               style={[s.optBtn, !allStudents && s.optBtnActive]}>
-              <Ionicons name="person-outline" size={18} color={!allStudents ? C.white : C.green} />
+              <Ionicons name="person-outline" size={18} color={!allStudents ? C.white : C.accentGreen} />
               <Text style={[s.optText, !allStudents && { color: C.white }]}>Bambini specifici</Text>
             </TouchableOpacity>
 
@@ -199,7 +205,7 @@ export default function TeacherMedia() {
 }
 
 const s = StyleSheet.create({
-  uploadBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.green, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, justifyContent: 'center' },
+  uploadBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, justifyContent: 'center' },
   uploadBtnText:   { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:           { alignItems: 'center', paddingTop: 60 },
   emptyText:       { fontSize: 14, color: C.muted, marginTop: 12 },
@@ -210,13 +216,13 @@ const s = StyleSheet.create({
   modalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle:      { fontSize: 20, fontWeight: '800', color: C.text },
   fl:              { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginTop: 14 },
-  optBtn:          { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: C.green, backgroundColor: C.white, marginBottom: 8 },
-  optBtnActive:    { backgroundColor: C.green, borderColor: C.green },
-  optText:         { fontSize: 14, fontWeight: '600', color: C.green, flex: 1 },
+  optBtn:          { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: C.accentGreen, backgroundColor: C.white, marginBottom: 8 },
+  optBtnActive:    { backgroundColor: C.accentGreen, borderColor: C.accentGreen },
+  optText:         { fontSize: 14, fontWeight: '600', color: C.accentGreen, flex: 1 },
   studentsGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   studentChip:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
-  studentChipActive:{ backgroundColor: C.green, borderColor: C.green },
+  studentChipActive:{ backgroundColor: C.accentGreen, borderColor: C.accentGreen },
   studentChipText: { fontSize: 13, fontWeight: '600', color: C.text },
-  uploadFinalBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.green, borderRadius: 14, paddingVertical: 14, justifyContent: 'center', marginTop: 20 },
+  uploadFinalBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, justifyContent: 'center', marginTop: 20 },
   uploadFinalText: { color: C.white, fontWeight: '700', fontSize: 15 },
 });

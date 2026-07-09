@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyBlue: '#A7C7E7', babyPink: '#FF69B4', white: '#FFFFFF', text: '#1A202C', muted: '#9CA3AF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function NotificheScreen() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function NotificheScreen() {
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const role = user?.role || 'parent';
-  const accentColor = role === 'teacher' ? C.babyPink : C.babyBlue;
+  const accentColor = role === 'teacher' ? C.accentPink : C.babyBlue;
 
   const load = async () => {
     try {

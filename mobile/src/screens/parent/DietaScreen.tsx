@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', white: '#FFFFFF', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const PIATTI = [
   { key: 'merenda_mattina',    label: 'Merenda mattina',    icon: '☕', bg: '#FFF7E6', color: '#F59E0B' },

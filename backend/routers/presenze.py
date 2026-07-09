@@ -154,3 +154,101 @@ async def get_classi_summary(
             summary[cid]["assenti"] += 1
 
     return {"date": today, "classes": summary}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/presenze/riepilogo — conteggio presenze/assenze per BAMBINO (mese o anno)
+# ---------------------------------------------------------------------------
+
+@router.get("/riepilogo")
+async def get_riepilogo_assenze(
+    class_id: Optional[str] = None,
+    mese:     Optional[str] = None,   # YYYY-MM
+    anno:     Optional[str] = None,   # YYYY
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    """Per OGNI bambino nello scope del caller: conteggio presenze/assenze nel periodo.
+
+    Stesse regole di get_presenze (scope tenant via class_filter/assert_class, denial 404).
+    Include TUTTI i bambini nello scope della/e classe/i, anche quelli con 0 record (0/0):
+    la lettura degli students è già necessaria per i nomi, quindi è banale mostrarli tutti,
+    ed è più utile alla dirigente (vede subito chi non ha registrazioni).
+    """
+    if ctx.role not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    # ── Periodo: SOLO mese o anno (mai 'date' singola). Default: mese corrente.
+    if mese:
+        if not _MONTH_RE.match(mese):
+            raise HTTPException(status_code=400, detail="Formato mese non valido (YYYY-MM)")
+        periodo, tipo = mese, "mese"
+    elif anno:
+        if not _YEAR_RE.match(anno):
+            raise HTTPException(status_code=400, detail="Formato anno non valido (YYYY)")
+        periodo, tipo = anno, "anno"
+    else:
+        periodo, tipo = datetime.now(timezone.utc).strftime("%Y-%m"), "mese"
+
+    db = get_db()
+
+    # base SEMPRE le classi del caller (mai {} per non-super; superadmin -> {})
+    if not ctx.all_access and not ctx.allowed_class_ids:
+        return {"periodo": periodo, "tipo": tipo, "studenti": []}
+
+    # ── Presenze del periodo, scope iniettato nel FILTRO (come get_presenze).
+    query: dict = {}
+    query.update(ctx.class_filter())          # class_id ∈ allowed_class_ids (o {} se all_access)
+    if class_id:
+        ctx.assert_class(class_id)            # 404 se la classe non è del caller
+        query["class_id"] = class_id
+    query["date"] = {"$regex": f"^{periodo}"}
+    records = await db.presenze.find(query, {"_id": 0}).to_list(10000)
+
+    # ── Aggregazione in Python per student_id.
+    counts: dict = {}
+    for r in records:
+        sid = r.get("student_id")
+        if not sid:
+            continue
+        c = counts.setdefault(sid, {"presenze": 0, "assenze": 0})
+        if r.get("presente"):
+            c["presenze"] += 1
+        else:
+            c["assenze"] += 1
+
+    # ── Students nello scope: STESSO class_filter del ctx → nessun leak cross-org.
+    stu_query: dict = {}
+    stu_query.update(ctx.class_filter())
+    if class_id:
+        stu_query["class_id"] = class_id
+    students = await db.students.find(
+        stu_query, {"_id": 0, "id": 1, "name": 1, "cognome": 1, "class_id": 1}
+    ).to_list(10000)
+
+    # ── Nome classe (scope: solo le classi dei bambini già scopati).
+    class_ids = list({s.get("class_id") for s in students if s.get("class_id")})
+    class_map: dict = {}
+    if class_ids:
+        classes = await db.classes.find(
+            {"id": {"$in": class_ids}}, {"_id": 0, "id": 1, "name": 1}
+        ).to_list(5000)
+        class_map = {c["id"]: c.get("name") for c in classes}
+
+    studenti = []
+    for s in students:
+        c = counts.get(s.get("id"), {"presenze": 0, "assenze": 0})
+        studenti.append({
+            "student_id": s.get("id"),
+            "nome":       s.get("name"),
+            "cognome":    s.get("cognome"),
+            "class_id":   s.get("class_id"),
+            "class_name": class_map.get(s.get("class_id")),
+            "presenze":   c["presenze"],
+            "assenze":    c["assenze"],
+            "totale":     c["presenze"] + c["assenze"],
+        })
+
+    # Ordina: più assenti prima, poi per cognome.
+    studenti.sort(key=lambda x: (-x["assenze"], (x.get("cognome") or "").lower()))
+
+    return {"periodo": periodo, "tipo": tipo, "studenti": studenti}

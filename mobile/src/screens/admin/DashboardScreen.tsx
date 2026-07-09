@@ -4,23 +4,25 @@ import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = { bg: '#FFFDD0', white: '#FFFFFF', primary: '#4169E1', babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98', text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280', border: '#F3F4F6' };
+const C = { ...tenant.colors, border: tenant.colors.divider };
 
-const SEDI = [
-  { id: 'girogirotondo',    label: 'Girogirotondo',   color: C.primary },
-  { id: 'il-magico-mondo',  label: 'Il Magico Mondo', color: '#FF69B4' },
-];
+const LOGOS: Record<string, any> = {
+  'girogirotondo':   require('../../../assets/logo-girogirotondo.png'),
+  'il-magico-mondo': require('../../../assets/logo-magico-mondo.png'),
+};
+type Sede = { id: string; name: string; color?: string };
 
 const CARDS = [
-  { id: 'users',         icon: 'people-outline',         color: C.primary,  bg: '#EBF0FF', title: 'Gestione Utenti', tab: 'Utenti' },
-  { id: 'presenze',      icon: 'clipboard-outline',      color: '#FF9500',  bg: '#FFF7E6', title: 'Presenze',        tab: 'Presenze' },
-  { id: 'classi',        icon: 'book-outline',           color: C.babyBlue, bg: '#EBF0FF', title: 'Classi',          tab: 'Classi' },
-  { id: 'mensa',         icon: 'restaurant-outline',     color: '#32CD32',  bg: '#F0FFF0', title: 'Menu Mensa',      tab: 'Mensa' },
-  { id: 'avvisi',        icon: 'megaphone-outline',      color: '#FF69B4',  bg: '#FFF0F7', title: 'Avvisi',          tab: 'Avvisi' },
-  { id: 'appuntamenti',  icon: 'calendar-outline',       color: C.primary,  bg: '#EBF0FF', title: 'Appuntamenti',    tab: 'Appuntamenti' },
-  { id: 'modulistica',   icon: 'document-text-outline',  color: '#FF9500',  bg: '#FFF7E6', title: 'Modulistica',     tab: 'Modulistica' },
-  { id: 'profilo',       icon: 'person-outline',         color: C.babyBlue, bg: '#EBF0FF', title: 'Il mio Profilo',  tab: 'Profilo' },
+  { id: 'users',         icon: 'people-outline',         color: C.primary,      bg: C.tintBlue,   title: 'Gestione Utenti', tab: 'Utenti' },
+  { id: 'presenze',      icon: 'clipboard-outline',      color: C.accentOrange, bg: C.tintOrange, title: 'Presenze',        tab: 'Presenze' },
+  { id: 'classi',        icon: 'book-outline',           color: C.babyBlue,     bg: C.tintBlue,   title: 'Classi',          tab: 'Classi' },
+  { id: 'mensa',         icon: 'restaurant-outline',     color: C.accentGreen,  bg: C.tintGreen,  title: 'Menu Mensa',      tab: 'Mensa' },
+  { id: 'avvisi',        icon: 'megaphone-outline',      color: C.accentPink,   bg: C.tintPink,   title: 'Avvisi',          tab: 'Avvisi' },
+  { id: 'appuntamenti',  icon: 'calendar-outline',       color: C.primary,      bg: C.tintBlue,   title: 'Appuntamenti',    tab: 'Appuntamenti' },
+  { id: 'modulistica',   icon: 'document-text-outline',  color: C.accentOrange, bg: C.tintOrange, title: 'Modulistica',     tab: 'Modulistica' },
+  { id: 'profilo',       icon: 'person-outline',         color: C.babyBlue,     bg: C.tintBlue,   title: 'Il mio Profilo',  tab: 'Profilo' },
 ];
 
 export default function AdminDashboard({ navigation }: any) {
@@ -28,7 +30,14 @@ export default function AdminDashboard({ navigation }: any) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sedeAttiva = sede || user?.sede_id || 'girogirotondo';
   const [stats, setStats] = useState({ users: 0, students: 0, classes: 0 });
+  const [sedi, setSedi] = useState<Sede[]>([]);
 
+  useEffect(() => {
+    api.get('/api/sedi')
+      .then(r => setSedi(r.data ?? []))
+      .catch(() => setSedi([]));   // fail-closed
+  }, []);
+  const sedeCorrente = sedi.find(x => x.id === sedeAttiva);
 
   useEffect(() => {
     Promise.all([api.get('/users'), api.get('/students'), api.get('/classes')])
@@ -51,21 +60,21 @@ export default function AdminDashboard({ navigation }: any) {
 
         {/* Centro: logo + sede */}
         <View style={s.topCenter}>
-          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
-            <Image
-              source={sedeAttiva === 'il-magico-mondo' ? require('../../../assets/logo-magico-mondo.png') : require('../../../assets/logo-girogirotondo.png')}
-              style={{ width: 30, height: 30 }}
-              resizeMode="cover"
-            />
+          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden',
+                         backgroundColor: sedeCorrente?.color ?? C.muted,
+                         alignItems: 'center', justifyContent: 'center' }}>
+            {LOGOS[sedeAttiva] ? (
+              <Image source={LOGOS[sedeAttiva]} style={{ width: 30, height: 30 }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: C.white, fontWeight: '700' }}>
+                {(sedeCorrente?.name ?? '?').charAt(0)}
+              </Text>
+            )}
           </View>
-          <Text style={s.topSede}>{sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}</Text>
+          <Text style={s.topSede}>{sedeCorrente?.name ?? ''}</Text>
         </View>
 
         {/* Destra: hamburger */}
-        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
-          <Ionicons name="menu" size={26} color={C.text} />
-        </TouchableOpacity>
-      </View>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.menuBtn}>
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>
@@ -86,10 +95,10 @@ export default function AdminDashboard({ navigation }: any) {
         {/* Sede switcher (solo superadmin) */}
         {isSuperAdmin && (
           <View style={s.sedeRow}>
-            {SEDI.map(s_ => (
+            {sedi.map(s_ => (
               <TouchableOpacity key={s_.id} onPress={() => updateSede(s_.id)}
-                style={[s.sedeBtn, sede === s_.id && { backgroundColor: s_.color + '20', borderColor: s_.color }]}>
-                <Text style={[s.sedeBtnText, { color: sede === s_.id ? s_.color : C.muted }]}>{s_.label}</Text>
+                style={[s.sedeBtn, sede === s_.id && { backgroundColor: (s_.color ?? C.primary) + '20', borderColor: s_.color ?? C.primary }]}>
+                <Text style={[s.sedeBtnText, { color: sede === s_.id ? (s_.color ?? C.primary) : C.muted }]}>{s_.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -99,8 +108,8 @@ export default function AdminDashboard({ navigation }: any) {
         <View style={s.statsRow}>
           {[
             { label: 'Utenti',  value: stats.users,    color: C.primary },
-            { label: 'Bambini', value: stats.students,  color: '#FF69B4' },
-            { label: 'Classi',  value: stats.classes,   color: '#32CD32' },
+            { label: 'Bambini', value: stats.students,  color: C.accentPink },
+            { label: 'Classi',  value: stats.classes,   color: C.accentGreen },
           ].map((st, i) => (
             <View key={i} style={[s.statCard, { borderTopColor: st.color, borderTopWidth: 3 }]}>
               <Text style={[s.statValue, { color: st.color }]}>{st.value}</Text>
@@ -134,10 +143,10 @@ const s = StyleSheet.create({
   name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
   badge:  { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
   badgeText:{ color: C.white, fontSize: 11, fontWeight: '700' },
-  topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
+  topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.divider },
   topCenter: { alignItems: 'center', flex: 1 },
   topLogo:   { width: 36, height: 36, borderRadius: 18 },
-  topSede:   { fontSize: 10, fontWeight: '700', color: '#9CA3AF', marginTop: 2 },
+  topSede:   { fontSize: 10, fontWeight: '700', color: C.muted, marginTop: 2 },
   menuBtn:   { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
   sedeRow:{ flexDirection: 'row', gap: 10, marginBottom: 16 },
   sedeBtn:{ flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: C.border, backgroundColor: C.white },

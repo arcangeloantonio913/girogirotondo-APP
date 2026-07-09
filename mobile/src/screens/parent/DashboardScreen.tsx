@@ -7,13 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { tenant } from '../../config/tenant';
 
-const C = {
-  bg: '#FFFDD0', white: '#FFFFFF', primary: '#4169E1',
-  babyBlue: '#A7C7E7', babyPink: '#F4C2C2', babyGreen: '#98FB98',
-  text: '#1A202C', muted: '#9CA3AF', gray: '#6B7280',
-  border: '#F3F4F6', shadow: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-};
+const C = { ...tenant.colors, border: tenant.colors.divider, shadow: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 } };
 
 function EmptyBear({ text }: { text: string }) {
   return (
@@ -61,6 +57,7 @@ export default function ParentDashboard({ navigation }: any) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [childSwitcherOpen, setChildSwitcherOpen] = useState(false);
   const sedeAttiva = user?.sede_id || 'girogirotondo';
+  const sedeInfo = tenant.sedi.find(x => x.id === sedeAttiva);
 
   const today = new Date().toISOString().split('T')[0];
   const todayFmt = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -138,19 +135,18 @@ export default function ParentDashboard({ navigation }: any) {
 
         {/* Centro: logo + nome sede */}
         <View style={s.topCenter}>
-          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden' }}>
-            <Image
-              source={
-                sedeAttiva === 'il-magico-mondo'
-                  ? require('../../../assets/logo-magico-mondo.png')
-                  : require('../../../assets/logo-girogirotondo.png')
-              }
-              style={{ width: 30, height: 30 }}
-              resizeMode="cover"
-            />
+          <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden',
+                         backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}>
+            {sedeInfo?.logo ? (
+              <Image source={sedeInfo.logo} style={{ width: 30, height: 30 }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: C.white, fontWeight: '700' }}>
+                {(sedeInfo?.name ?? tenant.appName).charAt(0)}
+              </Text>
+            )}
           </View>
           <Text style={s.topSede}>
-            {sedeAttiva === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}
+            {sedeInfo?.name ?? tenant.appName}
           </Text>
         </View>
 

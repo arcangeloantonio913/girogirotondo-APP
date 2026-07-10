@@ -8,6 +8,9 @@ import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const TODAY = new Date().toISOString().split('T')[0];
+const CURRENT_MONTH = TODAY.slice(0, 7);          // YYYY-MM
+const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
 export default function AdminPresenze() {
   const { sede } = useAuth();
@@ -18,6 +21,10 @@ export default function AdminPresenze() {
   const [loading, setLoading]     = useState(true);
   const [date, setDate]           = useState(TODAY);
   const [saving, setSaving]       = useState(false);
+  const [tab, setTab]             = useState<'oggi' | 'riepilogo'>('oggi');
+  const [meseRiepilogo, setMeseRiepilogo] = useState(CURRENT_MONTH);   // YYYY-MM
+  const [studenti, setStudenti]   = useState<any[]>([]);
+  const [loadingRiep, setLoadingRiep] = useState(false);
 
   useEffect(() => {
     Promise.all([api.get('/classes'), api.get('/students')])
@@ -29,6 +36,16 @@ export default function AdminPresenze() {
     if (!selected) return;
     api.get(`/presenze?class_id=${selected}&date=${date}`).then(r => setRecords(r.data || [])).catch(() => {});
   }, [selected, date]);
+
+  // Riepilogo assenze: ricarica quando si apre il tab o cambia il mese
+  useEffect(() => {
+    if (tab !== 'riepilogo') return;
+    setLoadingRiep(true);
+    api.get(`/presenze/riepilogo?mese=${meseRiepilogo}`)
+      .then(r => setStudenti(r.data?.studenti || []))
+      .catch(() => setStudenti([]))
+      .finally(() => setLoadingRiep(false));
+  }, [tab, meseRiepilogo]);
 
   const presentCount = records.filter(r => r.presente).length;
   const classStudents = students.filter(s => s.class_id === selected || s.class_ids?.includes(selected));
@@ -76,8 +93,32 @@ export default function AdminPresenze() {
     }
   };
 
+  // Naviga i mesi col Date nativo (nessuna libreria); label italiana dalla tabella MESI.
+  const shiftMese = (delta: number) => {
+    const [y, m] = meseRiepilogo.split('-').map(Number);
+    const d = new Date(y, (m - 1) + delta, 1);
+    setMeseRiepilogo(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+  const meseLabel = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return `${MESI[m - 1]} ${y}`;
+  };
+  const totAssenze = studenti.reduce((a, x) => a + (x.assenze || 0), 0);
+
   return (
     <ScreenLayout title="Presenze" showBack color={C.primary} loading={loading} scrollable={false}>
+      {/* Tab bar */}
+      <View style={s.tabBar}>
+        <TouchableOpacity onPress={() => setTab('oggi')} style={[s.tabBtn, tab === 'oggi' && s.tabBtnActive]}>
+          <Text style={[s.tabText, tab === 'oggi' && s.tabTextActive]}>Oggi</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setTab('riepilogo')} style={[s.tabBtn, tab === 'riepilogo' && s.tabBtnActive]}>
+          <Text style={[s.tabText, tab === 'riepilogo' && s.tabTextActive]}>Riepilogo assenze</Text>
+        </TouchableOpacity>
+      </View>
+
+      {tab === 'oggi' && (
+      <>
       <FlatList
         style={{ flex: 1 }}
         data={selected ? classStudents : classes}
@@ -139,6 +180,51 @@ export default function AdminPresenze() {
           </TouchableOpacity>
         </View>
       )}
+      </>
+      )}
+
+      {tab === 'riepilogo' && (
+        <FlatList
+          style={{ flex: 1 }}
+          data={studenti}
+          keyExtractor={(item) => item.student_id}
+          contentContainerStyle={{ padding: 12 }}
+          ListHeaderComponent={
+            <View>
+              {/* Selettore mese */}
+              <View style={s.meseRow}>
+                <TouchableOpacity onPress={() => shiftMese(-1)} style={s.meseArrow}>
+                  <Ionicons name="chevron-back" size={20} color={C.primary} />
+                </TouchableOpacity>
+                <Text style={s.meseLabel}>{meseLabel(meseRiepilogo)}</Text>
+                <TouchableOpacity onPress={() => shiftMese(1)} style={s.meseArrow}>
+                  <Ionicons name="chevron-forward" size={20} color={C.primary} />
+                </TouchableOpacity>
+              </View>
+              {!loadingRiep && studenti.length > 0 && (
+                <Text style={s.riepHeader}>{studenti.length} bambini — {totAssenze} assenze nel mese</Text>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            loadingRiep
+              ? <View style={s.empty}><Text style={s.emptyText}>Caricamento…</Text></View>
+              : <View style={s.empty}><Text style={{ fontSize: 40 }}>📊</Text><Text style={s.emptyText}>Nessun dato per questo mese</Text></View>
+          }
+          renderItem={({ item }) => (
+            <View style={s.studentCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.studentName}>{item.nome} {item.cognome}</Text>
+                <Text style={s.classInfo}>{item.class_name || '—'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[s.assenzeNum, { color: item.assenze > 0 ? C.red : C.muted }]}>{item.assenze}</Text>
+                <Text style={s.presenzeSmall}>P: {item.presenze}</Text>
+              </View>
+            </View>
+          )}
+        />
+      )}
     </ScreenLayout>
   );
 }
@@ -163,4 +249,17 @@ const s = StyleSheet.create({
   saveBar:     { padding: 12, paddingTop: 8, backgroundColor: C.white, borderTopWidth: 0.5, borderTopColor: C.border },
   saveBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14 },
   saveBtnText: { color: C.white, fontWeight: '700', fontSize: 15 },
+  tabBar:      { flexDirection: 'row', gap: 8, padding: 12, paddingBottom: 4 },
+  tabBtn:      { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', backgroundColor: C.white, borderWidth: 1, borderColor: C.border },
+  tabBtnActive:{ backgroundColor: C.primary, borderColor: C.primary },
+  tabText:     { fontSize: 13, fontWeight: '700', color: C.muted },
+  tabTextActive:{ color: C.white },
+  meseRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.white, borderRadius: 12, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: C.border },
+  meseArrow:   { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  meseLabel:   { fontSize: 15, fontWeight: '800', color: C.text },
+  riepHeader:  { fontSize: 12, fontWeight: '700', color: C.muted, marginBottom: 8 },
+  assenzeNum:  { fontSize: 22, fontWeight: '900' },
+  presenzeSmall:{ fontSize: 11, color: C.muted, fontWeight: '600' },
+  empty:       { alignItems: 'center', paddingTop: 40 },
+  emptyText:   { color: C.muted, fontSize: 14, marginTop: 10 },
 });

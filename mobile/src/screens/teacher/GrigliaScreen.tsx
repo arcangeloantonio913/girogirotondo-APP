@@ -45,7 +45,18 @@ export default function TeacherGriglia() {
     if(!classId)return;
     api.get(`/griglia?class_id=${classId}&date=${date}`).then(r=>{
       const map:Record<string,any>={};
-      (r.data||[]).forEach((g:any)=>{map[g.student_id]=g;});
+      // Rimappa il doc backend nel formato-stato usato da updateField/render.
+      (r.data||[]).forEach((g:any)=>{map[g.student_id]={
+        student_id:      g.student_id,
+        merenda_mattina: g.merenda_qty || '',
+        pasta:           g.pasta_qty   || '',
+        secondo:         g.secondo_qty || '',
+        pane:            g.pane_qty    || '',
+        frutta:          g.frutta_qty  || '',
+        'pupù':          !!g.pupu,
+        nanna:           !!g.nanna,
+        notes:           g.notes || '',
+      };});
       setGriglia(map);
     }).catch(()=>{});
   },[date,classId]);
@@ -70,15 +81,38 @@ export default function TeacherGriglia() {
   const deselectAll=()=>setSelected(new Set());
 
   const handleSave=async()=>{
+    if(!classId){Alert.alert('Nessuna classe');return;}
     setSaving(true);
     try{
-      await Promise.all(students.map(st=>{
+      // [campo_backend, chiave_stato_UI]. Nello stato il valore pasto è la STRINGA quantità.
+      const MEAL_MAP:[string,string][]=[
+        ['merenda','merenda_mattina'],['pasta','pasta'],['secondo','secondo'],['pane','pane'],['frutta','frutta'],
+      ];
+      const buildPayload=(st:any)=>{
         const g=griglia[st.id]||{};
-        return api.post('/griglia',{student_id:st.id,class_id:classId,date,...g});
-      }));
+        const p:any={class_id:classId,student_ids:[st.id],date};
+        for(const [bk,sk] of MEAL_MAP){
+          const raw=g[sk];
+          // qty: usa la stringa UI; se lo stato è un doc caricato dal backend (bool su bk), leggi bk_qty
+          const qty:string = typeof raw==='string' ? raw : (typeof g[bk+'_qty']==='string' ? g[bk+'_qty'] : '');
+          p[bk]=qty!==''&&qty!=='no';   // true = ha mangiato qualcosa; '' e 'no' → false
+          p[bk+'_qty']=qty;
+        }
+        p.pupu=!!(g['pupù']??g['pupu']);   // chiave UI accentata 'pupù'; doc caricato usa 'pupu'
+        p.nanna=!!g['nanna'];
+        p.notes=typeof (g.notes??g.note)==='string' ? (g.notes??g.note) : '';
+        return p;
+      };
+      const sample = students[0] ? buildPayload(students[0]) : null;
+      console.log('[GRIGLIA] sample payload:', JSON.stringify(sample));
+      console.log('[GRIGLIA] classId:', classId, 'students:', students.length, 'date:', date);
+      await Promise.all(students.map(st=>api.post('/griglia',buildPayload(st))));
       setSaved(true);
       setTimeout(()=>setSaved(false),2000);
-    }catch{Alert.alert('Errore','Impossibile salvare');}
+    }catch(e:any){
+      console.log('[GRIGLIA] SAVE ERROR:', e?.message, '| status:', e?.response?.status, '| detail:', JSON.stringify(e?.response?.data));
+      Alert.alert('Errore salvataggio', e?.response?.data?.detail || e?.message || 'Impossibile salvare');
+    }
     finally{setSaving(false);}
   };
 

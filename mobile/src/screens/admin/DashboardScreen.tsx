@@ -26,14 +26,14 @@ const CARDS = [
 ];
 
 export default function AdminDashboard({ navigation }: any) {
-  const { user, sede, updateSede, logout, isSuperAdmin } = useAuth();
+  const { user, sede, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sedeAttiva = sede || user?.sede_id || 'girogirotondo';
   const [stats, setStats] = useState({ users: 0, students: 0, classes: 0 });
   const [sedi, setSedi] = useState<Sede[]>([]);
 
   useEffect(() => {
-    api.get('/api/sedi')
+    api.get('/sedi')
       .then(r => setSedi(r.data ?? []))
       .catch(() => setSedi([]));   // fail-closed
   }, []);
@@ -92,18 +92,6 @@ export default function AdminDashboard({ navigation }: any) {
           </View>
         </View>
 
-        {/* Sede switcher (solo superadmin) */}
-        {isSuperAdmin && (
-          <View style={s.sedeRow}>
-            {sedi.map(s_ => (
-              <TouchableOpacity key={s_.id} onPress={() => updateSede(s_.id)}
-                style={[s.sedeBtn, sede === s_.id && { backgroundColor: (s_.color ?? C.primary) + '20', borderColor: s_.color ?? C.primary }]}>
-                <Text style={[s.sedeBtnText, { color: sede === s_.id ? (s_.color ?? C.primary) : C.muted }]}>{s_.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
         {/* Stats */}
         <View style={s.statsRow}>
           {[
@@ -148,9 +136,6 @@ const s = StyleSheet.create({
   topLogo:   { width: 36, height: 36, borderRadius: 18 },
   topSede:   { fontSize: 10, fontWeight: '700', color: C.muted, marginTop: 2 },
   menuBtn:   { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
-  sedeRow:{ flexDirection: 'row', gap: 10, marginBottom: 16 },
-  sedeBtn:{ flex: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
-  sedeBtnText:{ fontSize: 12, fontWeight: '700' },
   statsRow:{ flexDirection: 'row', gap: 10, marginBottom: 16 },
   statCard:{ flex: 1, backgroundColor: C.white, borderRadius: 14, padding: 14, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   statValue:{ fontSize: 24, fontWeight: '900' },

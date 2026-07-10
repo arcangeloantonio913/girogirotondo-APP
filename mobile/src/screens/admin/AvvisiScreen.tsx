@@ -14,10 +14,7 @@ import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-const SEDI = [
-  { id: 'girogirotondo',   label: 'Girogirotondo',   color: '#4169E1' },
-  { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
-];
+type Sede = { id: string; name: string; color?: string };
 
 const FILE_ICONS: Record<string, string> = {
   pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊',
@@ -40,12 +37,13 @@ export default function AdminAvvisi() {
   // Form
   const [title,      setTitle]      = useState('');
   const [body,       setBody]       = useState('');
-  const [selSedi,    setSelSedi]    = useState<string[]>(['girogirotondo', 'il-magico-mondo']);
+  const [selSedi,    setSelSedi]    = useState<string[]>([]);
   const [selRoles,   setSelRoles]   = useState<string[]>(['parent', 'teacher']);
   const [selClasses, setSelClasses] = useState<string[]>([]);
   const [allClasses, setAllClasses] = useState(true);
   const [allegati,   setAllegati]   = useState<{ name: string; mime: string; base64: string }[]>([]);
   const [saving,     setSaving]     = useState(false);
+  const [sedi,       setSedi]       = useState<Sede[]>([]);
 
   useEffect(() => {
     Promise.all([api.get('/avvisi'), api.get('/classes')])
@@ -53,9 +51,19 @@ export default function AdminAvvisi() {
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
+  // Sedi dell'org del caller (org-aware lato backend)
+  useEffect(() => {
+    api.get('/sedi').then(r => setSedi(r.data ?? [])).catch(() => setSedi([]));
+  }, []);
+
+  // Default destinatari: tutte le sedi del caller, al primo caricamento di `sedi`
+  useEffect(() => {
+    if (sedi.length > 0 && selSedi.length === 0) setSelSedi(sedi.map(s => s.id));
+  }, [sedi]);
+
   const resetForm = () => {
     setTitle(''); setBody('');
-    setSelSedi(['girogirotondo', 'il-magico-mondo']);
+    setSelSedi(sedi.map(s => s.id));
     setSelRoles(['parent', 'teacher']);
     setSelClasses([]); setAllClasses(true);
     setAllegati([]); setEditing(null);
@@ -63,7 +71,7 @@ export default function AdminAvvisi() {
 
   const openEdit = (a: any) => {
     setEditing(a); setTitle(a.title || ''); setBody(a.body || a.message || '');
-    setSelSedi(a.sedi || ['girogirotondo']);
+    setSelSedi(a.sedi || []);
     setSelRoles(a.target_roles || ['parent']);
     setSelClasses(a.class_ids || []); setAllClasses(!a.class_ids?.length);
     setAllegati([]); setShowForm(true);
@@ -208,12 +216,13 @@ export default function AdminAvvisi() {
             </View>
             <View style={s.badgesRow}>
               {(item.sedi || []).map((sd: string) => {
-                const info = SEDI.find(x => x.id === sd);
-                return info ? (
-                  <View key={sd} style={[s.badge, { backgroundColor: info.color + '15' }]}>
-                    <Text style={[s.badgeText, { color: info.color }]}>{info.label}</Text>
+                const info = sedi.find(x => x.id === sd);
+                const col = info?.color ?? C.primary;
+                return (
+                  <View key={sd} style={[s.badge, { backgroundColor: col + '15' }]}>
+                    <Text style={[s.badgeText, { color: col }]}>{info?.name ?? sd}</Text>
                   </View>
-                ) : null;
+                );
               })}
               {(item.target_roles || []).map((r: string) => (
                 <View key={r} style={[s.badge, { backgroundColor: '#F3F4F6' }]}>
@@ -250,10 +259,10 @@ export default function AdminAvvisi() {
             {/* Sedi */}
             <Text style={s.fieldLabel}>Sede</Text>
             <View style={s.chipRow}>
-              {SEDI.map(sd => (
+              {sedi.map(sd => (
                 <TouchableOpacity key={sd.id} onPress={() => toggleItem(selSedi, sd.id, setSelSedi)}
-                  style={[s.chip, selSedi.includes(sd.id) && { backgroundColor: sd.color, borderColor: sd.color }]}>
-                  <Text style={[s.chipText, selSedi.includes(sd.id) && { color: C.white }]}>{sd.label}</Text>
+                  style={[s.chip, selSedi.includes(sd.id) && { backgroundColor: sd.color ?? C.primary, borderColor: sd.color ?? C.primary }]}>
+                  <Text style={[s.chipText, selSedi.includes(sd.id) && { color: C.white }]}>{sd.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>

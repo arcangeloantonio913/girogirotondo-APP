@@ -70,7 +70,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
   const [sedi, setSedi] = useState<Sede[]>([]);
 
   useEffect(() => {
-    api.get('/api/sedi')
+    api.get('/sedi')
       .then(r => setSedi(r.data ?? []))
       .catch(() => setSedi([]));   // fail-closed
   }, []);

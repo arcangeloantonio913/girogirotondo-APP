@@ -20,10 +20,7 @@ const PASTI = [
   { key: 'merenda_pomeriggio', label: 'Merenda pomeriggio', icon: '🍪', required: false },
 ];
 
-const SEDI = [
-  { id: 'girogirotondo',   label: 'Girogirotondo',   color: '#4169E1' },
-  { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
-];
+type Sede = { id: string; name: string; color?: string };
 
 const PRESETS = [
   { label: '1 giorno',     days: 1  },
@@ -44,6 +41,7 @@ export default function AdminMensa() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving,  setSaving]  = useState(false);
+  const [sedi,    setSedi]    = useState<Sede[]>([]);
 
   // Navigazione date
   const [navDate, setNavDate] = useState(TODAY);
@@ -54,7 +52,7 @@ export default function AdminMensa() {
     primo: '', secondo: '', pane: '', frutta: '',
     merenda_mattina: '', merenda_pomeriggio: '',
     class_id: '', // '' = tutte le classi
-    sede_ids: [sede || 'girogirotondo'],
+    sede_ids: sede ? [sede] : [],
   });
 
   useEffect(() => {
@@ -62,6 +60,11 @@ export default function AdminMensa() {
       .then(([mR, cR]) => { setMeals(mR.data || []); setClasses(cR.data || []); })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
+
+  // Sedi dell'org del caller (org-aware lato backend) — solo per il selettore
+  useEffect(() => {
+    api.get('/sedi').then(r => setSedi(r.data ?? [])).catch(() => setSedi([]));
+  }, []);
 
   // Filtro per data selezionata
   const todayMeals = meals.filter(m => m.date_from <= navDate && m.date_to >= navDate);
@@ -78,7 +81,7 @@ export default function AdminMensa() {
       const res = await api.post('/meals', payload);
       setMeals(prev => [res.data, ...prev]);
       setShowForm(false);
-      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', pane: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: [sede || 'girogirotondo'] });
+      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', pane: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
     } catch { Alert.alert('Errore', 'Impossibile salvare il menu'); }
     finally { setSaving(false); }
   };
@@ -177,10 +180,10 @@ export default function AdminMensa() {
             {/* Sede */}
             <Text style={s.fl}>Sede</Text>
             <View style={s.chipRow}>
-              {SEDI.map(sd => (
+              {sedi.map(sd => (
                 <TouchableOpacity key={sd.id} onPress={() => toggleSede(sd.id)}
-                  style={[s.chip, form.sede_ids.includes(sd.id) && { backgroundColor: sd.color, borderColor: sd.color }]}>
-                  <Text style={[s.chipText, form.sede_ids.includes(sd.id) && { color: C.white }]}>{sd.label}</Text>
+                  style={[s.chip, form.sede_ids.includes(sd.id) && { backgroundColor: sd.color ?? C.primary, borderColor: sd.color ?? C.primary }]}>
+                  <Text style={[s.chipText, form.sede_ids.includes(sd.id) && { color: C.white }]}>{sd.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>

@@ -237,7 +237,7 @@ async def seed_database():
     await ensure_superadmins()
 
     # Aggiorna/crea sempre gli account demo (maestre e genitori)
-    await ensure_demo_accounts()
+    # await ensure_demo_accounts()  # DISABILITATO: creava account di test in produzione ad ogni riavvio
 
     # NOTE (2026-06-23): _deduplicate_users()/_deduplicate_students() were REMOVED
     # from the startup path. They delete-by-heuristic on every boot — students keyed

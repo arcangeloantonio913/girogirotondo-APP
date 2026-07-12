@@ -29,6 +29,14 @@
         "buildType": "app-bundle",
         "credentialsSource": "remote"
       }
+    },
+    "preview-db": {
+      "extends": "preview",
+      "env": { "EXPO_PUBLIC_TENANT": "dimensione-bimbo" }
+    },
+    "production-db": {
+      "extends": "production",
+      "env": { "EXPO_PUBLIC_TENANT": "dimensione-bimbo" }
     }
   },
   "submit": {
@@ -41,6 +49,13 @@
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "production",
+        "releaseStatus": "completed"
+      }
+    },
+    "production-db": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal",
         "releaseStatus": "completed"
       }
     }

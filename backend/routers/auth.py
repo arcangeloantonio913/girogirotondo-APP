@@ -151,7 +151,10 @@ async def forgot_password(request: Request, payload: dict):
     )
 
     # Invia email con il token
-    sent = await send_reset_password_email(email, user.get("name", ""), token)
+    sent = await send_reset_password_email(
+        email, user.get("name", ""), token,
+        sede_id=user.get("sede_id"), org_id=user.get("org_id"),
+    )
     # Do NOT log the user email (PII).
     logger.info("[RESET] Token reset generato, email inviata: %s", sent)
     return {"message": "Se l'email esiste, riceverai le istruzioni a breve"}

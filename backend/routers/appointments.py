@@ -81,11 +81,13 @@ async def create_appointment(
     await send_appointment_email(
         to_email=ADMIN_EMAIL, parent_name=parent_name, date=payload.date,
         time_slot=payload.time_slot, reason=payload.reason, status="pending",
+        sede_id=sede_id, org_id=parent.get("org_id"),
     )
     if parent_email:
         await send_appointment_email(
             to_email=parent_email, parent_name=parent_name, date=payload.date,
             time_slot=payload.time_slot, reason=payload.reason, status="pending",
+            sede_id=sede_id, org_id=parent.get("org_id"),
         )
 
     return doc
@@ -119,6 +121,8 @@ async def update_appointment_status(
                 time_slot=apt["time_slot"],
                 reason=apt.get("reason", ""),
                 status=status.value if hasattr(status, "value") else str(status),
+                sede_id=apt.get("sede_id"),
+                org_id=parent.get("org_id"),
             )
 
     return {"message": "Stato aggiornato", "status": status}

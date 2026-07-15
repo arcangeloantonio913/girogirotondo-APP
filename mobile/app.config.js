@@ -22,19 +22,19 @@ module.exports = () => {
         scheme: 'dimensionebimbo',
         description: 'Piattaforma gestionale per la Scuola dell\'Infanzia Dimensione Bimbo.',
 
-        // ICONE: per ora restano i path attuali (asset Girogirotondo) — NON puntare a
-        // file inesistenti romperebbe la build.
-        // TODO: sostituire con icone Dimensione Bimbo quando disponibili
-        //       (icon, splash.image, web.favicon, android.adaptiveIcon.foregroundImage).
+        // ICONE Dimensione Bimbo (asset dedicati in ./assets/). backgroundColor di
+        // splash/adaptiveIcon già overridato più sotto — NON toccarlo qui.
+        icon: './assets/dimensione-bimbo-icon.png',
         splash: {
           ...base.splash,
+          image: './assets/dimensione-bimbo-splash.png',
           backgroundColor: '#FFE3C2',
         },
 
         ios: {
           ...base.ios,
           bundleIdentifier: 'it.dimensionebimbo.app',
-          // buildNumber / config invariati (ereditati da base.ios).
+          buildNumber: '1',            // prima build DB (app store distinta da Giro).
           infoPlist: {
             ...base.ios.infoPlist,
             // TODO: NSPrivacyDescription per Dimensione Bimbo — ora l'URL punta a
@@ -45,11 +45,12 @@ module.exports = () => {
         android: {
           ...base.android,
           package: 'it.dimensionebimbo.app',
-          // versionCode / permissions / intentFilters invariati (ereditati da base.android).
+          versionCode: 5,              // build DB (Giro resta a 4, non toccato).
+          // permissions / intentFilters invariati (ereditati da base.android).
           adaptiveIcon: {
             ...base.android.adaptiveIcon,
+            foregroundImage: './assets/dimensione-bimbo-adaptive-icon.png',
             backgroundColor: '#FFE3C2',
-            // foregroundImage: TODO icona DB (per ora asset Giro).
           },
         },
 

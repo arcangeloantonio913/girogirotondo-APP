@@ -47,6 +47,10 @@ export type Tenant = {
   colors: TenantColors;
   logo: ImageSourcePropType | null;
   sedi: TenantSede[];
+  // true se il tenant ha un portale web dove atterra il link di reset password.
+  // false per i tenant con sola landing (es. Dimensione Bimbo): "Password
+  // dimenticata?" non naviga, mostra un alert (il reset si gestisce con la scuola).
+  passwordResetEnabled: boolean;
 };
 
 const TENANTS: Record<string, Tenant> = {
@@ -76,6 +80,7 @@ const TENANTS: Record<string, Tenant> = {
       { id: 'girogirotondo',   name: 'Girogirotondo',   logo: require('../../assets/logo-girogirotondo.png') },
       { id: 'il-magico-mondo', name: 'Il Magico Mondo', logo: require('../../assets/logo-magico-mondo.png') },
     ],
+    passwordResetEnabled: true,
   },
 
   // ── Cliente 2: Dimensione Bimbo (branding NON ancora definito) ──
@@ -101,6 +106,7 @@ const TENANTS: Record<string, Tenant> = {
       { id: 'db-succursale', name: 'Succursale' },
       { id: 'db-micronido',  name: 'Micronido' },
     ],
+    passwordResetEnabled: false,   // solo landing, nessun portale web di reset
   },
 };
 

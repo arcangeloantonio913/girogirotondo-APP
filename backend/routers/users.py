@@ -278,6 +278,7 @@ async def iscrizione_bambino(
             payload.bambino_cognome,
             password_plain,
             cls.get("sede_id", sede_id),
+            org_id=current_user.get("org_id"),
         )
 
     student.pop("_id", None)
@@ -371,6 +372,7 @@ async def aggiungi_secondo_genitore(
             student.get("cognome", ""),
             password_plain,
             student.get("sede_id", "girogirotondo"),
+            org_id=current_user.get("org_id"),
         )
         created = True
 
@@ -513,6 +515,8 @@ async def resend_credentials(
         target.get("name", ""),
         new_password,
         target.get("role", "parent"),
+        sede_id=target.get("sede_id"),
+        org_id=target.get("org_id"),
     )
 
     return {

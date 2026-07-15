@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StatusBar, KeyboardAvoidingView,
-  Platform, StyleSheet, Image,
+  Platform, StyleSheet, Image, Alert,
 } from 'react-native';
 import { useAuth } from '../../lib/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -199,7 +199,18 @@ export default function LoginScreen() {
                   }
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => { setShowReset(true); setResetEmail(email); }}>
+                <TouchableOpacity onPress={() => {
+                  // Tenant con sola landing (nessun portale web): il reset non ha
+                  // destinazione → niente pannello, mostra un alert informativo.
+                  if (!tenant.passwordResetEnabled) {
+                    Alert.alert(
+                      'Reimposta password',
+                      'Per reimpostare la password contatta la direzione della scuola.'
+                    );
+                    return;
+                  }
+                  setShowReset(true); setResetEmail(email);
+                }}>
                   <Text style={s.link}>Password dimenticata?</Text>
                 </TouchableOpacity>
 

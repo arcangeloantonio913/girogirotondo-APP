@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "it.girogirotondo.app",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "infoPlist": {
         "NSCameraUsageDescription": "Utilizzata per fotografare i bambini durante le attività.",
         "NSPhotoLibraryUsageDescription": "Consente di caricare foto dalla galleria.",
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "it.girogirotondo.app",
-      "versionCode": 4,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFDD0"

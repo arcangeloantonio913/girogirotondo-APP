@@ -53,6 +53,11 @@
       }
     },
     "production-db": {
+      "ios": {
+        "appleId": "arcangeloantonio913@gmail.com",
+        "ascAppId": "6790697706",
+        "appleTeamId": "V2KH9WP738"
+      },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal",

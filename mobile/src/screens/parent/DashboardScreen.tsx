@@ -45,7 +45,7 @@ function CardHeader({ icon, iconBg, iconColor, title, subtitle }: any) {
 }
 
 export default function ParentDashboard({ navigation }: any) {
-  const { user, activeChildId } = useAuth();
+  const { user, activeChildId, setActiveChildId, childIds } = useAuth();
   const [child,    setChild]    = useState<any>(null);
   const [diary,    setDiary]    = useState<any>(null);
   const [griglia,  setGriglia]  = useState<any>(null);

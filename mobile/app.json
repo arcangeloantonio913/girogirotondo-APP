@@ -2,7 +2,7 @@
   "expo": {
     "name": "Girogirotondo",
     "slug": "girogirotondo-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "it.girogirotondo.app",
-      "buildNumber": "3",
+      "buildNumber": "5",
       "infoPlist": {
         "NSCameraUsageDescription": "Utilizzata per fotografare i bambini durante le attività.",
         "NSPhotoLibraryUsageDescription": "Consente di caricare foto dalla galleria.",
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "it.girogirotondo.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFDD0"

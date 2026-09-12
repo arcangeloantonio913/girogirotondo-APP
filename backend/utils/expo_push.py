@@ -94,7 +94,7 @@ async def notify_role(db, role: str, sede_id: Optional[str], title: str, body: s
 
 async def notify_parents_of_class(db, class_id: str, title: str, body: str, data: Optional[dict] = None) -> int:
     """Invia notifica ai genitori degli alunni di una classe."""
-    students = await db.students.find({"class_id": class_id}, {"parent_ids": 1, "parent_id": 1}).to_list(500)
+    students = await db.students.find({"class_id": class_id}, {"id": 1, "parent_ids": 1, "parent_id": 1}).to_list(500)
     parent_ids = []
     for s in students:
         if s.get("parent_ids"):

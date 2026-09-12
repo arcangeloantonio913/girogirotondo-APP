@@ -305,6 +305,17 @@ async def upload_media_url(
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.gallery.insert_one(doc)
     doc.pop("_id", None)
+
+    # Notifica i genitori della classe (non bloccante)
+    try:
+        await notify_class(
+            db, doc.get("class_id"), ["parent"],
+            title="Nuova foto pubblicata!",
+            body=doc.get("caption") or "La maestra ha pubblicato una nuova foto.",
+            data={"type": "gallery", "media_id": doc["id"]},
+        )
+    except Exception:
+        pass
     return doc
 
 

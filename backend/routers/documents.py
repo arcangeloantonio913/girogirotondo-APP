@@ -13,6 +13,7 @@ from middleware.auth import get_tenant_context, TenantContext
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file
 from utils.push_notifications import notify_class, notify_role
+from utils.expo_push import notify_role as notify_role_sede  # variante con scope per sede
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -221,6 +222,24 @@ async def upload_document_base64(
     }
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
+
+    # Notifica i genitori (non bloccante): classe → genitori della classe;
+    # documento di sede (senza classe) → genitori della SEDE (mai globale multi-tenant).
+    try:
+        if classe_id:
+            await notify_class(
+                db, classe_id, ["parent"],
+                title="Nuovo documento disponibile", body=title,
+                data={"type": "document", "doc_id": doc_id},
+            )
+        elif doc.get("sede_id"):
+            await notify_role_sede(
+                db, "parent", doc.get("sede_id"),
+                "Nuovo documento disponibile", title,
+                {"type": "document", "doc_id": doc_id},
+            )
+    except Exception:
+        pass
     return doc
 
 

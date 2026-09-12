@@ -129,7 +129,9 @@ async def delete_meal(
     meal = await db.meals.find_one({"id": meal_id})
     if not meal:
         raise HTTPException(status_code=404, detail="Menu non trovato")
-    if meal.get("sede_id") and meal.get("sede_id") != sede_id:
+    # FAIL-CLOSED: un menu di altra sede — o SENZA sede (dato legacy) — non è eliminabile
+    # da un admin normale; solo il superadmin (all-access) può.
+    if not current_user.get("is_superadmin") and meal.get("sede_id") != sede_id:
         raise HTTPException(status_code=404, detail="Menu non trovato")   # 404 cross-tenant (convenzione)
 
     await db.meals.delete_one({"id": meal_id})

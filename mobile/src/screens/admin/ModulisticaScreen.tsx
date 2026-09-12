@@ -22,6 +22,7 @@ export default function AdminModulistica() {
   const [saving,  setSaving]  = useState(false);
   const [receiptsDoc, setReceiptsDoc] = useState<any | null>(null);
   const [receipts,    setReceipts]    = useState<any[]>([]);
+  const [parentsById, setParentsById] = useState<Record<string, any>>({});
 
   useEffect(() => {
     // GET /documents non ritorna i conteggi "prese visione": li calcoliamo dai
@@ -29,8 +30,10 @@ export default function AdminModulistica() {
     Promise.allSettled([api.get('/documents'), api.get('/read-receipts'), api.get('/users')])
       .then(([dR, rR, uR]) => {
         const receipts: any[] = rR.status === 'fulfilled' ? (rR.value.data || []) : [];
-        const totalParents = uR.status === 'fulfilled'
-          ? (uR.value.data || []).filter((u: any) => u.role === 'parent').length : 0;
+        const parents: any[] = uR.status === 'fulfilled'
+          ? (uR.value.data || []).filter((u: any) => u.role === 'parent') : [];
+        const totalParents = parents.length;
+        setParentsById(Object.fromEntries(parents.map((p: any) => [p.id, p])));
         const list: any[] = dR.status === 'fulfilled' ? (dR.value.data || []) : [];
         setDocs(list.map((d: any) => ({
           ...d,
@@ -166,13 +169,17 @@ export default function AdminModulistica() {
           <Text style={[s.fieldLabel, { marginBottom: 12 }]}>{receiptsDoc?.title}</Text>
           {receipts.length === 0
             ? <Text style={{ color: C.muted, textAlign: 'center', marginTop: 40 }}>Nessuna presa visione ancora</Text>
-            : receipts.map((r: any, i: number) => (
-              <View key={i} style={s.receiptRow}>
-                <View style={s.receiptAvatar}><Text style={{ fontWeight: '700', color: C.primary }}>{r.parent_name?.charAt(0) || '?'}</Text></View>
-                <Text style={{ flex: 1, fontSize: 13, color: C.text }}>{r.parent_name || r.parent_id}</Text>
-                <Ionicons name="checkmark-circle" size={18} color="#32CD32" />
-              </View>
-            ))
+            : receipts.map((r: any, i: number) => {
+              const p = parentsById[r.parent_id];
+              const nome = r.parent_name || (p ? `${p.name || ''} ${p.cognome || ''}`.trim() : '') || r.parent_id;
+              return (
+                <View key={i} style={s.receiptRow}>
+                  <View style={s.receiptAvatar}><Text style={{ fontWeight: '700', color: C.primary }}>{(nome || '?').charAt(0)}</Text></View>
+                  <Text style={{ flex: 1, fontSize: 13, color: C.text }}>{nome}</Text>
+                  <Ionicons name="checkmark-circle" size={18} color="#32CD32" />
+                </View>
+              );
+            })
           }
         </View>
       </Modal>

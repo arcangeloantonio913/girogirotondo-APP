@@ -7,6 +7,7 @@ class DocumentCategory(str, Enum):
     circolari = "circolari"
     autorizzazioni = "autorizzazioni"
     menu = "menù"
+    modulistica = "modulistica"   # usata dall'app (default upload documenti)
     altro = "altro"
 
 

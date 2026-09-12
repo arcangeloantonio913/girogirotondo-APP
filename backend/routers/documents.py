@@ -29,7 +29,7 @@ def _refresh_url(doc: dict) -> dict:
 
 
 _DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_VALID_CATEGORIES = {"circolari", "autorizzazioni", "modulistica", "altro"}
+_VALID_CATEGORIES = {c.value for c in DocumentCategory}   # fonte unica: l'enum
 
 
 def _tenant_scope(ctx: TenantContext) -> dict:

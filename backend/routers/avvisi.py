@@ -298,6 +298,20 @@ async def update_avviso(
             if s not in ctx.sede_ids:
                 raise HTTPException(status_code=404, detail="Sede non consentita nel target")
 
+    # (2b) Le classi target risultanti devono appartenere alle sedi consentite dell'avviso
+    #      (come in creazione). ALL-OR-NOTHING: una classe fuori scope ⇒ 404, avviso invariato.
+    if updates.get("target_class_ids") and not ctx.all_access:
+        allowed_sedi = (updates.get("target_sedi")
+                        or avviso.get("target_sedi")
+                        or ([avviso.get("sede_id")] if avviso.get("sede_id") else []))
+        valid = await db.classes.find(
+            {"id": {"$in": updates["target_class_ids"]}, "sede_id": {"$in": list(allowed_sedi)}},
+            {"_id": 0, "id": 1},
+        ).to_list(100)
+        valid_ids = {c["id"] for c in valid}
+        if any(c not in valid_ids for c in updates["target_class_ids"]):
+            raise HTTPException(status_code=404, detail="Classe non consentita nel target")
+
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()

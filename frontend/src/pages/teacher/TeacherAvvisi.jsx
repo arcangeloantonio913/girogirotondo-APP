@@ -43,18 +43,25 @@ export default function TeacherAvvisi() {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
-    try {
-      const [aRes, cRes, sRes, uRes] = await Promise.all([
-        api.get('/avvisi'),
-        api.get('/classes'),
-        api.get('/students'),
-        api.get('/users'),
-      ]);
-      setAvvisi(aRes.data);
-      setClasses(cRes.data.filter(c => teacherClassIds.includes(c.id)));
-      setStudents(sRes.data);
-      setParents(uRes.data.filter(u => u.role === 'parent'));
-    } catch (err) { console.error(err); }
+    // allSettled: la lista avvisi si carica anche se una richiesta fallisce.
+    // I genitori si prendono da /users/by-class (accessibile alle maestre) per ogni
+    // classe della maestra, NON da /users (admin-only → 403 che azzerava la schermata).
+    const [aRes, cRes, sRes, ...pResArr] = await Promise.allSettled([
+      api.get('/avvisi'),
+      api.get('/classes'),
+      api.get('/students'),
+      ...teacherClassIds.map(cid => api.get(`/users/by-class/${cid}`)),
+    ]);
+    if (aRes.status === 'fulfilled') setAvvisi(aRes.value.data || []);
+    if (cRes.status === 'fulfilled') setClasses((cRes.value.data || []).filter(c => teacherClassIds.includes(c.id)));
+    if (sRes.status === 'fulfilled') setStudents(sRes.value.data || []);
+    const parentMap = new Map();
+    pResArr.forEach(r => {
+      if (r.status === 'fulfilled') {
+        (r.value.data || []).filter(u => u.role === 'parent').forEach(p => parentMap.set(p.id, p));
+      }
+    });
+    setParents([...parentMap.values()]);
   };
 
   // Genitori della classe selezionata

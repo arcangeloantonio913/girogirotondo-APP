@@ -17,12 +17,13 @@ export default function ParentModulistica() {
   const [acking,   setAcking]   = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       api.get('/documents'),
       api.get(`/read-receipts?parent_id=${user?.id}`),
     ]).then(([dR, rR]) => {
-      setDocs(dR.data || []);
-      setReceipts((rR.data || []).map((r: any) => r.document_id));
+      const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+      setDocs(val(dR) || []);
+      setReceipts((val(rR) || []).map((r: any) => r.document_id));
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 

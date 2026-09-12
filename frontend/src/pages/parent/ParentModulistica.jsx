@@ -14,12 +14,13 @@ export default function ParentModulistica() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [docsRes, receiptsRes] = await Promise.all([
+        const [docsRes, receiptsRes] = await Promise.allSettled([
           api.get('/documents'),
           api.get(`/read-receipts?parent_id=${user?.id}`),
         ]);
-        setDocuments(docsRes.data);
-        setReceipts(receiptsRes.data);
+        const val = r => r.status === 'fulfilled' ? r.value.data : undefined;
+        setDocuments(val(docsRes) || []);
+        setReceipts(val(receiptsRes) || []);
       } catch (err) {
         console.error(err);
       }

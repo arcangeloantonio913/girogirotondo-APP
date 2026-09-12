@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, Dimensions, StyleSheet, ActivityIndicator, Share, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
+import * as LegacyFS from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -56,11 +57,12 @@ export default function ParentGallery() {
         const ext = url.includes('image/png') ? 'png' : 'jpg';
         const path = new FileSystem.File(FileSystem.Paths.cache, `foto.${ext}`).uri;
         const base64 = url.split(',')[1];
-        await FileSystem.writeAsStringAsync(path, base64, { encoding: 'base64' });
+        // writeAsStringAsync/downloadAsync sono nell'API legacy in SDK 54
+        await LegacyFS.writeAsStringAsync(path, base64, { encoding: 'base64' });
         await Sharing.shareAsync(path, { mimeType: `image/${ext}` });
       } else {
         const path = new FileSystem.File(FileSystem.Paths.cache, 'foto.jpg').uri;
-        await FileSystem.downloadAsync(url, path);
+        await LegacyFS.downloadAsync(url, path);
         await Sharing.shareAsync(path, { mimeType: 'image/jpeg' });
       }
     } catch {} finally { setDownloading(false); }

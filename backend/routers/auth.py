@@ -66,7 +66,9 @@ async def register(request: Request, payload: UserRegister):
         "cognome": payload.cognome,
         "email": payload.email,
         "password": bcrypt.hashpw(payload.password.encode(), bcrypt.gensalt()).decode(),
-        "role": payload.role,
+        # SICUREZZA: la registrazione pubblica non concede MAI ruoli privilegiati.
+        # admin/maestre si creano solo da un admin autenticato (POST /api/users, /iscrizione).
+        "role": "parent",
         "class_id": payload.class_id,
         "child_id": payload.child_id,
         "avatar_url": payload.avatar_url,

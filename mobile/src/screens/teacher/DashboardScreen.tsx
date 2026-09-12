@@ -29,9 +29,10 @@ export default function TeacherDashboard({ navigation }: any) {
   useEffect(() => {
     const classIds = user?.class_ids?.length ? user.class_ids : user?.class_id ? [user.class_id] : [];
     if (!classIds.length) { setLoading(false); return; }
-    Promise.all([api.get('/students'), api.get('/classes')]).then(([sR, cR]) => {
-      setStudentCount(sR.data?.length || 0);
-      const cls = cR.data?.filter((c: any) => classIds.includes(c.id));
+    Promise.allSettled([api.get('/students'), api.get('/classes')]).then(([sR, cR]) => {
+      const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+      setStudentCount(val(sR)?.length || 0);
+      const cls = (val(cR) || []).filter((c: any) => classIds.includes(c.id));
       setClassName(cls?.map((c: any) => c.name).join(', ') || '');
     }).catch(() => {}).finally(() => setLoading(false));
   }, [user]);
@@ -122,6 +123,5 @@ const s = StyleSheet.create({
   topLogo:   { width: 28, height: 28, borderRadius: 14 },
   topSede:   { fontSize: 13, fontWeight: '700', color: '#1A202C' },
   menuBtn:   { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
-  white:  C.white,
 });
 

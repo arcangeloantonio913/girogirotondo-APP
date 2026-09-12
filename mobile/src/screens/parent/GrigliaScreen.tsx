@@ -15,17 +15,20 @@ const QTY_MAP: Record<string, { label: string; color: string; bg: string; emoji:
   mangiata_poca: { label: 'Mangiata poca', color: '#991B1B', bg: '#FEE2E2', emoji: '😐' },
   lasciata_poca: { label: 'Lasciata',      color: '#7F1D1D', bg: '#FECACA', emoji: '😕' },
   no:            { label: 'Non mangiato',  color: '#64748B', bg: '#F1F5F9', emoji: '😶' },
+  // valori legacy eventualmente presenti in dati vecchi
+  poca:          { label: 'Poca',          color: '#991B1B', bg: '#FEE2E2', emoji: '😐' },
+  molta:         { label: 'Molta',         color: '#065F46', bg: '#D1FAE5', emoji: '😋' },
 };
 
+// Le chiavi combaciano con i campi del backend: attivo su `key`, quantità su `key_qty`.
 const TIMELINE = [
-  { key: 'merenda_mattina',    label: 'Merenda mattina',    icon: '☕', time: '09:30', type: 'meal' },
-  { key: 'pasta',              label: 'Pasta / Primo',      icon: '🍝', time: '12:00', type: 'meal' },
-  { key: 'secondo',            label: 'Secondo',            icon: '🍗', time: '12:15', type: 'meal' },
-  { key: 'pane',               label: 'Pane',               icon: '🍞', time: '12:25', type: 'meal' },
-  { key: 'frutta',             label: 'Frutta',             icon: '🍎', time: '12:35', type: 'meal' },
-  { key: 'merenda_pomeriggio', label: 'Merenda pomeriggio', icon: '🍪', time: '15:30', type: 'meal' },
-  { key: 'pupù',               label: 'Pupù',               icon: '💩', time: '',      type: 'bool' },
-  { key: 'nanna',              label: 'Nanna / Riposo',     icon: '😴', time: '13:00', type: 'bool' },
+  { key: 'merenda', label: 'Merenda',        icon: '☕', time: '09:30', type: 'meal' },
+  { key: 'pasta',   label: 'Pasta / Primo',  icon: '🍝', time: '12:00', type: 'meal' },
+  { key: 'secondo', label: 'Secondo',        icon: '🍗', time: '12:15', type: 'meal' },
+  { key: 'pane',    label: 'Pane',           icon: '🍞', time: '12:25', type: 'meal' },
+  { key: 'frutta',  label: 'Frutta',         icon: '🍎', time: '12:35', type: 'meal' },
+  { key: 'pupu',    label: 'Pupù',           icon: '💩', time: '',      type: 'bool' },
+  { key: 'nanna',   label: 'Nanna / Riposo', icon: '😴', time: '13:00', type: 'bool' },
 ];
 
 function addDays(d: string, n: number) {
@@ -79,7 +82,8 @@ export default function ParentGriglia() {
             {/* Timeline pasti */}
             <Text style={s.sectionLabel}>Pasti del giorno</Text>
             {TIMELINE.filter(t => t.type === 'meal').map((item, i) => {
-              const val = griglia[item.key];
+              // Il backend salva la quantità in `<pasto>_qty` (l'attivo booleano è su `<pasto>`)
+              const val = griglia[item.key + '_qty'];
               const info = val ? QTY_MAP[val] : null;
               return (
                 <View key={i} style={s.timelineRow}>

@@ -36,8 +36,20 @@ export default function TeacherPresenze() {
       }).catch(()=>{});
     } else {
       const now=new Date();
-      const params=tab==='mese'?`mese=${now.getMonth()+1}&anno=${now.getFullYear()}`:`anno=${now.getFullYear()}`;
-      api.get(`/presenze?class_id=${classId}&${params}`).then(r=>setArchivio(r.data||[])).catch(()=>{});
+      // Backend richiede mese in formato YYYY-MM (zero-padded), altrimenti 400.
+      const params=tab==='mese'
+        ?`mese=${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+        :`anno=${now.getFullYear()}`;
+      api.get(`/presenze?class_id=${classId}&${params}`).then(r=>{
+        // Il backend ritorna record grezzi per studente: aggrego per giorno.
+        const byDate:Record<string,{date:string;presenti:number;assenti:number}>={};
+        (r.data||[]).forEach((rec:any)=>{
+          const d=rec.date; if(!d)return;
+          if(!byDate[d])byDate[d]={date:d,presenti:0,assenti:0};
+          if(rec.presente)byDate[d].presenti++; else byDate[d].assenti++;
+        });
+        setArchivio(Object.values(byDate).sort((a,b)=>b.date.localeCompare(a.date)));
+      }).catch(()=>{});
     }
   },[date,classId,tab,students]);
 
@@ -52,11 +64,15 @@ export default function TeacherPresenze() {
   const handleSave=async()=>{
     setSaving(true);
     try{
-      await Promise.all(students.map(st=>
-        api.post('/presenze',{student_id:st.id,class_id:classId,date,presente:!!presenze[st.id]?.presente,nota:presenze[st.id]?.nota||''})
-      ));
+      // Un solo registro giornaliero: {class_id, date, records:[...]} — come richiesto dal backend
+      const records=students.map(st=>({
+        student_id:st.id,
+        presente:!!presenze[st.id]?.presente,
+        nota:presenze[st.id]?.nota||'',
+      }));
+      await api.post('/presenze',{class_id:classId,date,records});
       Alert.alert('Salvato','Presenze aggiornate ✅');
-    }catch{Alert.alert('Errore','Impossibile salvare');}
+    }catch(e:any){Alert.alert('Errore',e?.response?.data?.detail||'Impossibile salvare');}
     finally{setSaving(false);}
   };
 

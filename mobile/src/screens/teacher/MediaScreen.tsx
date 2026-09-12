@@ -32,12 +32,13 @@ export default function TeacherMedia() {
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
-    Promise.all([
+    Promise.allSettled([
       api.get(`/gallery?class_id=${classId}&limit=40`),
       api.get(`/students?class_id=${classId}`),
     ]).then(([gR, sR]) => {
-      setItems(gR.data || []);
-      setStudents(sR.data || []);
+      const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+      setItems(val(gR) || []);
+      setStudents(val(sR) || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [classId]);
 

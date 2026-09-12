@@ -27,8 +27,11 @@ export default function AdminPresenze() {
   const [loadingRiep, setLoadingRiep] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.get('/classes'), api.get('/students')])
-      .then(([cR, sR]) => { setClasses(cR.data || []); setStudents(sR.data || []); })
+    Promise.allSettled([api.get('/classes'), api.get('/students')])
+      .then(([cR, sR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setClasses(val(cR) || []); setStudents(val(sR) || []);
+      })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 

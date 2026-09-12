@@ -8,7 +8,7 @@ import { Lock, Mail, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 const SCHOOLS = [
   { id: 'girogirotondo', name: 'Girogirotondo', logo: '/logo-girogirotondo.png' },
-  { id: 'magico-mondo', name: 'Il Magico Mondo', logo: '/logo-magico-mondo.png' },
+  { id: 'il-magico-mondo', name: 'Il Magico Mondo', logo: '/logo-magico-mondo.png' },
 ];
 
 export default function LoginPage() {

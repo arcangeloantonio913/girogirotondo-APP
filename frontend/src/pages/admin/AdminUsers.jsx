@@ -176,6 +176,9 @@ export default function AdminUsers() {
       };
       const res = await api.post('/users/iscrizione', payload);
       const studentId = res.data.student?.id;
+      // Se il figlio è stato aggiunto a un genitore ESISTENTE, il backend NON
+      // imposta/cambia la password: la credenziale generata non è stata applicata.
+      const siblingAdded = res.data.sibling_added === true;
 
       // Se il secondo genitore è stato inserito, crealo subito
       let parent2Result = null;
@@ -201,7 +204,10 @@ export default function AdminUsers() {
         genitore_email: res.data.genitore_email,
         bambino_nome: `${iscForm.bambino_nome} ${iscForm.bambino_cognome}`,
         email_inviata: res.data.email_inviata,
-        generatedPwd: iscForm.genitore_password,
+        // Mostra le credenziali generate SOLO se è stato creato un nuovo account
+        // genitore. Con sibling_added la password non è mai stata applicata.
+        siblingAdded,
+        generatedPwd: siblingAdded ? undefined : iscForm.genitore_password,
         parent2: parent2Result,
         parent2Pwd: isc2Form.genitore_password,
       });
@@ -862,7 +868,11 @@ export default function AdminUsers() {
                 <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
                   <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">1° Genitore</p>
                   <p><span className="text-gray-400">Email:</span> <strong className="text-gray-800 select-all">{iscSuccess.genitore_email}</strong></p>
-                  <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{iscSuccess.generatedPwd}</strong></p>
+                  {iscSuccess.siblingAdded ? (
+                    <p className="text-gray-500">Figlio aggiunto a un account genitore esistente — credenziali invariate</p>
+                  ) : (
+                    <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{iscSuccess.generatedPwd}</strong></p>
+                  )}
                 </div>
 
                 {/* Credenziali 2° genitore se creato */}

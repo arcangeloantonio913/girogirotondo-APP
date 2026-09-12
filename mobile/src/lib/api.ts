@@ -11,10 +11,10 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Istanza per il login (timeout 35s — Railway può essere lento al risveglio)
+// Istanza per il login (timeout 35s — Railway può essere lento al risveglio a freddo)
 export const loginApi = axios.create({
   baseURL: `${BACKEND_URL}/api`,
-  timeout: 10000,
+  timeout: 35000,
   headers: { 'Content-Type': 'application/json' },
 });
 

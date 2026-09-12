@@ -14,17 +14,18 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [usersRes, classesRes, studentsRes, aptsRes] = await Promise.all([
+        const [usersRes, classesRes, studentsRes, aptsRes] = await Promise.allSettled([
           api.get('/users'),
           api.get('/classes'),
           api.get('/students'),
           api.get('/appointments'),
         ]);
+        const val = r => r.status === 'fulfilled' ? r.value.data : undefined;
         setStats({
-          users: usersRes.data.length,
-          classes: classesRes.data.length,
-          students: studentsRes.data.length,
-          appointments: aptsRes.data.length,
+          users: val(usersRes)?.length || 0,
+          classes: val(classesRes)?.length || 0,
+          students: val(studentsRes)?.length || 0,
+          appointments: val(aptsRes)?.length || 0,
         });
       } catch (err) {
         console.error(err);

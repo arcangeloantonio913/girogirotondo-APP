@@ -138,6 +138,21 @@ async def create_student(
     else:
         sede_id = get_teacher_sede_id(current_user)
 
+    # La classe target dev'essere della sede del creatore (evita studenti "fantasma"
+    # in classi di altre sedi); per la maestra dev'essere una delle sue classi.
+    cls = await db.classes.find_one({"id": payload.class_id}, {"_id": 0, "sede_id": 1})
+    if not cls:
+        raise HTTPException(status_code=400, detail="Classe non trovata")
+    if not current_user.get("is_superadmin") and cls.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Classe non appartiene alla tua sede")
+    if current_user.get("role") == "teacher":
+        tcls = list(current_user.get("class_ids") or [])
+        lg = current_user.get("class_id")
+        if lg and lg not in tcls:
+            tcls.append(lg)
+        if payload.class_id not in tcls:
+            raise HTTPException(status_code=403, detail="Classe non assegnata")
+
     student_dict = payload.model_dump()
     student_dict["id"] = str(uuid.uuid4())
     student_dict["sede_id"] = sede_id
@@ -191,11 +206,14 @@ async def update_student(
         if field in allowed_fields:
             updates[field] = value
 
-    # Se viene cambiata la classe, aggiorna anche sede_id in base alla nuova classe
+    # Se viene cambiata la classe, aggiorna anche sede_id in base alla nuova classe.
+    # La nuova classe DEVE essere della stessa sede (niente spostamenti cross-tenant).
     if "class_id" in updates and role == "admin":
         new_cls = await db.classes.find_one({"id": updates["class_id"]})
         if not new_cls:
             raise HTTPException(status_code=400, detail="Classe non trovata")
+        if not current_user.get("is_superadmin") and new_cls.get("sede_id") != sede_id:
+            raise HTTPException(status_code=403, detail="La classe non appartiene alla sede selezionata")
         updates["sede_id"] = new_cls.get("sede_id", student.get("sede_id"))
 
     if not updates:

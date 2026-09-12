@@ -15,7 +15,7 @@ const PASTI = [
   { key: 'merenda_mattina',    label: 'Merenda mattina',    icon: '☕', required: false },
   { key: 'primo',              label: 'Pasta / Primo',      icon: '🍝', required: true  },
   { key: 'secondo',            label: 'Secondo',            icon: '🍗', required: true  },
-  { key: 'pane',               label: 'Pane',               icon: '🍞', required: false },
+  { key: 'contorno',           label: 'Contorno / Pane',    icon: '🍞', required: false },
   { key: 'frutta',             label: 'Frutta',             icon: '🍎', required: false },
   { key: 'merenda_pomeriggio', label: 'Merenda pomeriggio', icon: '🍪', required: false },
 ];
@@ -49,15 +49,18 @@ export default function AdminMensa() {
   // Form
   const [form, setForm] = useState({
     date_from: TODAY, date_to: TODAY,
-    primo: '', secondo: '', pane: '', frutta: '',
+    primo: '', secondo: '', contorno: '', frutta: '',
     merenda_mattina: '', merenda_pomeriggio: '',
     class_id: '', // '' = tutte le classi
     sede_ids: sede ? [sede] : [],
   });
 
   useEffect(() => {
-    Promise.all([api.get('/meals'), api.get('/classes')])
-      .then(([mR, cR]) => { setMeals(mR.data || []); setClasses(cR.data || []); })
+    Promise.allSettled([api.get('/meals'), api.get('/classes')])
+      .then(([mR, cR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setMeals(val(mR) || []); setClasses(val(cR) || []);
+      })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
@@ -77,12 +80,17 @@ export default function AdminMensa() {
     if (!form.primo && !form.secondo) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, sede_id: form.sede_ids[0] };
-      const res = await api.post('/meals', payload);
+      const payload = {
+        ...form,
+        sede_id: form.sede_ids[0],
+        // singola data se from == to, altrimenti range (date = null) — come la web app
+        date: form.date_from === form.date_to ? form.date_from : null,
+      };
+      const res = await api.post('/meals/menu', payload);
       setMeals(prev => [res.data, ...prev]);
       setShowForm(false);
-      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', pane: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
-    } catch { Alert.alert('Errore', 'Impossibile salvare il menu'); }
+      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
+    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile salvare il menu'); }
     finally { setSaving(false); }
   };
 

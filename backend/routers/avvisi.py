@@ -14,6 +14,22 @@ from middleware.auth import (
 
 router = APIRouter(prefix="/api/avvisi", tags=["avvisi"])
 
+_MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024  # ~12MB data URL (limite documento MongoDB: 16MB)
+
+
+def _apply_attachment(doc: dict) -> None:
+    """Trasforma attachment_data (data URL base64) in attachment_url + attachment_name
+    persistiti, rimuovendo i campi grezzi. Solleva 413 se l'allegato è troppo grande."""
+    data = doc.pop("attachment_data", None)
+    doc.pop("attachment_mime", None)
+    name = doc.pop("attachment_name", None)
+    if not data:
+        return
+    if len(data) > _MAX_ATTACHMENT_BYTES:
+        raise HTTPException(status_code=413, detail="Allegato troppo grande (max ~9MB).")
+    doc["attachment_url"] = data
+    doc["attachment_name"] = name or "allegato"
+
 
 def _avviso_visible_to(avviso: dict, role: str, user_id: str,
                         user_class_ids: list, user_child_ids: list,
@@ -149,6 +165,7 @@ async def create_avviso(
 
     db = get_db()
     doc = payload.model_dump()
+    _apply_attachment(doc)   # normalizza l'eventuale allegato (data URL -> attachment_url)
     doc["id"] = str(uuid.uuid4())
     doc["author_id"]   = ctx.user_id
     doc["author_name"] = ctx.user.get("name", "")
@@ -222,8 +239,8 @@ async def create_avviso(
 
     # ── Push notification ────────────────────────────────────────────────────
     try:
-        push_title = f"📢 Nuovo avviso: {doc.get('title', '')}"
-        push_body  = (doc.get('body') or doc.get('message') or '')[:120]
+        push_title = f"📢 Nuovo avviso: {doc.get('titolo') or doc.get('title', '')}"
+        push_body  = (doc.get('testo') or doc.get('body') or doc.get('message') or '')[:120]
         target_roles = doc.get('target_roles') or ['parent']
         class_ids    = doc.get('target_class_ids') or []
         parent_ids   = doc.get('target_parent_ids') or []
@@ -269,6 +286,7 @@ async def update_avviso(
         raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
 
     updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    _apply_attachment(updates)   # normalizza l'eventuale nuovo allegato
     # (3) sede_id IMMUTABILE via body: nessun tenant-move (come il fix calendar). AvvisoUpdate
     #     non espone sede_id, ma lo rimuoviamo comunque per difesa in profondità.
     updates.pop("sede_id", None)

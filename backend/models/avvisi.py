@@ -26,6 +26,11 @@ class AvvisoCreate(BaseModel):
     # Singoli genitori destinatari. Vuoto / None = tutti i genitori delle classi target.
     target_parent_ids: Optional[List[str]] = None  # es. ['uuid-genitore-1']
 
+    # ── Allegato (opzionale) — un file per avviso, inviato come data URL base64 ──
+    attachment_data: Optional[str] = None          # "data:<mime>;base64,..."
+    attachment_name: Optional[str] = None
+    attachment_mime: Optional[str] = None
+
 
 class AvvisoUpdate(BaseModel):
     titolo: Optional[str] = None
@@ -36,3 +41,6 @@ class AvvisoUpdate(BaseModel):
     target_class_ids: Optional[List[str]] = None
     target_roles: Optional[List[str]] = None
     target_parent_ids: Optional[List[str]] = None
+    attachment_data: Optional[str] = None
+    attachment_name: Optional[str] = None
+    attachment_mime: Optional[str] = None

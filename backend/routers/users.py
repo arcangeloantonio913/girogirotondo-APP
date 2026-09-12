@@ -63,13 +63,33 @@ async def get_users(
 
 @router.get("/by-class/{class_id}")
 async def get_users_by_class(class_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") not in ("admin", "teacher"):
+    role = current_user.get("role")
+    if role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
+    # Una maestra può interrogare SOLO le proprie classi (l'endpoint espone i genitori
+    # della classe → niente enumerazione di classi altrui).
+    if role == "teacher":
+        tclasses = list(current_user.get("class_ids") or [])
+        legacy = current_user.get("class_id")
+        if legacy and legacy not in tclasses:
+            tclasses.append(legacy)
+        if class_id not in tclasses:
+            raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
     db = get_db()
-    users = await db.users.find(
-        {"class_id": class_id}, {"_id": 0, "password": 0, "admin_password": 0}
-    ).to_list(500)
-    return users
+    _proj = {"_id": 0, "password": 0, "admin_password": 0}
+    # 1) Utenti con class_id diretto (es. maestre assegnate)
+    direct = await db.users.find({"class_id": class_id}, _proj).to_list(500)
+    # 2) Genitori dei bambini di questa classe — i genitori NON hanno class_id,
+    #    sono collegati alla classe tramite i figli (child_ids -> students.class_id).
+    students = await db.students.find({"class_id": class_id}, {"_id": 0, "id": 1}).to_list(500)
+    student_ids = [s["id"] for s in students]
+    parents = []
+    if student_ids:
+        parents = await db.users.find(
+            {"role": "parent", "child_ids": {"$in": student_ids}}, _proj
+        ).to_list(500)
+    seen = {u["id"] for u in direct}
+    return direct + [p for p in parents if p["id"] not in seen]
 
 
 # ---------------------------------------------------------------------------
@@ -420,6 +440,33 @@ async def update_user_email(
     await db.users.update_one({"id": user_id}, {"$set": {"email": new_email}})
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     return user
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/users/{user_id}/password  — cambio password self-service (o admin)
+# ---------------------------------------------------------------------------
+
+@router.patch("/{user_id}/password")
+async def update_own_password(
+    user_id: str,
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+):
+    """Cambio password SELF-service. Gli admin cambiano la password altrui via
+    /credentials (che applica i controlli di sede)."""
+    if current_user.get("id") != user_id:
+        raise HTTPException(status_code=403, detail="Puoi cambiare solo la tua password")
+
+    new_password = (payload.get("password") or "").strip()
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="La password deve essere di almeno 6 caratteri")
+
+    db = get_db()
+    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    result = await db.users.update_one({"id": user_id}, {"$set": {"password": hashed}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    return {"message": "Password aggiornata"}
 
 
 # ---------------------------------------------------------------------------

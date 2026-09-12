@@ -40,12 +40,15 @@ export default function AdminDashboard({ navigation }: any) {
   const sedeCorrente = sedi.find(x => x.id === sedeAttiva);
 
   useEffect(() => {
-    Promise.all([api.get('/users'), api.get('/students'), api.get('/classes')])
-      .then(([uR, sR, cR]) => setStats({ 
-        users: uR.data?.length || 0, 
-        students: sR.data?.length || 0, 
-        classes: cR.data?.length || 0 
-      }))
+    Promise.allSettled([api.get('/users'), api.get('/students'), api.get('/classes')])
+      .then(([uR, sR, cR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setStats({
+          users: val(uR)?.length || 0,
+          students: val(sR)?.length || 0,
+          classes: val(cR)?.length || 0
+        });
+      })
       .catch(() => {});
   }, [sede]);
 
@@ -143,5 +146,4 @@ const s = StyleSheet.create({
   card:   { backgroundColor: C.white, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: C.border },
   iconBox:{ width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   cardTitle:{ flex: 1, fontSize: 15, fontWeight: '800', color: C.text },
-  white:  C.white,
 });

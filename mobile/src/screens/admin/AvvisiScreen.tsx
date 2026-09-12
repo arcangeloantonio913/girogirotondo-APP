@@ -46,8 +46,11 @@ export default function AdminAvvisi() {
   const [sedi,       setSedi]       = useState<Sede[]>([]);
 
   useEffect(() => {
-    Promise.all([api.get('/avvisi'), api.get('/classes')])
-      .then(([aR, cR]) => { setAvvisi(aR.data || []); setClasses(cR.data || []); })
+    Promise.allSettled([api.get('/avvisi'), api.get('/classes')])
+      .then(([aR, cR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setAvvisi(val(aR) || []); setClasses(val(cR) || []);
+      })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
@@ -70,10 +73,10 @@ export default function AdminAvvisi() {
   };
 
   const openEdit = (a: any) => {
-    setEditing(a); setTitle(a.title || ''); setBody(a.body || a.message || '');
-    setSelSedi(a.sedi || []);
+    setEditing(a); setTitle(a.titolo || a.title || ''); setBody(a.testo || a.body || a.message || '');
+    setSelSedi(a.target_sedi || a.sedi || []);
     setSelRoles(a.target_roles || ['parent']);
-    setSelClasses(a.class_ids || []); setAllClasses(!a.class_ids?.length);
+    setSelClasses(a.target_class_ids || a.class_ids || []); setAllClasses(!(a.target_class_ids?.length || a.class_ids?.length));
     setAllegati([]); setShowForm(true);
   };
 
@@ -92,30 +95,35 @@ export default function AdminAvvisi() {
       });
       if (res.canceled || !res.assets?.[0]) return;
       const asset = res.assets[0];
-      const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+      const mime = asset.mimeType || 'application/octet-stream';
+      const base64 = await new FileSystem.File(asset.uri).base64();
       setAllegati(prev => [...prev, {
         name: asset.name,
-        mime: asset.mimeType || 'application/octet-stream',
-        base64: `data:${asset.mimeType};base64,${base64}`,
+        mime,
+        base64: `data:${mime};base64,${base64}`,
       }]);
-    } catch (e) {
-      Alert.alert('Errore', 'Impossibile caricare il file');
+    } catch (e: any) {
+      Alert.alert('Errore', e?.message || 'Impossibile caricare il file');
     }
   };
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permesso negato'); return; }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    if (res.canceled || !res.assets?.[0]) return;
-    const asset = res.assets[0];
-    const name = asset.uri.split('/').pop() || 'immagine.jpg';
-    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
-    setAllegati(prev => [...prev, {
-      name,
-      mime: 'image/jpeg',
-      base64: `data:image/jpeg;base64,${base64}`,
-    }]);
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      const name = asset.uri.split('/').pop() || 'immagine.jpg';
+      const base64 = await new FileSystem.File(asset.uri).base64();
+      setAllegati(prev => [...prev, {
+        name,
+        mime: 'image/jpeg',
+        base64: `data:image/jpeg;base64,${base64}`,
+      }]);
+    } catch (e: any) {
+      Alert.alert('Errore', e?.message || 'Impossibile caricare l\'immagine');
+    }
   };
 
   const removeAllegato = (idx: number) => {
@@ -129,10 +137,11 @@ export default function AdminAvvisi() {
     setSaving(true);
     try {
       const payload: any = {
-        title, body,
-        sedi: selSedi,
+        titolo: title,
+        testo: body,
+        target_sedi: selSedi,
         target_roles: selRoles,
-        class_ids: allClasses ? [] : selClasses,
+        target_class_ids: allClasses ? [] : selClasses,
       };
       // Allega il primo file se presente (il backend supporta un allegato per avviso)
       if (allegati.length > 0) {
@@ -140,7 +149,7 @@ export default function AdminAvvisi() {
         payload.attachment_name = allegati[0].name;
         payload.attachment_mime = allegati[0].mime;
       }
-      let res;
+      let res: any;
       if (editing) {
         res = await api.put(`/avvisi/${editing.id}`, payload);
         setAvvisi(prev => prev.map(a => a.id === editing.id ? res.data : a));
@@ -192,9 +201,9 @@ export default function AdminAvvisi() {
                 <Text style={s.cardDate}>
                   {item.created_at ? new Date(item.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
                 </Text>
-                <Text style={s.cardTitle}>{item.title}</Text>
-                {(item.body || item.message) &&
-                  <Text style={s.cardBody} numberOfLines={2}>{item.body || item.message}</Text>}
+                <Text style={s.cardTitle}>{item.titolo || item.title}</Text>
+                {(item.testo || item.body || item.message) &&
+                  <Text style={s.cardBody} numberOfLines={2}>{item.testo || item.body || item.message}</Text>}
                 {/* Allegato */}
                 {item.attachment_name && (
                   <TouchableOpacity onPress={() => item.attachment_url && Linking.openURL(item.attachment_url)}
@@ -215,7 +224,7 @@ export default function AdminAvvisi() {
               </View>
             </View>
             <View style={s.badgesRow}>
-              {(item.sedi || []).map((sd: string) => {
+              {(item.target_sedi || item.sedi || []).map((sd: string) => {
                 const info = sedi.find(x => x.id === sd);
                 const col = info?.color ?? C.primary;
                 return (

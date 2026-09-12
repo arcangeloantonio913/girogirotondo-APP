@@ -27,8 +27,8 @@ export default function ParentAvvisi() {
               <View style={s.badge}><Text style={s.badgeText}>{item.type || 'Avviso'}</Text></View>
               <Text style={s.date}>{new Date(item.created_at || item.date).toLocaleDateString('it-IT')}</Text>
             </View>
-            <Text style={s.cardTitle}>{item.title}</Text>
-            {item.body && <Text style={s.cardBody}>{item.body}</Text>}
+            <Text style={s.cardTitle}>{item.titolo || item.title}</Text>
+            {(item.testo || item.body) && <Text style={s.cardBody}>{item.testo || item.body}</Text>}
           </View>
         )}
       />

@@ -21,10 +21,12 @@ async def get_read_receipts(
     query: dict = {}
     if document_id:
         query["document_id"] = document_id
-    if parent_id:
-        query["parent_id"] = parent_id
-    elif current_user.get("role") == "parent":
+    # Un genitore vede SOLO le proprie ricevute: forziamo self, ignorando il
+    # parent_id del client (altrimenti IDOR: leggerebbe le ricevute di altre famiglie).
+    if current_user.get("role") == "parent":
         query["parent_id"] = current_user.get("id")
+    elif parent_id:
+        query["parent_id"] = parent_id
     receipts = await db.read_receipts.find(query, {"_id": 0}).to_list(1000)
     return receipts
 

@@ -23,8 +23,11 @@ export default function AdminClasses() {
   const [editForm,       setEditForm]       = useState<any>({});
 
   useEffect(()=>{
-    Promise.all([api.get('/classes'),api.get('/students'),api.get('/users')])
-      .then(([cR,sR,uR])=>{setClasses(cR.data||[]);setStudents(sR.data||[]);setUsers(uR.data||[]);})
+    Promise.allSettled([api.get('/classes'),api.get('/students'),api.get('/users')])
+      .then(([cR,sR,uR])=>{
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setClasses(val(cR)||[]);setStudents(val(sR)||[]);setUsers(val(uR)||[]);
+      })
       .catch(()=>{}).finally(()=>setLoading(false));
   },[sede]);
 
@@ -69,10 +72,10 @@ export default function AdminClasses() {
 
   const handleSaveStudent=async()=>{
     try{
-      await api.patch(`/students/${editStudent.id}`,editForm);
+      await api.put(`/students/${editStudent.id}`,editForm);
       setStudents(prev=>prev.map(s=>s.id===editStudent.id?{...s,...editForm}:s));
       setEditStudent(null);
-    }catch{Alert.alert('Errore','Impossibile salvare');}
+    }catch(e:any){Alert.alert('Errore',e?.response?.data?.detail||'Impossibile salvare');}
   };
 
   const teachers = users.filter(u=>u.role==='teacher');

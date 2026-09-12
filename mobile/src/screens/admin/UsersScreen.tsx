@@ -54,8 +54,11 @@ export default function AdminUsers() {
   const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '' });
 
   useEffect(() => {
-    Promise.all([api.get('/users'), api.get('/classes'), api.get('/students')])
-      .then(([uR, cR, sR]) => { setUsers(uR.data || []); setClasses(cR.data || []); setStudents(sR.data || []); })
+    Promise.allSettled([api.get('/users'), api.get('/classes'), api.get('/students')])
+      .then(([uR, cR, sR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setUsers(val(uR) || []); setClasses(val(cR) || []); setStudents(val(sR) || []);
+      })
       .catch(() => {}).finally(() => setLoading(false));
   }, [sede]);
 
@@ -80,12 +83,21 @@ export default function AdminUsers() {
   const handleSaveEdit = async () => {
     setSaving(true);
     try {
-      const payload: any = { name: editForm.name, cognome: editForm.cognome };
-      if (editForm.email && editForm.email !== editUser.email) payload.email = editForm.email;
-      if (editForm.password) payload.password = editForm.password;
-      if (editForm.class_id) payload.class_id = editForm.class_id;
-      await api.patch(`/users/${editUser.id}`, payload);
-      setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...payload } : u));
+      // 1) Dati anagrafici → PUT /users/{id} (UserUpdate non accetta email/password)
+      const profile: any = { name: editForm.name, cognome: editForm.cognome };
+      if (editForm.class_id) profile.class_id = editForm.class_id;
+      await api.put(`/users/${editUser.id}`, profile);
+
+      // 2) Credenziali (email/password) → PUT /users/{id}/credentials
+      const cred: any = {};
+      if (editForm.email && editForm.email !== editUser.email) cred.email = editForm.email;
+      if (editForm.password) cred.password = editForm.password;
+      if (Object.keys(cred).length > 0) {
+        await api.put(`/users/${editUser.id}/credentials`, cred);
+      }
+
+      const merged = { ...profile, ...(cred.email ? { email: cred.email } : {}) };
+      setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...merged } : u));
       Alert.alert('Salvato', 'Dati aggiornati con successo');
       setModal(null);
     } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile aggiornare'); }
@@ -178,7 +190,8 @@ export default function AdminUsers() {
     setIsc({ bambino_nome:'',bambino_cognome:'',bambino_data_nascita:'',class_id:'',
       genitore_nome:'',genitore_cognome:'',genitore_email:'',genitore_password:genPwd(),
       genitore2_nome:'',genitore2_cognome:'',genitore2_email:'',genitore2_password:'',
-      show_second_parent: false });
+      show_second_parent: false,
+      bambino2_nome:'',bambino2_cognome:'',bambino2_class_id:'' });
   };
 
   return (

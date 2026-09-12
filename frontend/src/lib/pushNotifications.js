@@ -29,7 +29,7 @@ export async function requestPushPermission() {
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
 
     if (token) {
-      await api.post('/notifications/register-token', { token, platform: 'web' });
+      await api.post('/notifications/register-token', { token, device_type: 'web' });
       localStorage.setItem('ggt_push_token', token);
       console.log('[Push] Token registrato');
       return true;

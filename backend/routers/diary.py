@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.database import get_db
 from utils.expo_push import notify_parents_of_class, notify_users
-from models.diary import DiaryEntryCreate
+from models.diary import DiaryEntryCreate, DiaryEntryUpdate
 from middleware.auth import get_tenant_context, TenantContext, _resolve_class
 from middleware.rate_limiter import limiter
 
@@ -102,3 +102,48 @@ async def create_diary(
     if ctx.role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato: solo admin o maestra può scrivere nel diario")
     return await _create_diary(entry, ctx)
+
+
+@router.put("/api/diary/{entry_id}")
+@router.put("/api/diary/entries/{entry_id}")
+async def update_diary(
+    entry_id: str,
+    payload: DiaryEntryUpdate,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    """Modifica una voce del diario — solo admin/maestra della classe della voce."""
+    if ctx.role not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+    db = get_db()
+    entry = await db.diary.find_one({"id": entry_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Voce non trovata")
+    ctx.assert_class(entry.get("class_id"))   # 404 cross-tenant
+
+    updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.diary.update_one({"id": entry_id}, {"$set": updates})
+    updated = await db.diary.find_one({"id": entry_id}, {"_id": 0})
+    return updated
+
+
+@router.delete("/api/diary/{entry_id}")
+@router.delete("/api/diary/entries/{entry_id}")
+async def delete_diary(
+    entry_id: str,
+    ctx: TenantContext = Depends(get_tenant_context),
+):
+    """Elimina una voce del diario — solo admin/maestra della classe della voce."""
+    if ctx.role not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+    db = get_db()
+    entry = await db.diary.find_one({"id": entry_id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Voce non trovata")
+    ctx.assert_class(entry.get("class_id"))   # 404 cross-tenant
+
+    await db.diary.delete_one({"id": entry_id})
+    return {"message": "Voce eliminata"}

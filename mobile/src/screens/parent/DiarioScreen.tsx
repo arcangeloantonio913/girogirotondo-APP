@@ -156,6 +156,6 @@ const s = StyleSheet.create({
   activitiesRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   actTag:       { backgroundColor: '#EBF0FF', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
   actTagText:   { fontSize: 11, color: C.babyBlue, fontWeight: '700' },
-  noteBox:      { backgroundColor: '#F8FBFF', borderRadius: 12, padding: 12, borderLeftWidth: 3, borderLeftColor: C.babyBlue, borderRadius: 0 },
+  noteBox:      { backgroundColor: '#F8FBFF', padding: 12, borderLeftWidth: 3, borderLeftColor: C.babyBlue, borderRadius: 0 },
   noteText:     { fontSize: 13, color: '#374151', lineHeight: 20 },
 });

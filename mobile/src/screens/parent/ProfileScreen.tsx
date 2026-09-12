@@ -22,7 +22,7 @@ export default function ParentProfile() {
     if (!newEmail.trim() || newEmail === user?.email) { setEditingEmail(false); return; }
     setSaving(true);
     try {
-      await api.patch(`/users/${user?.id}`, { email: newEmail.trim().toLowerCase() });
+      await api.patch(`/users/${user?.id}/email`, { email: newEmail.trim().toLowerCase() });
       await refreshUser();
       setEmailMsg('✅ Email aggiornata con successo');
       setEditingEmail(false);

@@ -47,8 +47,8 @@ export default function NotificheScreen() {
             <View style={s.card}>
               <View style={s.iconBox}><Ionicons name="megaphone-outline" size={20} color={accentColor} /></View>
               <View style={{ flex: 1 }}>
-                <View style={s.row}><Text style={s.title} numberOfLines={1}>{item.title}</Text><Text style={s.date}>{dateStr}</Text></View>
-                {(item.body || item.message) && <Text style={s.body} numberOfLines={3}>{item.body || item.message}</Text>}
+                <View style={s.row}><Text style={s.title} numberOfLines={1}>{item.titolo || item.title}</Text><Text style={s.date}>{dateStr}</Text></View>
+                {(item.testo || item.body || item.message) && <Text style={s.body} numberOfLines={3}>{item.testo || item.body || item.message}</Text>}
                 {item.attachment_name && (
                   <View style={s.attach}><Ionicons name="attach-outline" size={12} color={C.muted} /><Text style={s.attachText}>{item.attachment_name}</Text></View>
                 )}

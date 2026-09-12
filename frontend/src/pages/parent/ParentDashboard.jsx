@@ -68,27 +68,27 @@ export default function ParentDashboard() {
     const primaryChildId = activeChildId || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (!primaryChildId) return;
     const load = async () => {
-      try {
-        const [childRes, diaryRes, grigliaRes, galleryRes, mealRes, classesRes] = await Promise.all([
-          api.get(`/students/${primaryChildId}`),
-          api.get(`/diary?date=${today}`),
-          api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
-          api.get(`/gallery?student_id=${primaryChildId}`),
-          api.get(`/meals?date=${today}`),
-          api.get('/classes'),
-        ]);
-        setChild(childRes.data);
-        setDiary(diaryRes.data?.[0] || null);
-        setGriglia(grigliaRes.data?.[0] || null);
-        setGalleryItems(galleryRes.data || []);
-        setMeal(mealRes.data?.[0] || null);
-        // La classe si ricava dal bambino (non più direttamente dal genitore)
-        const childClassId = childRes.data?.class_id;
-        const cls = classesRes.data.find(c => c.id === childClassId);
-        if (cls) setClassName(cls.name);
-      } catch (err) {
-        console.error('Error loading dashboard:', err);
-      }
+      // allSettled: ogni sezione è indipendente. Se una richiesta fallisce (es. 404 su
+      // un caso limite di dati) le altre continuano a popolarsi — niente dashboard vuota.
+      const [childRes, diaryRes, grigliaRes, galleryRes, mealRes, classesRes] = await Promise.allSettled([
+        api.get(`/students/${primaryChildId}`),
+        api.get(`/diary?student_id=${primaryChildId}&date=${today}`),
+        api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
+        api.get(`/gallery?student_id=${primaryChildId}`),
+        api.get(`/meals?date=${today}`),
+        api.get('/classes'),
+      ]);
+      const val = (r) => r.status === 'fulfilled' ? r.value.data : undefined;
+      const child = val(childRes);
+      if (child) setChild(child);
+      setDiary(val(diaryRes)?.[0] || null);
+      setGriglia(val(grigliaRes)?.[0] || null);
+      setGalleryItems(val(galleryRes) || []);
+      setMeal(val(mealRes)?.[0] || null);
+      // La classe si ricava dal bambino (non più direttamente dal genitore)
+      const classes = val(classesRes);
+      const cls = Array.isArray(classes) ? classes.find(c => c.id === child?.class_id) : null;
+      if (cls) setClassName(cls.name);
     };
     load();
   }, [user, today, activeChildId]);

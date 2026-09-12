@@ -32,7 +32,7 @@ export default function TeacherProfile() {
     if (newPwd !== confirmPwd) { setPwdMsg('❌ Le password non coincidono'); return; }
     setSaving(true);
     try {
-      await api.put(`/users/${user?.id}/credentials`, { password: newPwd });
+      await api.patch(`/users/${user?.id}/password`, { password: newPwd });
       setPwdMsg('✅ Password aggiornata con successo');
       setNewPwd(''); setConfirmPwd('');
     } catch (e: any) {

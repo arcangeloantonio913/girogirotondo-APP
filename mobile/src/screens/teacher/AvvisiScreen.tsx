@@ -28,17 +28,19 @@ export default function TeacherAvvisi() {
 
   useEffect(() => {
     const loadAll = async () => {
-      try {
-        const [aR, pR] = await Promise.all([
-          api.get('/avvisi'),
-          api.get('/users').then(r => (r.data || []).filter((u: any) => u.role === 'parent')),
-        ]);
-        setAvvisi(aR.data || []);
-        setParents(pR);
-      } catch {} finally { setLoading(false); }
+      // allSettled: la lista avvisi si carica anche se il recupero genitori fallisce.
+      // I genitori vanno presi da /users/by-class (accessibile alle maestre), NON da
+      // /users (admin-only → 403 che prima azzerava tutta la schermata).
+      const [aR, pR] = await Promise.allSettled([
+        api.get('/avvisi'),
+        classId ? api.get(`/users/by-class/${classId}`) : Promise.resolve({ data: [] } as any),
+      ]);
+      if (aR.status === 'fulfilled') setAvvisi(aR.value.data || []);
+      if (pR.status === 'fulfilled') setParents((pR.value.data || []).filter((u: any) => u.role === 'parent'));
+      setLoading(false);
     };
     loadAll();
-  }, []);
+  }, [classId]);
 
   const reset = () => {
     setTitle(''); setBody(''); setTargetType('class'); setSelParents([]);
@@ -49,10 +51,11 @@ export default function TeacherAvvisi() {
     setSaving(true);
     try {
       const payload: any = {
-        title, body,
-        class_ids: classId ? [classId] : [],
+        titolo: title,
+        testo: body,
+        target_class_ids: classId ? [classId] : [],
         target_roles: ['parent'],
-        sedi: [user?.sede_id || 'girogirotondo'],
+        target_sedi: [user?.sede_id || 'girogirotondo'],
       };
       if (targetType === 'specific' && selParents.length > 0) {
         payload.target_parent_ids = selParents;
@@ -102,9 +105,9 @@ export default function TeacherAvvisi() {
                 <Text style={s.cardDate}>
                   {item.created_at ? new Date(item.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) : ''}
                 </Text>
-                <Text style={s.cardTitle}>{item.title}</Text>
-                {(item.body || item.message) && (
-                  <Text style={s.cardBody} numberOfLines={2}>{item.body || item.message}</Text>
+                <Text style={s.cardTitle}>{item.titolo || item.title}</Text>
+                {(item.testo || item.body || item.message) && (
+                  <Text style={s.cardBody} numberOfLines={2}>{item.testo || item.body || item.message}</Text>
                 )}
                 {/* Destinatari */}
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>

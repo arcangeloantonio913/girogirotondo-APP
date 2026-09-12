@@ -200,7 +200,7 @@ const s = StyleSheet.create({
   tagText:   { fontSize: 10, color: '#A7C7E7', fontWeight: '700' },
   editBtn:   { padding: 6, backgroundColor: '#EBF0FF', borderRadius: 8 },
   deleteBtn: { padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8 },
-  noteBox:   { backgroundColor: '#EBF0FF20', borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: '#A7C7E7', borderRadius: 0 },
+  noteBox:   { backgroundColor: '#EBF0FF20', padding: 10, borderLeftWidth: 3, borderLeftColor: '#A7C7E7', borderRadius: 0 },
   noteText:  { fontSize: 13, color: '#374151', lineHeight: 19 },
   modal:     { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
   modalHeader:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

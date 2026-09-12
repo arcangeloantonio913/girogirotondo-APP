@@ -18,13 +18,27 @@ export default function AdminModulistica() {
   const [showForm,setShowForm]= useState(false);
   const [title,   setTitle]   = useState('');
   const [desc,    setDesc]    = useState('');
-  const [file,    setFile]    = useState<{ name: string; base64: string } | null>(null);
+  const [file,    setFile]    = useState<{ name: string; base64: string; mime: string } | null>(null);
   const [saving,  setSaving]  = useState(false);
   const [receiptsDoc, setReceiptsDoc] = useState<any | null>(null);
   const [receipts,    setReceipts]    = useState<any[]>([]);
 
   useEffect(() => {
-    api.get('/documents').then(r => setDocs(r.data || [])).catch(() => {}).finally(() => setLoading(false));
+    // GET /documents non ritorna i conteggi "prese visione": li calcoliamo dai
+    // read-receipts + numero genitori (come la web app). allSettled per resilienza.
+    Promise.allSettled([api.get('/documents'), api.get('/read-receipts'), api.get('/users')])
+      .then(([dR, rR, uR]) => {
+        const receipts: any[] = rR.status === 'fulfilled' ? (rR.value.data || []) : [];
+        const totalParents = uR.status === 'fulfilled'
+          ? (uR.value.data || []).filter((u: any) => u.role === 'parent').length : 0;
+        const list: any[] = dR.status === 'fulfilled' ? (dR.value.data || []) : [];
+        setDocs(list.map((d: any) => ({
+          ...d,
+          read_count: receipts.filter((r: any) => r.document_id === d.id).length,
+          total_parents: totalParents,
+        })));
+      })
+      .finally(() => setLoading(false));
   }, [sede]);
 
   const pickFile = async () => {
@@ -36,7 +50,8 @@ export default function AdminModulistica() {
       const uri = res.assets[0].uri;
       const base64 = await new FileSystem.File(uri).base64();
       const name = uri.split('/').pop() || 'documento.jpg';
-      setFile({ name, base64: `data:image/jpeg;base64,${base64}` });
+      // base64 grezzo (senza prefisso data:) — il backend costruisce il data URL da file_b64 + file_type
+      setFile({ name, base64, mime: 'image/jpeg' });
     } catch (e: any) {
       console.log('[MODULISTICA] pickFile error:', e?.message);
       Alert.alert('Errore selezione file', e?.message || 'Errore sconosciuto');
@@ -45,12 +60,19 @@ export default function AdminModulistica() {
 
   const handleCreate = async () => {
     if (!title.trim()) { Alert.alert('Attenzione', 'Il titolo è obbligatorio'); return; }
+    if (!file) { Alert.alert('Attenzione', 'Seleziona un file da caricare'); return; }
     setSaving(true);
     try {
-      const res = await api.post('/documents/upload-b64', { title, description: desc, data: file?.base64, filename: file?.name });
+      const res = await api.post('/documents/upload-b64', {
+        title,
+        description: desc,
+        file_b64: file.base64,
+        file_type: file.mime,
+        categoria: 'modulistica',
+      });
       setDocs(prev => [res.data, ...prev]);
       setShowForm(false); setTitle(''); setDesc(''); setFile(null);
-    } catch { Alert.alert('Errore', 'Impossibile caricare il documento'); }
+    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile caricare il documento'); }
     finally { setSaving(false); }
   };
 

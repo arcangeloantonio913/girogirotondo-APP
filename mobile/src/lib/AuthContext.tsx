@@ -28,38 +28,48 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+type LoginResult = { user: User; token: string };
+
 /** Login via backend JWT (utenti admin-created, maestre, genitori) */
-async function tryBackendLogin(email: string, password: string): Promise<User> {
+async function tryBackendLogin(email: string, password: string): Promise<LoginResult> {
   const res = await loginApi.post('/auth/login', { email, password });
   const token = res.data.token || res.data.access_token;
   const userData: User = res.data.user;
   if (!token || !userData || !VALID_ROLES.includes(userData.role))
     throw new Error('risposta-non-valida');
-  await SecureStore.setItemAsync('ggt_token', token);
-  return userData;
+  return { user: userData, token };
 }
 
 /** Login via Firebase Auth + Firestore (utenti registrati via webapp) */
-async function tryFirebaseLogin(email: string, password: string): Promise<User> {
+async function tryFirebaseLogin(email: string, password: string): Promise<LoginResult> {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   const snap = await getDoc(doc(firestoreDb, 'users', cred.user.uid));
   if (!snap.exists()) throw new Error('no-firestore-profile');
   const data = snap.data();
   if (!VALID_ROLES.includes(data?.role)) throw new Error('invalid-role');
   const idToken = await cred.user.getIdToken();
-  await SecureStore.setItemAsync('ggt_token', idToken);
   return {
-    uid: cred.user.uid,
-    email: cred.user.email || email,
-    ...data,
-    role: data.role,
-  } as User;
+    user: {
+      uid: cred.user.uid,
+      email: cred.user.email || email,
+      ...data,
+      role: data.role,
+    } as User,
+    token: idToken,
+  };
 }
 
 /** Salva utente e imposta sede */
 async function saveUser(userData: User, setSede: (s: string) => void) {
   await SecureStore.setItemAsync('ggt_user', JSON.stringify(userData));
-  if (userData.role === 'admin' && userData.sede_id && !userData.is_superadmin) {
+  if (userData.role === 'admin' && userData.is_superadmin) {
+    // Superadmin: nessuna sede fissa. Seed della sede (esistente o default) così
+    // l'header X-Sede-Id è SEMPRE presente per le scritture, coerente con la UI.
+    const existing = await SecureStore.getItemAsync('ggt_sede');
+    const seed = existing || 'girogirotondo';
+    await SecureStore.setItemAsync('ggt_sede', seed);
+    setSede(seed);
+  } else if (userData.role === 'admin' && userData.sede_id) {
     await SecureStore.setItemAsync('ggt_sede', userData.sede_id);
     setSede(userData.sede_id);
   }
@@ -119,6 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // • Se entrambi falliscono → errore immediato
 
     let userData: User | null = null;
+    let token: string | null = null;
+    let usedBackend = false;
     let backendErr = '';
     let firebaseErr = '';
 
@@ -128,7 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     if (backendResult.status === 'fulfilled') {
-      userData = backendResult.value;
+      userData = backendResult.value.user;
+      token = backendResult.value.token;
+      usedBackend = true;
     } else {
       const e = backendResult.reason;
       backendErr = e?.response?.data?.detail || e?.message || 'errore';
@@ -136,21 +150,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (firebaseResult.status === 'fulfilled' && !userData) {
-      userData = firebaseResult.value;
+      userData = firebaseResult.value.user;
+      token = firebaseResult.value.token;
     } else if (firebaseResult.status === 'rejected') {
       firebaseErr = firebaseResult.reason?.code || firebaseResult.reason?.message || '';
       console.log('[AUTH] Firebase:', firebaseErr);
     }
 
-    if (!userData) {
+    // Se vince il backend ma Firebase è comunque autenticato, esci da Firebase: così
+    // l'interceptor non usa il token Firebase al posto del JWT backend (identità coerente).
+    if (usedBackend && firebaseResult.status === 'fulfilled') {
+      await signOut(auth).catch(() => {});
+    }
+
+    if (!userData || !token) {
       await SecureStore.deleteItemAsync('ggt_token');
       await SecureStore.deleteItemAsync('ggt_user');
 
-      // Messaggio user-friendly in base al tipo di errore
-      const isDbDown = backendErr.includes('Connection refused')
-        || backendErr.includes('timed out')
-        || backendErr.includes('ECONNREFUSED')
-        || backendErr.includes('Network Error');
+      // Messaggio user-friendly in base al tipo di errore (incl. timeout Railway a freddo)
+      const dbDownMarkers = ['Connection refused', 'timed out', 'timeout', 'ECONNREFUSED', 'ECONNABORTED', 'Network Error'];
+      const isDbDown = dbDownMarkers.some(m => backendErr.includes(m));
       const isWrongPwd = backendErr.includes('Credenziali non valide')
         || firebaseErr.includes('invalid-credential')
         || firebaseErr.includes('wrong-password');
@@ -161,7 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Email o password non corretti.\nVerifica le credenziali e riprova.');
     }
 
-    // Login riuscito
+    // Login riuscito — il token del vincitore è quello autoritativo
+    await SecureStore.setItemAsync('ggt_token', token);
     await saveUser(userData, setSede);
     setUser(userData);
     registerForPushNotifications().catch(() => {});
@@ -173,7 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync('ggt_token');
     await SecureStore.deleteItemAsync('ggt_user');
     await SecureStore.deleteItemAsync('ggt_active_child');
-    setUser(null); setACI(null);
+    await SecureStore.deleteItemAsync('ggt_sede');   // niente X-Sede-Id stantio per il prossimo utente
+    setUser(null); setACI(null); setSede('girogirotondo');
   };
 
   const refreshUser = async () => {
@@ -182,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (fbUser) {
         const snap = await getDoc(doc(firestoreDb, 'users', fbUser.uid));
         if (snap.exists()) {
-          const fresh: User = { uid: fbUser.uid, email: fbUser.email || '', ...snap.data(), role: snap.data().role };
+          const fresh = { uid: fbUser.uid, email: fbUser.email || '', ...snap.data(), role: snap.data().role } as User;
           await SecureStore.setItemAsync('ggt_user', JSON.stringify(fresh));
           setUser(fresh); return;
         }

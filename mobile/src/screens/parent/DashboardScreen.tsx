@@ -66,23 +66,37 @@ export default function ParentDashboard({ navigation }: any) {
   useEffect(() => {
     const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
     if (!childId) { setLoading(false); return; }
-    Promise.all([
+    // allSettled: ogni sezione è indipendente. Se una richiesta fallisce (es. 404 su un
+    // caso limite di dati) le altre continuano a popolarsi — niente dashboard vuota.
+    Promise.allSettled([
       api.get(`/students/${childId}`),
-      api.get(`/diary?date=${today}`),
+      api.get(`/diary?student_id=${childId}&date=${today}`),
       api.get(`/griglia?student_id=${childId}&date=${today}`),
       api.get(`/gallery?student_id=${childId}`),
       api.get(`/meals?date=${today}`),
       api.get('/classes'),
     ]).then(([cR, dR, gR, galR, mR, clR]) => {
-      setChild(cR.data);
-      setDiary(dR.data?.[0] || null);
-      setGriglia(gR.data?.[0] || null);
-      setGallery(galR.data || []);
-      setMeal(mR.data?.[0] || null);
-      const cls = clR.data.find((c: any) => c.id === cR.data?.class_id);
+      const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+      const child = val(cR);
+      if (child) setChild(child);
+      setDiary(val(dR)?.[0] || null);
+      setGriglia(val(gR)?.[0] || null);
+      setGallery(val(galR) || []);
+      setMeal(val(mR)?.[0] || null);
+      const classes = val(clR);
+      const cls = Array.isArray(classes) ? classes.find((c: any) => c.id === child?.class_id) : null;
       if (cls) setClassName(cls.name);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   }, [user, activeChildId]);
+
+  // Popola l'elenco figli per lo switcher (solo se il genitore ha più di un bambino)
+  useEffect(() => {
+    if (childIds.length <= 1) { setChildren([]); return; }
+    Promise.allSettled(childIds.map(id => api.get(`/students/${id}`)))
+      .then(res => setChildren(
+        res.filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled').map(r => r.value.data)
+      ));
+  }, [childIds.join(',')]);
 
   if (loading) return (
     <SafeAreaView style={s.root}>
@@ -175,9 +189,19 @@ export default function ParentDashboard({ navigation }: any) {
             )}
             <Text style={s.dateText}>{todayFmt}</Text>
           </View>
-          <View style={s.avatar}>
+          <TouchableOpacity
+            style={s.avatar}
+            activeOpacity={0.7}
+            disabled={childIds.length <= 1}
+            onPress={() => setChildSwitcherOpen(true)}
+          >
             <Text style={s.avatarText}>{(child?.name || user?.name || '?').charAt(0)}</Text>
-          </View>
+            {childIds.length > 1 && (
+              <View style={s.avatarSwitch}>
+                <Ionicons name="swap-horizontal" size={12} color="#FFF" />
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* DIARIO */}
@@ -276,6 +300,7 @@ const s = StyleSheet.create({
   dateText: { fontSize: 11, color: C.muted, marginTop: 4, textTransform: 'capitalize' },
   avatar:   { width: 48, height: 48, borderRadius: 24, backgroundColor: C.babyPink, alignItems: 'center', justifyContent: 'center' },
   avatarText:{ color: C.white, fontSize: 18, fontWeight: '800' },
+  avatarSwitch:{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: '#32CD32', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
   card:     { backgroundColor: C.white, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border },
   cardHeader:{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   iconBox:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
@@ -307,5 +332,4 @@ const s = StyleSheet.create({
   topCenter: { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   topSede:   { fontSize: 13, fontWeight: '700', color: '#1A202C' },
   menuBtn:   { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
-  white: C.white,
 });

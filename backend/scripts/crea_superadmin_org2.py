@@ -27,16 +27,44 @@ def hash_password(pw: str) -> str:
     # IDENTICO a services.database.hash_password — bcrypt, verificato al login da bcrypt.checkpw
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()
 
+# Sedi di Dimensione Bimbo (id usati dall'import). Vanno tutte sotto l'org ORG2 così le
+# direttrici (superadmin org-bounded) le vedono. Se in prod hanno id diversi, la stampa
+# "[sedi in DB]" qui sotto lo rivela e va aggiornata.
+DB_SEDE_IDS = ["db-centrale", "db-nido", "db-succursale", "db-micronido"]
+
 def main():
     db = MongoClient(os.environ["MONGO_URL"])[os.environ.get("DB_NAME", "girogirotondo")]
     apply = os.environ.get("APPLY") == "1"
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+    # ── Quadro reale: tutte le sedi in DB (id, nome, org_id) ─────────────────────
+    print("[sedi in DB] (id | nome | org_id | active)")
+    for s in db.sedi.find({}, {"_id": 0, "id": 1, "name": 1, "org_id": 1, "active": 1}):
+        print(f"   - {s.get('id')} | {s.get('name')} | {s.get('org_id')} | {s.get('active')}")
+
+    # ── 1. Garantisci l'org Dimensione Bimbo ─────────────────────────────────────
+    org = db.orgs.find_one({"id": ORG2})
+    print(f"[org] '{ORG2}' esiste: {bool(org)}")
+    if apply and not org:
+        db.orgs.insert_one({"id": ORG2, "name": "Dimensione Bimbo", "active": True, "created_at": now})
+        print(f"  [APPLY] creata org '{ORG2}'")
+
+    # ── 2. Backfill org_id sulle sedi DB che ne sono prive/errate ────────────────
+    for sid in DB_SEDE_IDS:
+        sede = db.sedi.find_one({"id": sid}, {"_id": 0, "id": 1, "org_id": 1})
+        if not sede:
+            print(f"  [sede] '{sid}' NON trovata in DB (salto)"); continue
+        if sede.get("org_id") != ORG2:
+            print(f"  [{'APPLY' if apply else 'DRY-RUN'}] sede '{sid}' org_id {sede.get('org_id')} -> {ORG2}")
+            if apply:
+                db.sedi.update_one({"id": sid}, {"$set": {"org_id": ORG2, "active": True}})
+
     n = db.sedi.count_documents({"org_id": ORG2, "active": True})
-    print(f"[pre-check] sedi attive di org '{ORG2}': {n}")
-    if n == 0:
-        print("  ATTENZIONE: nessuna sede org 2 → superadmin bounded a ZERO sedi (LOCKOUT).")
-        print("  Crea PRIMA l'org e le sedi di Dimensione Bimbo, poi ri-esegui.")
+    print(f"[pre-check] sedi attive di org '{ORG2}': {n}"
+          + ("" if apply else "  (post-backfill sarà >= le sedi DB trovate sopra)"))
+    if apply and n == 0:
+        print("  ATTENZIONE: 0 sedi org 2 dopo il backfill → gli id in DB_SEDE_IDS non combaciano")
+        print("  con quelli reali (vedi '[sedi in DB]' sopra). Aggiorna DB_SEDE_IDS e ri-esegui.")
 
     for sa in SUPERADMINS:
         pw = os.environ.get(sa["pw_env"])

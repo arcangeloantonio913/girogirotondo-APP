@@ -84,6 +84,7 @@ add_error_handlers(app)
 # extend/override it (comma-separated). A literal "*" is ignored as unsafe here.
 _DEFAULT_ORIGINS = [
     "https://girogirotondowebapp.it",
+    "https://dimensionebimbowebapp.vercel.app",   # web app Dimensione Bimbo (portale staff/genitori)
     "http://localhost:3000",
     "http://localhost:5173",
 ]
@@ -97,6 +98,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=_allowed_origins,
+    # Copre anche i deploy Vercel per-commit (dimensionebimbowebapp-<hash>.vercel.app e
+    # girogirotondo-*.vercel.app) oltre agli alias stabili in allow_origins.
+    allow_origin_regex=r"https://(dimensionebimbowebapp|girogirotondo)[a-z0-9-]*\.vercel\.app",
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Sede-Id"],
 )

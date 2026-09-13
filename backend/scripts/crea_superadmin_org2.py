@@ -3,22 +3,24 @@
 Hashing bcrypt IDENTICO a services.database.hash_password; il login verifica con bcrypt.checkpw.
 Idempotente (upsert per email). NESSUN hash a mano. Password via ENV, non nel repo.
 
-Uso (una tantum, contro PROD — es. console Railway):
-  # DRY-RUN
-  MONGO_URL="<PROD_URI>" DB_NAME="<db>" \
-    SA1_PW='...' SA2_PW='...' python3 backend/scripts/crea_superadmin_org2.py
+Uso (una tantum, contro PROD — nella CONSOLE/Shell di Railway, così le password NON
+passano dalla chat). In /app:
+  # DRY-RUN (mostra pre-check sedi + se gli account esistono già)
+  CETTY_PW='...' ANGELA_PW='...' python3 scripts/crea_superadmin_org2.py
   # APPLICA (dopo che org 2 + le sue sedi esistono)
-  MONGO_URL="<PROD_URI>" DB_NAME="<db>" \
-    SA1_PW='...' SA2_PW='...' APPLY=1 python3 backend/scripts/crea_superadmin_org2.py
+  CETTY_PW='...' ANGELA_PW='...' APPLY=1 python3 scripts/crea_superadmin_org2.py
+(MONGO_URL e DB_NAME sono già nell'env del servizio Railway.)
 """
 import os, sys, uuid, datetime
 import bcrypt
 from pymongo import MongoClient
 
 ORG2 = "dimensione-bimbo"
+# Direttrici di Dimensione Bimbo (superadmin dell'org DB → vedono TUTTE le 4 sedi DB,
+# MAI i dati di Girogirotondo). Email ESATTE come indicate dalla direzione.
 SUPERADMINS = [
-    {"name": "Maria Angela", "cognome": "Matranga", "email": "matranga170@gmail.com", "pw_env": "SA1_PW"},
-    {"name": "Provvidenza",  "cognome": "Matranga", "email": "matranga64@gmail.com",  "pw_env": "SA2_PW"},
+    {"name": "Cetty",  "cognome": "Matranga", "email": "matranga.64@gmail.com", "pw_env": "CETTY_PW"},
+    {"name": "Angela", "cognome": "Matranga", "email": "matranga170@gmail.com", "pw_env": "ANGELA_PW"},
 ]
 
 def hash_password(pw: str) -> str:

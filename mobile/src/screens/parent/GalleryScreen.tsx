@@ -86,7 +86,7 @@ export default function ParentGallery() {
         : <FlatList
             data={items}
             numColumns={2}
-            keyExtractor={(_,i)=>String(i)}
+            keyExtractor={(item,i)=>String(item?.id ?? i)}
             contentContainerStyle={s.grid}
             onEndReached={()=>load(false)}
             onEndReachedThreshold={0.3}

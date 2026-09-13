@@ -8,6 +8,7 @@ import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider, shadow: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 } };
 
@@ -59,7 +60,7 @@ export default function ParentDashboard({ navigation }: any) {
   const sedeAttiva = user?.sede_id || 'girogirotondo';
   const sedeInfo = tenant.sedi.find(x => x.id === sedeAttiva);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
   const todayFmt = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
 
@@ -283,6 +284,30 @@ export default function ParentDashboard({ navigation }: any) {
           <Ionicons name="calendar-outline" size={24} color={C.white}/>
         </TouchableOpacity>
       </View>
+
+      {/* Child Switcher Modal */}
+      <Modal visible={childSwitcherOpen} transparent animationType="fade" onRequestClose={() => setChildSwitcherOpen(false)}>
+        <TouchableOpacity style={s.switOverlay} onPress={() => setChildSwitcherOpen(false)} activeOpacity={1}>
+          <View style={s.switSheet}>
+            <Text style={s.switTitle}>Seleziona bambino</Text>
+            {children.map((ch: any) => {
+              const isActive = ch.id === (activeChildId || childIds[0]);
+              return (
+                <TouchableOpacity key={ch.id} onPress={() => { setActiveChildId(ch.id); setChildSwitcherOpen(false); }}
+                  style={[s.switItem, isActive && s.switItemActive]}>
+                  <View style={[s.switAvatar, isActive && { backgroundColor: '#32CD32' }]}>
+                    <Text style={{ color: isActive ? '#FFF' : '#374151', fontWeight: '800' }}>{ch.name?.charAt(0)}</Text>
+                  </View>
+                  <Text style={[s.switName, isActive && { color: '#32CD32' }]}>{ch.name} {ch.cognome}</Text>
+                  {isActive && <Ionicons name="checkmark-circle" size={20} color="#32CD32" />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} navigation={navigation} />
     </SafeAreaView>
   );
 }

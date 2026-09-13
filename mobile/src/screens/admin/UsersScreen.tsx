@@ -38,6 +38,10 @@ export default function AdminUsers() {
   const [saving,  setSaving]  = useState(false);
   const [editUser, setEditUser] = useState<any>(null);
   const [iscResult, setIscResult] = useState<any>(null);
+  // Secondo genitore (modal cross-platform, sostituisce Alert.prompt iOS-only)
+  const [spVisible, setSpVisible] = useState(false);
+  const [spChildId, setSpChildId] = useState('');
+  const [spEmail, setSpEmail] = useState('');
 
   // Form staff
   const [staffForm, setStaff] = useState({ name: '', cognome: '', email: '', role: 'teacher', password: genPwd(), class_id: '' });
@@ -163,6 +167,25 @@ export default function AdminUsers() {
       setUsers(uR.data || []);
     } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile completare'); }
     finally { setSaving(false); }
+  };
+
+  const handleAddSecondParent = async () => {
+    const email = spEmail.trim();
+    if (!email) return;
+    setSaving(true);
+    try {
+      await api.post('/users/secondo-genitore', {
+        student_id: spChildId,
+        genitore_email: email,
+      });
+      setSpVisible(false);
+      Alert.alert('Fatto', 'Secondo genitore aggiunto. Riceverà le credenziali via email.');
+      const uR = await api.get('/users');
+      setUsers(uR.data || []);
+      setModal(null);
+    } catch (e: any) {
+      Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile aggiungere');
+    } finally { setSaving(false); }
   };
 
   const handleDelete = (id: string) => {
@@ -316,28 +339,35 @@ export default function AdminUsers() {
             {editUser?.role === 'parent' && (
               <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#FF9500', marginTop: 8 }]}
                 onPress={() => {
-                  // Trova il bambino associato e aggiungi secondo genitore
+                  // Trova il bambino associato e apri il modal (cross-platform)
                   const childId = editUser?.child_ids?.[0] || editUser?.child_id;
                   if (!childId) { Alert.alert('Attenzione', 'Nessun bambino associato a questo genitore'); return; }
-                  Alert.prompt('Aggiungi secondo genitore', 'Email del secondo genitore:', async (email) => {
-                    if (!email) return;
-                    try {
-                      await api.post('/users/secondo-genitore', {
-                        student_id: childId,
-                        genitore_email: email.trim(),
-                      });
-                      Alert.alert('Fatto', 'Secondo genitore aggiunto. Riceverà le credenziali via email.');
-                      const uR = await api.get('/users');
-                      setUsers(uR.data || []);
-                      setModal(null);
-                    } catch (e: any) {
-                      Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile aggiungere');
-                    }
-                  }, 'plain-text', '', 'email-address');
+                  setSpChildId(childId); setSpEmail(''); setSpVisible(true);
                 }}>
                 <Text style={s.submitText}>+ Aggiungi Secondo Genitore</Text>
               </TouchableOpacity>
             )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── SECONDO GENITORE ────────────────────────────────────────────── */}
+      <Modal visible={spVisible} animationType="slide" presentationStyle="pageSheet"
+        onRequestClose={() => setSpVisible(false)}>
+        <View style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Aggiungi Secondo Genitore</Text>
+            <TouchableOpacity onPress={() => setSpVisible(false)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
+          </View>
+          <ScrollView>
+            <Text style={s.fl}>Email del secondo genitore</Text>
+            <TextInput style={s.input} value={spEmail} onChangeText={setSpEmail}
+              placeholder="genitore2@email.it" placeholderTextColor={C.muted}
+              keyboardType="email-address" autoCapitalize="none" autoFocus />
+            <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#FF9500' }, saving && { opacity: 0.6 }]}
+              onPress={handleAddSecondParent} disabled={saving}>
+              <Text style={s.submitText}>{saving ? 'Aggiunta...' : 'Aggiungi'}</Text>
+            </TouchableOpacity>
           </ScrollView>
         </View>
       </Modal>

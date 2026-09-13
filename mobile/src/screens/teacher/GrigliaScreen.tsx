@@ -5,6 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const QTY = ['tutto','bis','metà','mangiata_poca','lasciata_poca','no'];
@@ -27,7 +28,7 @@ function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');
 export default function TeacherGriglia() {
   const { user } = useAuth();
   const classId = user?.class_ids?.[0] || user?.class_id;
-  const [date, setDate]       = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate]       = useState(todayLocal());
   const [students, setStudents] = useState<any[]>([]);
   const [griglia, setGriglia]  = useState<Record<string,any>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -88,29 +89,28 @@ export default function TeacherGriglia() {
       const MEAL_MAP:[string,string][]=[
         ['merenda','merenda_mattina'],['pasta','pasta'],['secondo','secondo'],['pane','pane'],['frutta','frutta'],
       ];
-      const buildPayload=(st:any)=>{
+      const buildEntry=(st:any)=>{
         const g=griglia[st.id]||{};
-        const p:any={class_id:classId,student_ids:[st.id],date};
+        const e:any={student_id:st.id};
         for(const [bk,sk] of MEAL_MAP){
           const raw=g[sk];
           // qty: usa la stringa UI; se lo stato è un doc caricato dal backend (bool su bk), leggi bk_qty
           const qty:string = typeof raw==='string' ? raw : (typeof g[bk+'_qty']==='string' ? g[bk+'_qty'] : '');
-          p[bk]=qty!==''&&qty!=='no';   // true = ha mangiato qualcosa; '' e 'no' → false
-          p[bk+'_qty']=qty;
+          e[bk]=qty!==''&&qty!=='no';   // true = ha mangiato qualcosa; '' e 'no' → false
+          e[bk+'_qty']=qty;
         }
-        p.pupu=!!(g['pupù']??g['pupu']);   // chiave UI accentata 'pupù'; doc caricato usa 'pupu'
-        p.nanna=!!g['nanna'];
-        p.notes=typeof (g.notes??g.note)==='string' ? (g.notes??g.note) : '';
-        return p;
+        e.pupu=!!(g['pupù']??g['pupu']);   // chiave UI accentata 'pupù'; doc caricato usa 'pupu'
+        e.nanna=!!g['nanna'];
+        e.notes=typeof (g.notes??g.note)==='string' ? (g.notes??g.note) : '';
+        return e;
       };
-      const sample = students[0] ? buildPayload(students[0]) : null;
-      console.log('[GRIGLIA] sample payload:', JSON.stringify(sample));
-      console.log('[GRIGLIA] classId:', classId, 'students:', students.length, 'date:', date);
-      await Promise.all(students.map(st=>api.post('/griglia',buildPayload(st))));
+      // UNA sola richiesta bulk → i genitori ricevono UNA sola notifica (prima: una POST per
+      // bambino = una push per bambino → spam). Nessun console.log di dati dei minori.
+      const entries = students.map(buildEntry);
+      await api.post('/griglia/bulk', { class_id: classId, date, entries });
       setSaved(true);
       setTimeout(()=>setSaved(false),2000);
     }catch(e:any){
-      console.log('[GRIGLIA] SAVE ERROR:', e?.message, '| status:', e?.response?.status, '| detail:', JSON.stringify(e?.response?.data));
       Alert.alert('Errore salvataggio', e?.response?.data?.detail || e?.message || 'Impossibile salvare');
     }
     finally{setSaving(false);}
@@ -135,8 +135,8 @@ export default function TeacherGriglia() {
         </TouchableOpacity>
         <Text style={s.dateText}>{new Date(date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})}</Text>
         <TouchableOpacity onPress={()=>setDate(addDays(date,1))} style={s.navBtn}
-          disabled={date>=new Date().toISOString().split('T')[0]}>
-          <Ionicons name="chevron-forward" size={20} color={date>=new Date().toISOString().split('T')[0]?C.muted:C.text}/>
+          disabled={date>=todayLocal()}>
+          <Ionicons name="chevron-forward" size={20} color={date>=todayLocal()?C.muted:C.text}/>
         </TouchableOpacity>
       </View>
 
@@ -189,12 +189,12 @@ export default function TeacherGriglia() {
                 </TouchableOpacity>
                 <TouchableOpacity onPress={()=>setExpanded(isOpen?null:item.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}>
                   <Text style={s.studentName}>{item.name} {item.cognome}</Text>
-                  {/* Mini summary */}
-                  {Object.keys(g).filter(k=>MEALS.map(m=>m.key).includes(k)&&g[k]).length>0&&(
+                  {/* Mini summary — conta i pasti effettivamente mangiati ('no' = non mangiato, escluso) */}
+                  {(()=>{ const n=MEALS.filter(m=>g[m.key]&&g[m.key]!=='no').length; return n>0&&(
                     <View style={s.miniBadge}>
-                      <Text style={s.miniBadgeText}>{Object.keys(g).filter(k=>MEALS.map(m=>m.key).includes(k)&&g[k]).length} piatti</Text>
+                      <Text style={s.miniBadgeText}>{n} piatti</Text>
                     </View>
-                  )}
+                  ); })()}
                 </TouchableOpacity>
                 <Ionicons name={isOpen?'chevron-up':'chevron-down'} size={16} color={C.muted}/>
               </View>

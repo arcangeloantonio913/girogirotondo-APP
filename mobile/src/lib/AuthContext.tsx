@@ -3,8 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db as firestoreDb } from './firebase';
-import api, { loginApi } from './api';
-import { registerForPushNotifications } from './notifications';
+import api, { loginApi, setForcedLogoutHandler } from './api';
+import { registerForPushNotifications, unregisterForPushNotifications } from './notifications';
 
 interface User {
   id?: string; uid?: string; name: string; cognome?: string; email: string;
@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       const e = backendResult.reason;
       backendErr = e?.response?.data?.detail || e?.message || 'errore';
-      console.log('[AUTH] Backend:', backendErr.substring(0, 80));
+      if (__DEV__) console.log('[AUTH] Backend:', backendErr.substring(0, 80));
     }
 
     if (firebaseResult.status === 'fulfilled' && !userData) {
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token = firebaseResult.value.token;
     } else if (firebaseResult.status === 'rejected') {
       firebaseErr = firebaseResult.reason?.code || firebaseResult.reason?.message || '';
-      console.log('[AUTH] Firebase:', firebaseErr);
+      if (__DEV__) console.log('[AUTH] Firebase:', firebaseErr);
     }
 
     // Se vince il backend ma Firebase è comunque autenticato, esci da Firebase: così
@@ -189,6 +189,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    // PRIMA di invalidare la sessione: deregistra il push token di questo dispositivo
+    // (la DELETE richiede il token di auth ancora valido). Best-effort, non blocca il logout.
+    await unregisterForPushNotifications().catch(() => {});
     await signOut(auth).catch(() => {});
     await SecureStore.deleteItemAsync('ggt_token');
     await SecureStore.deleteItemAsync('ggt_user');
@@ -196,6 +199,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync('ggt_sede');   // niente X-Sede-Id stantio per il prossimo utente
     setUser(null); setACI(null); setSede('girogirotondo');
   };
+
+  // Logout forzato lato server (account disabilitato/revocato): l'interceptor di api.ts
+  // pulisce già SecureStore ma non lo stato React in memoria. Qui riallineiamo la sessione
+  // riusando il percorso di logout esistente, così l'app torna al Login senza riavvio.
+  useEffect(() => {
+    setForcedLogoutHandler(() => { logout(); });
+    return () => setForcedLogoutHandler(null);
+    // logout usa solo setter stabili: registrazione una sola volta al mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const refreshUser = async () => {
     try {

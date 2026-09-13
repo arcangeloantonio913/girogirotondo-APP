@@ -5,9 +5,10 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = todayLocal();
 const CURRENT_MONTH = TODAY.slice(0, 7);          // YYYY-MM
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
   'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
@@ -72,7 +73,7 @@ export default function AdminPresenze() {
     try {
       // Guardia: date non deve essere undefined/null
       let safeDate = date;
-      if (!safeDate) { console.log('[PRESENZE] date mancante, uso TODAY'); safeDate = TODAY; }
+      if (!safeDate) { if (__DEV__) console.log('[PRESENZE] date mancante, uso TODAY'); safeDate = TODAY; }
 
       // Costruzione batch difensiva: salta studenti senza id, valori sempre definiti
       const batch = (classStudents || [])
@@ -82,14 +83,11 @@ export default function AdminPresenze() {
           return { student_id: stu.id, presente: (rec?.presente) ?? false, nota: (rec?.nota) ?? '' };
         });
 
-      console.log('[PRESENZE] save payload:', JSON.stringify({ class_id: selected, date: safeDate, count: records?.length }));
-      console.log('[PRESENZE] classStudents:', classStudents?.length, 'records:', records?.length);
-
       const payload = { class_id: selected, date: safeDate, records: batch };
       await api.post('/presenze', payload);
       Alert.alert('Presenze salvate', `${batch.filter(r => r.presente).length} presenti su ${batch.length}`);
     } catch (e: any) {
-      console.log('[PRESENZE] SAVE ERROR:', e?.message, '| status:', e?.response?.status, '| detail:', JSON.stringify(e?.response?.data));
+      if (__DEV__) console.log('[PRESENZE] SAVE ERROR:', e?.message, '| status:', e?.response?.status, '| detail:', JSON.stringify(e?.response?.data));
       Alert.alert('Errore salvataggio', e?.response?.data?.detail || e?.message || 'Errore');
     } finally {
       setSaving(false);

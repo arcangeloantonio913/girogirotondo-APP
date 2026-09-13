@@ -59,7 +59,7 @@ export default function TeacherMedia() {
       setPickedImage({ uri, base64 });
       setShowModal(true);
     } catch (e: any) {
-      console.log('[MEDIA] pickImage error:', e?.message);
+      if(__DEV__) console.log('[MEDIA] pickImage error:', e?.message);
       Alert.alert('Errore selezione foto', e?.message || 'Errore sconosciuto');
     }
   };
@@ -90,7 +90,7 @@ export default function TeacherMedia() {
         media_type: 'photo',
         caption: caption || new Date().toLocaleDateString('it-IT'),
       };
-      const res = await api.post('/gallery', payload);
+      const res = await api.post('/gallery/upload-b64', payload);
       setItems(prev => [res.data, ...prev]);
       setShowModal(false);
       setPickedImage(null);
@@ -99,7 +99,7 @@ export default function TeacherMedia() {
       setAllStudents(true);
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.message || 'Errore sconosciuto';
-      console.log('[MEDIA] Upload error:', e?.response?.status, msg);
+      if(__DEV__) console.log('[MEDIA] Upload error:', e?.response?.status, msg);
       Alert.alert('Errore upload', msg);
     }
     finally { setUploading(false); }
@@ -120,7 +120,7 @@ export default function TeacherMedia() {
       <FlatList
         data={items}
         numColumns={2}
-        keyExtractor={(_, i) => String(i)}
+        keyExtractor={(item, i) => String(item?.id ?? i)}
         contentContainerStyle={{ padding: 10 }}
         ListHeaderComponent={
           <TouchableOpacity onPress={pickImage} style={s.uploadBtn}>

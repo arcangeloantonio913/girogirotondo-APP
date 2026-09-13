@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
@@ -45,18 +44,28 @@ export default function AdminModulistica() {
   }, [sede]);
 
   const pickFile = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permesso negato'); return; }
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+      // DocumentPicker (non solo immagini): PDF, Word e immagini — coerente con la
+      // whitelist MIME accettata dal backend. Prima si potevano caricare SOLO immagini
+      // (e venivano marcate erroneamente come image/jpeg), in contrasto con l'etichetta.
+      const res = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'image/*',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
       if (res.canceled || !res.assets?.[0]) return;
-      const uri = res.assets[0].uri;
-      const base64 = await new FileSystem.File(uri).base64();
-      const name = uri.split('/').pop() || 'documento.jpg';
+      const asset = res.assets[0];
+      const base64 = await new FileSystem.File(asset.uri).base64();
+      const name = asset.name || 'documento';
+      const mime = asset.mimeType || 'application/octet-stream';
       // base64 grezzo (senza prefisso data:) — il backend costruisce il data URL da file_b64 + file_type
-      setFile({ name, base64, mime: 'image/jpeg' });
+      setFile({ name, base64, mime });
     } catch (e: any) {
-      console.log('[MODULISTICA] pickFile error:', e?.message);
       Alert.alert('Errore selezione file', e?.message || 'Errore sconosciuto');
     }
   };
@@ -148,10 +157,10 @@ export default function AdminModulistica() {
           <TextInput style={s.input} value={title} onChangeText={setTitle} placeholder="Titolo documento" />
           <Text style={s.fieldLabel}>Descrizione</Text>
           <TextInput style={[s.input, { height: 80 }]} value={desc} onChangeText={setDesc} multiline placeholder="Descrizione opzionale" textAlignVertical="top" />
-          <Text style={s.fieldLabel}>File (immagine)</Text>
+          <Text style={s.fieldLabel}>File</Text>
           <TouchableOpacity onPress={pickFile} style={s.fileBtn}>
-            <Ionicons name="image-outline" size={20} color={C.primary} />
-            <Text style={s.fileBtnText}>{file ? file.name : 'PDF, Word, Excel o immagine...'}</Text>
+            <Ionicons name="document-attach-outline" size={20} color={C.primary} />
+            <Text style={s.fileBtnText}>{file ? file.name : 'PDF, Word o immagine...'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleCreate} disabled={saving}>
             <Text style={s.submitText}>{saving ? 'Caricamento...' : 'Pubblica Documento'}</Text>

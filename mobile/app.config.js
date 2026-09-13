@@ -34,7 +34,10 @@ module.exports = () => {
         ios: {
           ...base.ios,
           bundleIdentifier: 'it.dimensionebimbo.app',
-          buildNumber: '1',            // prima build DB (app store distinta da Giro).
+          // NB: la config dinamica re-impone questo valore nel binario ad ogni build
+          // (autoIncrement non persiste con app.config.js). Va alzato A MANO se il numero
+          // è già stato caricato su App Store Connect. Usati finora per 1.0.1: 1, 6.
+          buildNumber: '10',
           infoPlist: {
             ...base.ios.infoPlist,
             // TODO: NSPrivacyDescription per Dimensione Bimbo — ora l'URL punta a

@@ -26,7 +26,7 @@ def _apply_attachment(doc: dict) -> None:
     if not data:
         return
     if len(data) > _MAX_ATTACHMENT_BYTES:
-        raise HTTPException(status_code=413, detail="Allegato troppo grande (max ~9MB).")
+        raise HTTPException(status_code=413, detail="Allegato troppo grande (max ~12MB).")
     doc["attachment_url"] = data
     doc["attachment_name"] = name or "allegato"
 

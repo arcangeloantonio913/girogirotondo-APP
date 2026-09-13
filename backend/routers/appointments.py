@@ -67,12 +67,23 @@ async def create_appointment(
     parent_name  = parent.get("name", "Sconosciuto")
     parent_email = parent.get("email")
 
+    # Anti doppia-prenotazione: lo stesso slot (data+ora) nella stessa sede non può essere
+    # preso due volte. Gli appuntamenti annullati liberano lo slot.
+    conflict = await db.appointments.count_documents({
+        "date": payload.date,
+        "time_slot": payload.time_slot,
+        "sede_id": sede_id,
+        "status": {"$ne": AppointmentStatus.cancelled.value},
+    })
+    if conflict:
+        raise HTTPException(status_code=409, detail="Questo orario è già stato prenotato. Scegli un altro slot.")
+
     doc = payload.model_dump()
     doc["parent_id"]   = parent_id              # override server-side
     doc["sede_id"]     = sede_id                # derivato server-side
     doc["id"]          = str(uuid.uuid4())
     doc["parent_name"] = parent_name
-    doc["status"]      = AppointmentStatus.pending
+    doc["status"]      = AppointmentStatus.pending.value
     doc["created_at"]  = datetime.now(timezone.utc).isoformat()
     await db.appointments.insert_one(doc)
     doc.pop("_id", None)
@@ -89,6 +100,18 @@ async def create_appointment(
             time_slot=payload.time_slot, reason=payload.reason, status="pending",
             sede_id=sede_id, org_id=parent.get("org_id"),
         )
+
+    # Push al genitore (best-effort): solo al genitore dell'appuntamento, mai broadcast.
+    if expo_notify and parent_id:
+        try:
+            await expo_notify(
+                db, [parent_id],
+                "Nuovo appuntamento",
+                f"{payload.date} {payload.time_slot} — {payload.reason}",
+                {"type": "appointment", "apt_id": doc["id"], "status": doc["status"]},
+            )
+        except Exception:
+            pass
 
     return doc
 
@@ -108,7 +131,8 @@ async def update_appointment_status(
         raise HTTPException(status_code=404, detail="Appuntamento non trovato")
     ctx.assert_sede(apt.get("sede_id"))         # 404 se appuntamento di un'altra sede
 
-    await db.appointments.update_one({"id": apt_id}, {"$set": {"status": status}})
+    status_val = status.value if hasattr(status, "value") else str(status)
+    await db.appointments.update_one({"id": apt_id}, {"$set": {"status": status_val}})
 
     # Notifica alla famiglia quando lo stato cambia
     if status in (AppointmentStatus.confirmed, AppointmentStatus.cancelled):
@@ -120,12 +144,24 @@ async def update_appointment_status(
                 date=apt["date"],
                 time_slot=apt["time_slot"],
                 reason=apt.get("reason", ""),
-                status=status.value if hasattr(status, "value") else str(status),
+                status=status_val,
                 sede_id=apt.get("sede_id"),
                 org_id=parent.get("org_id"),
             )
+        # Push al genitore (best-effort): oltre all'email, così vede subito l'esito.
+        if expo_notify and apt.get("parent_id"):
+            _label = "confermato" if status == AppointmentStatus.confirmed else "annullato"
+            try:
+                await expo_notify(
+                    db, [apt["parent_id"]],
+                    f"Appuntamento {_label}",
+                    f"{apt.get('date', '')} {apt.get('time_slot', '')}",
+                    {"type": "appointment", "apt_id": apt_id, "status": status_val},
+                )
+            except Exception:
+                pass
 
-    return {"message": "Stato aggiornato", "status": status}
+    return {"message": "Stato aggiornato", "status": status_val}
 
 
 @router.delete("/{apt_id}")
@@ -158,7 +194,8 @@ async def get_appointment_slots(
 ):
     db = get_db()
     if date:
-        query: dict = {"date": date}
+        # Gli appuntamenti annullati NON occupano lo slot (altrimenti resterebbe bloccato per sempre).
+        query: dict = {"date": date, "status": {"$ne": AppointmentStatus.cancelled.value}}
         if not ctx.all_access:
             query["sede_id"] = {"$in": list(ctx.sede_ids)}   # slot occupati solo della propria sede
         booked = await db.appointments.find(query, {"_id": 0}).to_list(100)

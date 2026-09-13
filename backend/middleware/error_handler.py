@@ -8,17 +8,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
 
-# Detect production across hosts. The backend runs on Railway (RAILWAY_ENVIRONMENT),
-# not Vercel — relying on VERCEL_ENV alone left IS_PROD always False in prod, leaking
-# raw exception text to clients. Check Railway/Vercel/APP_ENV; default to NOT prod only
-# when no environment marker is present (i.e. local dev).
-_ENV = (
-    os.environ.get("RAILWAY_ENVIRONMENT")
-    or os.environ.get("VERCEL_ENV")
-    or os.environ.get("APP_ENV")
+# Fail safe: treat the app as production (hide internal error details) UNLESS an
+# explicit development marker is set. A missing or misspelled env variable therefore
+# yields the SAFE, non-verbose behaviour instead of leaking raw exception text.
+# Dev mode is enabled only when APP_ENV/ENV is a known dev value, or DEV_MODE is truthy.
+_DEV_ENV = (
+    os.environ.get("APP_ENV")
+    or os.environ.get("ENV")
     or ""
-).lower()
-IS_PROD = _ENV in ("production", "prod")
+).strip().lower()
+_DEV_MODE = os.environ.get("DEV_MODE", "").strip().lower() in ("1", "true", "yes", "on")
+IS_DEV = _DEV_ENV in ("development", "dev", "local") or _DEV_MODE
+IS_PROD = not IS_DEV
 
 
 def add_error_handlers(app: FastAPI):

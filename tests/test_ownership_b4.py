@@ -67,7 +67,7 @@ async def test_calendar_delete_cross_tenant_404_present(client, admin_headers):
 async def test_calendar_create_cross_tenant_404_no_notify(client, teacher_headers):
     db = get_db()
     with patch("routers.calendar.notify_class", new_callable=AsyncMock) as nc, \
-         patch("routers.calendar.notify_role", new_callable=AsyncMock):
+         patch("routers.calendar.notify_role_sede", new_callable=AsyncMock):
         r = await client.post("/api/calendar/events", json={
             "titolo": "XEV", "data_inizio": "2026-05-01", "classe_id": MM_CLASS, "visibile_a": ["parent"],
         }, headers=teacher_headers)
@@ -105,7 +105,7 @@ async def test_documents_delete_own_ok_calls_file_delete(client, admin_headers):
 async def test_documents_upload_cross_tenant_404_no_notify_no_upload(client, teacher_headers):
     db = get_db()
     with patch("routers.documents.notify_class", new_callable=AsyncMock) as nc, \
-         patch("routers.documents.notify_role", new_callable=AsyncMock), \
+         patch("routers.documents.notify_role_sede", new_callable=AsyncMock), \
          patch("routers.documents.upload_file", new_callable=AsyncMock) as up:
         r = await client.post("/api/documents/upload",
             data={"title": "CrossDoc", "classe_id": MM_CLASS},

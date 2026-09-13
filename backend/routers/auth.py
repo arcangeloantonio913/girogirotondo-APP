@@ -69,8 +69,15 @@ async def register(request: Request, payload: UserRegister):
         # SICUREZZA: la registrazione pubblica non concede MAI ruoli privilegiati.
         # admin/maestre si creano solo da un admin autenticato (POST /api/users, /iscrizione).
         "role": "parent",
-        "class_id": payload.class_id,
-        "child_id": payload.child_id,
+        # SICUREZZA (dati di minori): il legame figlio↔genitore, la classe e la sede NON
+        # vengono MAI presi dal payload pubblico — altrimenti chiunque, conoscendo l'UUID di
+        # uno studente (che circola in molte response), si auto-collegherebbe a quel bambino.
+        # Il collegamento avviene SOLO da admin via /api/users/iscrizione o /secondo-genitore.
+        "class_id": None,
+        "class_ids": [],
+        "child_id": None,
+        "child_ids": [],
+        "sede_id": None,
         "avatar_url": payload.avatar_url,
         "active": True,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -110,10 +117,18 @@ async def login(request: Request, payload: dict):
     if not JWT_SECRET:
         raise HTTPException(status_code=500, detail="JWT_SECRET non configurato sul server")
 
+    # Scadenza token: NON permanente. I JWT HS256 sono stateless e senza revoca
+    # server-side (il logout ripulisce solo il client), quindi un token sottratto resta
+    # valido fino a `exp`: 10 anni erano una falla su dati di minori. Default 90 giorni,
+    # regolabile via env JWT_EXPIRE_DAYS senza rideploy del codice.
+    try:
+        _expire_days = int(os.environ.get("JWT_EXPIRE_DAYS", "90"))
+    except ValueError:
+        _expire_days = 90
     token_payload = {
         "user_id": user["id"],
         "role": user["role"],
-        "exp": datetime.now(timezone.utc) + timedelta(days=3650)  # 10 anni — login permanente,
+        "exp": datetime.now(timezone.utc) + timedelta(days=_expire_days),
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k not in ("password", "admin_password")}

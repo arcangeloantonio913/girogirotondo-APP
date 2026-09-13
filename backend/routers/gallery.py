@@ -84,6 +84,9 @@ async def get_gallery(
             query["student_ids"] = student_id
         else:
             query["student_ids"] = {"$in": list(allowed)}
+        # Il genitore vede SOLO i media pubblicati: se la maestra "nasconde" una foto
+        # (published=False) deve sparire. I media legacy senza il campo restano visibili.
+        query["published"] = {"$ne": False}
     else:
         # ── Staff: scope to caller's classes/sede ─────────────────────────────
         if class_id:
@@ -120,6 +123,9 @@ async def get_media(media_id: str, ctx: TenantContext = Depends(get_tenant_conte
     # ── Object-level authorization ───────────────────────────────────────────
     if ctx.role == "parent":
         if not (set(item.get("student_ids") or []) & ctx.allowed_student_ids):
+            raise HTTPException(status_code=404, detail="Media non trovato")
+        # Un media nascosto (published=False) non è accessibile al genitore.
+        if item.get("published") is False:
             raise HTTPException(status_code=404, detail="Media non trovato")
     else:
         ctx.assert_class(item.get("class_id"))
@@ -239,7 +245,7 @@ async def upload_media_base64(
     if len(media_url) > 12 * 1024 * 1024:
         raise HTTPException(
             status_code=413,
-            detail="File troppo grande (max ~9MB). Usa una foto più piccola."
+            detail="File troppo grande (max ~12MB base64). Usa una foto più piccola."
         )
 
     # student_ids può arrivare come lista o stringa CSV
@@ -292,6 +298,15 @@ async def upload_media_url(
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     doc = payload.model_dump()
+    # Guardia dimensione: se media_url è un data URL base64, non deve superare 12MB
+    # (limite documento MongoDB 16MB) — altrimenti l'insert fallisce con 500. Stesso
+    # limite di /upload-b64, così l'app che usa questo endpoint non genera errori opachi.
+    _media_url = doc.get("media_url") or ""
+    if _media_url.startswith("data:") and len(_media_url) > 12 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="File troppo grande (max ~12MB base64). Usa una foto più piccola."
+        )
     # Caller must own the target class
     ctx.assert_class(doc.get("class_id"))
     doc["sede_id"] = await _class_sede(db, doc.get("class_id"))

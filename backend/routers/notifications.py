@@ -7,7 +7,7 @@ from typing import Optional
 from services.database import get_db
 from models.notifications import PushTokenRegister, NotificationSend
 from middleware.auth import get_current_user, get_tenant_context, TenantContext
-from utils.push_notifications import send_push_notification, send_multicast, notify_role
+from utils.expo_push import send_expo_push
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
@@ -111,16 +111,45 @@ async def send_notification(
     elif payload.class_id:
         if not ctx.all_access:
             ctx.assert_class(payload.class_id)   # 404 cross-sede PRIMA di risolvere destinatari
-        users = await db.users.find(
-            {"class_id": payload.class_id, "active": True}, {"id": 1}
+        # I GENITORI non hanno class_id: si risolvono tramite i figli (students → parent_ids/
+        # child_ids). Lo staff (maestre/admin) per class_id/class_ids. Prima si prendevano solo
+        # gli utenti con class_id diretto → i genitori non ricevevano MAI la push di classe.
+        uids: set = set()
+        staff = await db.users.find(
+            {"active": True, "$or": [
+                {"class_id": payload.class_id},
+                {"class_ids": payload.class_id},
+            ]},
+            {"id": 1},
         ).to_list(1000)
-        tokens = await _tokens_for([u["id"] for u in users])
+        uids.update(u["id"] for u in staff)
+        students = await db.students.find(
+            {"class_id": payload.class_id}, {"id": 1, "parent_id": 1, "parent_ids": 1}
+        ).to_list(500)
+        student_ids = [s["id"] for s in students if s.get("id")]
+        for s in students:
+            if s.get("parent_id"):
+                uids.add(s["parent_id"])
+            for pid in (s.get("parent_ids") or []):
+                uids.add(pid)
+        if student_ids:
+            parents = await db.users.find(
+                {"role": "parent", "active": True, "$or": [
+                    {"child_ids": {"$in": student_ids}},
+                    {"child_id": {"$in": student_ids}},
+                ]},
+                {"id": 1},
+            ).to_list(1000)
+            uids.update(p["id"] for p in parents)
+        tokens = await _tokens_for(list(uids))
 
     if not tokens:
-        # Nessun destinatario lecito -> NON chiamare send_multicast (nessuna push emessa).
+        # Nessun destinatario lecito -> NON inviare nulla (nessuna push emessa).
         return {"sent": 0, "message": "Nessun destinatario trovato"}
 
-    sent = send_multicast(tokens, payload.title, payload.body, payload.data)
+    # I token salvati sono Expo (non FCM): si invia via Expo Push API, altrimenti la push
+    # manuale non verrebbe mai consegnata.
+    sent = send_expo_push(tokens, payload.title, payload.body, payload.data)
     return {"sent": sent, "total_tokens": len(tokens)}
 
 

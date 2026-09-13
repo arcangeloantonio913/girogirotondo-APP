@@ -1,1 +1,12 @@
 .vercel
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc

@@ -36,7 +36,7 @@ async def _clean_tokens():
 async def test_send_roles_scoped_to_own_sede(client, admin_headers):
     await _seed_tokens()
     try:
-        with patch("routers.notifications.send_multicast", MagicMock(return_value=1)) as mock_send:
+        with patch("routers.notifications.send_expo_push", MagicMock(return_value=1)) as mock_send:
             r = await client.post("/api/notifications/send",
                 json={"title": "T", "body": "B", "roles": ["parent"]}, headers=admin_headers)
             assert r.status_code == 200
@@ -53,7 +53,7 @@ async def test_send_roles_scoped_to_own_sede(client, admin_headers):
 async def test_send_class_id_cross_sede_404_no_push(client, admin_headers):
     await _seed_tokens()
     try:
-        with patch("routers.notifications.send_multicast", MagicMock(return_value=1)) as mock_send:
+        with patch("routers.notifications.send_expo_push", MagicMock(return_value=1)) as mock_send:
             r = await client.post("/api/notifications/send",
                 json={"title": "T", "body": "B", "class_id": MM_CLASS}, headers=admin_headers)
             assert r.status_code == 404
@@ -67,7 +67,7 @@ async def test_send_class_id_cross_sede_404_no_push(client, admin_headers):
 async def test_send_user_ids_filter_out_foreign(client, admin_headers):
     await _seed_tokens()
     try:
-        with patch("routers.notifications.send_multicast", MagicMock(return_value=1)) as mock_send:
+        with patch("routers.notifications.send_expo_push", MagicMock(return_value=1)) as mock_send:
             r = await client.post("/api/notifications/send",
                 json={"title": "T", "body": "B",
                       "user_ids": ["parent-test-id", "mm-parent-id"]}, headers=admin_headers)
@@ -85,7 +85,7 @@ async def test_send_user_ids_filter_out_foreign(client, admin_headers):
 async def test_send_superadmin_all_sedi(client, super_headers):
     await _seed_tokens()
     try:
-        with patch("routers.notifications.send_multicast", MagicMock(return_value=2)) as mock_send:
+        with patch("routers.notifications.send_expo_push", MagicMock(return_value=2)) as mock_send:
             r = await client.post("/api/notifications/send",
                 json={"title": "T", "body": "B", "roles": ["parent"]}, headers=super_headers)
             assert r.status_code == 200
@@ -101,7 +101,7 @@ async def test_send_superadmin_all_sedi(client, super_headers):
 async def test_send_user_ids_only_foreign_no_push(client, admin_headers):
     await _seed_tokens()
     try:
-        with patch("routers.notifications.send_multicast", MagicMock(return_value=1)) as mock_send:
+        with patch("routers.notifications.send_expo_push", MagicMock(return_value=1)) as mock_send:
             r = await client.post("/api/notifications/send",
                 json={"title": "T", "body": "B", "user_ids": ["mm-parent-id"]}, headers=admin_headers)
             assert r.status_code == 200

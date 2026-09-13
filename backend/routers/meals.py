@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
 
 from services.database import get_db
+from utils.expo_push import notify_parents_of_class, notify_role
 from models.meals import MealCreate
 from middleware.auth import (
     get_current_user, get_tenant_context, TenantContext,
@@ -110,6 +111,25 @@ async def create_meal(
 
     await db.meals.insert_one(doc)
     doc.pop("_id", None)
+
+    # ── Notifica push ai genitori (una sola per menu, anche se copre un range di date).
+    #    Scoping: se legato a una classe -> solo i suoi genitori; altrimenti sede-wide
+    #    (mai cross-tenant: usa la sede_id del creatore). Guard: un errore non rompe la risposta.
+    try:
+        if doc.get("date"):
+            when = doc["date"]
+        elif doc.get("date_from") and doc.get("date_to"):
+            when = f"dal {doc['date_from']} al {doc['date_to']}"
+        else:
+            when = ""
+        body = f"È disponibile il menù {when}".strip() if when else "È disponibile il nuovo menù"
+        if doc.get("class_id"):
+            await notify_parents_of_class(db, doc["class_id"], "🍽️ Menù aggiornato", body)
+        else:
+            await notify_role(db, "parent", sede_id, "🍽️ Menù aggiornato", body)
+    except Exception:
+        pass
+
     return doc
 
 

@@ -113,10 +113,14 @@ async def update_class(
         if payload.teacher_id == "":
             updates["teacher_id"] = None   # rimuovi maestra
         else:
-            # Verifica che la maestra esista e appartenga alla sede
+            # Verifica che la maestra esista e appartenga alla STESSA sede della classe:
+            # assegnare una maestra di un'altra sede le darebbe accesso cross-tenant ai
+            # bambini di questa classe.
             teacher = await db.users.find_one({"id": payload.teacher_id, "role": "teacher"})
             if not teacher:
                 raise HTTPException(status_code=400, detail="Maestra non trovata")
+            if teacher.get("sede_id") != cls.get("sede_id"):
+                raise HTTPException(status_code=400, detail="La maestra non appartiene alla sede della classe")
             updates["teacher_id"] = payload.teacher_id
             # Aggiorna anche class_ids sulla maestra
             await db.users.update_one(

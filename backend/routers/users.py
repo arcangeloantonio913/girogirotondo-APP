@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 
 from services.database import get_db
 from models.user import UserCreate, UserUpdate, IscrizioneCreate, SecondoGenitoreCreate
-from middleware.auth import get_current_user, validate_admin_sede_access
+from middleware.auth import get_current_user, validate_admin_sede_access, get_valid_sede_ids
 from services.email_service import send_credentials_email, send_resend_credentials_email
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -25,6 +25,48 @@ def _generate_password(length: int = 10) -> str:
     """Genera una password casuale sicura."""
     chars = string.ascii_letters + string.digits + "!@#$%"
     return ''.join(random.choices(chars, k=length))
+
+
+# ---------------------------------------------------------------------------
+# Helper multi-tenant condivisi (isolamento sede — dati di MINORI)
+# ---------------------------------------------------------------------------
+
+async def _admin_allowed_sedi(db, current_user: dict, sede_id: str) -> set:
+    """Sedi su cui l'admin può operare.
+
+    - Admin normale → solo la propria sede validata.
+    - SuperAdmin → tutte le sedi attive della propria org (fallback pre-backfill:
+      nessun org_id → tutte, comportamento odierno).
+    """
+    if current_user.get("is_superadmin"):
+        return await get_valid_sede_ids(db, current_user.get("org_id"))
+    return {sede_id}
+
+
+def _assert_can_modify_target(current_user: dict, target: dict, sede_id: str) -> None:
+    """Convenzione consolidata (come /credentials, /resend, DELETE): il SuperAdmin
+    bypassa il controllo sede; l'admin normale può toccare solo utenti della propria
+    sede e mai un SuperAmministratore."""
+    if target.get("is_superadmin") and not current_user.get("is_superadmin"):
+        raise HTTPException(status_code=403, detail="Non puoi modificare un SuperAmministratore")
+    if not current_user.get("is_superadmin") and target.get("sede_id") != sede_id:
+        raise HTTPException(status_code=403, detail="Utente non appartiene alla sede selezionata")
+
+
+async def _validate_children_in_sedi(db, child_ids, allowed_sedi: set) -> None:
+    """Ogni figlio assegnato deve appartenere a una sede consentita (404 = no leak)."""
+    for cid in child_ids or []:
+        st = await db.students.find_one({"id": cid}, {"_id": 0, "sede_id": 1})
+        if not st or st.get("sede_id") not in allowed_sedi:
+            raise HTTPException(status_code=404, detail="Bambino non trovato nella sede selezionata")
+
+
+async def _validate_classes_in_sedi(db, class_ids, allowed_sedi: set) -> None:
+    """Ogni classe assegnata deve appartenere a una sede consentita (404 = no leak)."""
+    for clid in class_ids or []:
+        cl = await db.classes.find_one({"id": clid}, {"_id": 0, "sede_id": 1})
+        if not cl or cl.get("sede_id") not in allowed_sedi:
+            raise HTTPException(status_code=404, detail="Classe non trovata nella sede selezionata")
 
 
 # ---------------------------------------------------------------------------
@@ -62,10 +104,15 @@ async def get_users(
 # ---------------------------------------------------------------------------
 
 @router.get("/by-class/{class_id}")
-async def get_users_by_class(class_id: str, current_user: dict = Depends(get_current_user)):
+async def get_users_by_class(
+    class_id: str,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
     role = current_user.get("role")
     if role not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Permesso negato")
+    db = get_db()
     # Una maestra può interrogare SOLO le proprie classi (l'endpoint espone i genitori
     # della classe → niente enumerazione di classi altrui).
     if role == "teacher":
@@ -75,7 +122,13 @@ async def get_users_by_class(class_id: str, current_user: dict = Depends(get_cur
             tclasses.append(legacy)
         if class_id not in tclasses:
             raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
-    db = get_db()
+    else:
+        # Admin: la classe deve appartenere alla propria sede (superadmin: alla propria org).
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        allowed = await _admin_allowed_sedi(db, current_user, sede_id)
+        cls = await db.classes.find_one({"id": class_id}, {"_id": 0, "sede_id": 1})
+        if not cls or cls.get("sede_id") not in allowed:
+            raise HTTPException(status_code=404, detail="Classe non trovata")
     _proj = {"_id": 0, "password": 0, "admin_password": 0}
     # 1) Utenti con class_id diretto (es. maestre assegnate)
     direct = await db.users.find({"class_id": class_id}, _proj).to_list(500)
@@ -97,13 +150,25 @@ async def get_users_by_class(class_id: str, current_user: dict = Depends(get_cur
 # ---------------------------------------------------------------------------
 
 @router.get("/{user_id}")
-async def get_user(user_id: str, current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin" and current_user.get("id") != user_id:
+async def get_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    is_self = current_user.get("id") == user_id
+    if current_user.get("role") != "admin" and not is_self:
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="Utente non trovato")
+    # Un admin non-super può leggere solo utenti della propria sede (no disclosure PII
+    # cross-tenant). 404, non 403, per non rivelare l'esistenza dell'utente.
+    if not is_self and current_user.get("role") == "admin":
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        allowed = await _admin_allowed_sedi(db, current_user, sede_id)
+        if not current_user.get("is_superadmin") and user.get("sede_id") not in allowed:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
     return user
 
 
@@ -137,13 +202,25 @@ async def create_user(
         payload.password.encode(), bcrypt.gensalt()
     ).decode()
 
-    # Assegna sede (usa quella del payload se fornita, altrimenti quella attiva)
-    user_dict["sede_id"] = payload.sede_id or sede_id
+    # Assegna sede. L'admin normale NON può creare utenti fuori dalla propria sede:
+    # la sede del payload è accettata solo dal superadmin (bounded alla sua org).
+    allowed_sedi = await _admin_allowed_sedi(db, current_user, sede_id)
+    if current_user.get("is_superadmin"):
+        requested_sede = payload.sede_id or sede_id
+        if requested_sede not in allowed_sedi:
+            raise HTTPException(status_code=404, detail="Sede non valida")
+        user_dict["sede_id"] = requested_sede
+    else:
+        # Ignora un eventuale payload.sede_id manipolato → sempre la sede validata.
+        user_dict["sede_id"] = sede_id
+    target_sedi = {user_dict["sede_id"]}
 
     # Normalizza class_ids
     class_ids = list(payload.class_ids or [])
     if payload.class_id and payload.class_id not in class_ids:
         class_ids.append(payload.class_id)
+    # Le classi assegnate devono appartenere alla sede dell'utente creato.
+    await _validate_classes_in_sedi(db, class_ids, target_sedi)
     user_dict["class_ids"] = class_ids
     user_dict["class_id"] = class_ids[0] if class_ids else None
 
@@ -151,6 +228,8 @@ async def create_user(
     child_ids = list(payload.child_ids or [])
     if payload.child_id and payload.child_id not in child_ids:
         child_ids.append(payload.child_id)
+    # I figli assegnati devono appartenere alla sede dell'utente creato (dati minori).
+    await _validate_children_in_sedi(db, child_ids, target_sedi)
     user_dict["child_ids"] = child_ids
     user_dict["child_id"] = child_ids[0] if child_ids else None
 
@@ -170,8 +249,11 @@ async def update_user(
     user_id: str,
     payload: UserUpdate,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
-    if current_user.get("role") != "admin" and current_user.get("id") != user_id:
+    is_admin = current_user.get("role") == "admin"
+    is_self = current_user.get("id") == user_id
+    if not is_admin and not is_self:
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
 
@@ -179,9 +261,30 @@ async def update_user(
 
     # Anti privilege-escalation: un utente non-admin (self-service) NON può modificare
     # sede/classi/figli — altrimenti si auto-concederebbe accesso ad altri tenant/bambini.
-    if current_user.get("role") != "admin":
+    if not is_admin:
         _PRIVILEGED = {"sede_id", "class_id", "class_ids", "child_id", "child_ids"}
         updates = {k: v for k, v in updates.items() if k not in _PRIVILEGED}
+    else:
+        # Admin: verifica che il target appartenga alla propria sede (isolamento
+        # multi-tenant su dati di minori) e che i campi privilegiati restino nella sede.
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        target = await db.users.find_one({"id": user_id})
+        if not target:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+        _assert_can_modify_target(current_user, target, sede_id)
+        allowed_sedi = await _admin_allowed_sedi(db, current_user, sede_id)
+        # La sede di destinazione (se modificata) deve restare consentita al chiamante.
+        if "sede_id" in updates and updates["sede_id"] not in allowed_sedi:
+            raise HTTPException(status_code=404, detail="Sede non valida")
+        dest_sedi = {updates.get("sede_id", target.get("sede_id"))}
+        cl_ids = list(updates.get("class_ids") or [])
+        if updates.get("class_id"):
+            cl_ids.append(updates["class_id"])
+        await _validate_classes_in_sedi(db, cl_ids, dest_sedi)
+        ch_ids = list(updates.get("child_ids") or [])
+        if updates.get("child_id"):
+            ch_ids.append(updates["child_id"])
+        await _validate_children_in_sedi(db, ch_ids, dest_sedi)
 
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
@@ -323,6 +426,7 @@ async def iscrizione_bambino(
 async def aggiungi_secondo_genitore(
     payload: SecondoGenitoreCreate,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     """
     Aggiunge un secondo account genitore associato allo stesso bambino.
@@ -332,11 +436,16 @@ async def aggiungi_secondo_genitore(
     Solo admin.
     """
     _require_admin(current_user)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
-    # Verifica che lo studente esista
+    # Verifica che lo studente esista E appartenga alla sede dell'admin (dati di minori:
+    # niente collegamento di account genitore a bambini di un'altra sede). 404 = no leak.
     student = await db.students.find_one({"id": payload.student_id}, {"_id": 0})
     if not student:
+        raise HTTPException(status_code=404, detail="Bambino non trovato")
+    allowed_sedi = await _admin_allowed_sedi(db, current_user, sede_id)
+    if not current_user.get("is_superadmin") and student.get("sede_id") not in allowed_sedi:
         raise HTTPException(status_code=404, detail="Bambino non trovato")
 
     password_plain = payload.genitore_password or _generate_password()
@@ -418,6 +527,7 @@ async def update_user_email(
     user_id: str,
     payload: dict,
     current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
 ):
     """
     Permette all'utente di aggiornare la propria email, o all'admin di cambiarla.
@@ -433,6 +543,16 @@ async def update_user_email(
         raise HTTPException(status_code=400, detail="Email obbligatoria")
 
     db = get_db()
+
+    # Admin che cambia l'email di un ALTRO utente → solo se della propria sede
+    # (cambiare l'email è il primo passo di un account takeover cross-tenant).
+    if is_admin and not is_self:
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        target = await db.users.find_one({"id": user_id})
+        if not target:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+        _assert_can_modify_target(current_user, target, sede_id)
+
     existing = await db.users.find_one({"email": new_email, "id": {"$ne": user_id}})
     if existing:
         raise HTTPException(status_code=400, detail="Email già in uso da un altro account")

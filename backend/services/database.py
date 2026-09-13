@@ -54,9 +54,17 @@ def hash_password(password: str) -> str:
 
 async def ensure_superadmins():
     """
-    Eseguito ad OGNI avvio: garantisce che Mariagrazia e Teresa
-    esistano con le email e password corrette, indipendentemente
-    dallo stato del database. Usa upsert — sicuro da chiamare più volte.
+    Eseguito ad OGNI avvio: garantisce che gli account superadmin esistano con
+    email/ruolo corretti. Idempotente.
+
+    SICUREZZA: la password NON è più hardcoded nel sorgente né viene riscritta ad
+    ogni boot. In precedenza il boot re-impostava una password nota in chiaro → chi
+    conosceva il pattern aveva accesso a tutti i dati (minori), e le direttrici non
+    potevano cambiare password (veniva ripristinata al riavvio). Ora:
+      - account ESISTENTE → si aggiornano solo nome/flag/attivo, MAI la password
+        (chi la cambia via /credentials la mantiene);
+      - account MANCANTE → creato solo se la password è fornita via env
+        (SUPERADMIN_*_PASSWORD), altrimenti si logga un warning e si salta.
     """
     db = get_db()
 
@@ -65,44 +73,49 @@ async def ensure_superadmins():
             "email": "mariucciasc@gmail.com",
             "name": "Mariagrazia",
             "cognome": "Direttrice",
-            "password_plain": "Mariagrazia2026!",
+            "password_env": "SUPERADMIN_MARIAGRAZIA_PASSWORD",
         },
         {
             "email": "melignanoteresa@gmail.com",
             "name": "Teresa",
             "cognome": "Coordinatrice",
-            "password_plain": "Teresa2026!",
+            "password_env": "SUPERADMIN_TERESA_PASSWORD",
         },
     ]
 
     for sa in superadmin_defs:
         existing = await db.users.find_one({"email": sa["email"]})
-        new_hash = hash_password(sa["password_plain"])
 
         if existing:
-            # Aggiorna sempre password, nome e flag superadmin
+            # Aggiorna metadati/flag — MAI la password (niente reset a ogni boot).
             await db.users.update_one(
                 {"email": sa["email"]},
                 {"$set": {
                     "name": sa["name"],
                     "cognome": sa["cognome"],
-                    "password": new_hash,
                     "role": "admin",
                     "is_superadmin": True,
                     "active": True,
                     "sede_id": None,
                 }},
             )
-            logger.info("[SUPERADMIN] Credenziali aggiornate per %s", sa["email"])
+            logger.info("[SUPERADMIN] Metadati verificati per %s (password invariata)", sa["email"])
         else:
-            # Crea da zero se non esiste
+            # Crea da zero SOLO se la password iniziale è fornita via env.
+            initial_password = os.environ.get(sa["password_env"])
+            if not initial_password:
+                logger.warning(
+                    "[SUPERADMIN] %s assente e %s non impostata: account NON creato.",
+                    sa["email"], sa["password_env"],
+                )
+                continue
             doc = {
                 "id": str(uuid.uuid4()),
                 "firebase_uid": None,
                 "name": sa["name"],
                 "cognome": sa["cognome"],
                 "email": sa["email"],
-                "password": new_hash,
+                "password": hash_password(initial_password),
                 "role": "admin",
                 "is_superadmin": True,
                 "sede_id": None,
@@ -115,7 +128,7 @@ async def ensure_superadmins():
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
             await db.users.insert_one(doc)
-            logger.info("[SUPERADMIN] Creato nuovo account per %s", sa["email"])
+            logger.info("[SUPERADMIN] Creato nuovo account per %s (password da env)", sa["email"])
 
     # Rimuovi vecchi account con email obsolete
     old_emails = ["mariagrazia@girogirotondo.it", "teresa@girogirotondo.it"]

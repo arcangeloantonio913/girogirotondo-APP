@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from services.database import get_db
 from models.calendar import CalendarEventCreate, CalendarEventUpdate
 from middleware.auth import get_tenant_context, TenantContext
-from utils.push_notifications import notify_class, notify_role
+from utils.push_notifications import notify_class
+from utils.expo_push import notify_role as notify_role_sede  # variante scopata per sede
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -132,14 +133,19 @@ async def create_event(
             data={"type": "calendar", "event_id": event_id},
         )
     else:
-        for role_target in payload.visibile_a:
-            role_val = role_target.value if hasattr(role_target, "value") else role_target
-            await notify_role(
-                db, role_val,
-                title="Nuovo evento in calendario",
-                body=payload.titolo,
-                data={"type": "calendar", "event_id": event_id},
-            )
+        # Evento di SEDE (senza classe): notifica SOLO gli utenti della stessa sede.
+        # Prima si usava notify_role SENZA sede → la push arrivava a TUTTI i genitori/maestre
+        # di TUTTE le sedi e org (leak multi-tenant). Ora si scopa per doc["sede_id"].
+        event_sede = doc.get("sede_id")
+        if event_sede:
+            for role_target in payload.visibile_a:
+                role_val = role_target.value if hasattr(role_target, "value") else role_target
+                await notify_role_sede(
+                    db, role_val, event_sede,
+                    "Nuovo evento in calendario",
+                    payload.titolo,
+                    {"type": "calendar", "event_id": event_id},
+                )
 
     return doc
 

@@ -50,6 +50,18 @@ async def _get_diary(class_id: Optional[str], date: Optional[str], ctx: TenantCo
         if not _DATE_RE.match(date):
             raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
         query["date"] = date
+
+    # Voci di diario mirate a specifici bambini (student_ids valorizzato): visibili al
+    # genitore SOLO se includono un suo figlio. Le voci senza targeting valgono per tutta
+    # la classe. Difesa in profondità: oggi l'app maestra non invia student_ids, ma il
+    # campo esiste nel modello e non era onorato → potenziale leak su dati di minori.
+    if ctx.role == "parent":
+        allowed = list(ctx.allowed_student_ids)
+        query["$or"] = [
+            {"student_ids": {"$in": allowed}},
+            {"student_ids": {"$in": [None, []]}},
+            {"student_ids": {"$exists": False}},
+        ]
     return await db.diary.find(query, {"_id": 0}).to_list(100)
 
 
@@ -57,6 +69,10 @@ async def _create_diary(entry: DiaryEntryCreate, ctx: TenantContext):
     db = get_db()
     # Caller must own the target class (cross-tenant write protection).
     ctx.assert_class(entry.class_id)
+    # Valida la data: una data malformata renderebbe la voce invisibile al genitore
+    # (la vista genitore filtra per data esatta YYYY-MM-DD).
+    if entry.date and not _DATE_RE.match(entry.date):
+        raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
     doc = entry.model_dump()
     cls = await _resolve_class(db, entry.class_id)
     doc["sede_id"] = cls.get("sede_id") if cls else None
@@ -123,6 +139,8 @@ async def update_diary(
     updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
     if not updates:
         raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    if updates.get("date") and not _DATE_RE.match(updates["date"]):
+        raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     await db.diary.update_one({"id": entry_id}, {"$set": updates})

@@ -12,7 +12,7 @@ async def test_get_events_requires_auth(client):
 @pytest.mark.asyncio
 async def test_create_and_get_event(client, teacher_headers):
     with patch("routers.calendar.notify_class", new_callable=AsyncMock), \
-         patch("routers.calendar.notify_role", new_callable=AsyncMock):
+         patch("routers.calendar.notify_role_sede", new_callable=AsyncMock):
         r = await client.post(
             "/api/calendar/events",
             json={
@@ -93,7 +93,7 @@ async def test_superadmin_sees_all_events(client, super_headers):
 @pytest.mark.asyncio
 async def test_created_event_is_sede_tagged(client, teacher_headers):
     with patch("routers.calendar.notify_class", new_callable=AsyncMock), \
-         patch("routers.calendar.notify_role", new_callable=AsyncMock):
+         patch("routers.calendar.notify_role_sede", new_callable=AsyncMock):
         r = await client.post(
             "/api/calendar/events",
             json={

@@ -12,7 +12,7 @@ from models.documents import DocumentCreate, DocumentCategory
 from middleware.auth import get_tenant_context, TenantContext
 from middleware.rate_limiter import limiter
 from utils.storage_helper import upload_file, get_signed_url, delete_file
-from utils.push_notifications import notify_class, notify_role
+from utils.push_notifications import notify_class
 from utils.expo_push import notify_role as notify_role_sede  # variante con scope per sede
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,19 @@ def _refresh_url(doc: dict) -> dict:
 
 _DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _VALID_CATEGORIES = {c.value for c in DocumentCategory}   # fonte unica: l'enum
+
+# MIME whitelist per upload-b64: PDF, immagini comuni e documenti Office (.doc/.docx),
+# in linea con l'`accept` del web (.pdf,.doc,.docx,.png,.jpg,.jpeg). Tutto il resto
+# (text/html, image/svg+xml, script/eseguibili, ...) viene rifiutato con 400.
+_ALLOWED_DOC_MIME = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/msword",  # .doc
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+}
 
 
 def _tenant_scope(ctx: TenantContext) -> dict:
@@ -153,7 +166,8 @@ async def upload_document_file(
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-notify parents of affected class (or all parents)
+    # Auto-notify: classe → genitori della classe; documento di sede (senza classe) →
+    # SOLO i genitori della stessa sede (mai globale multi-tenant, come upload-b64).
     if classe_id:
         await notify_class(
             db, classe_id, ["parent"],
@@ -161,12 +175,11 @@ async def upload_document_file(
             body=title,
             data={"type": "document", "doc_id": doc_id},
         )
-    else:
-        await notify_role(
-            db, "parent",
-            title="Nuovo documento disponibile",
-            body=title,
-            data={"type": "document", "doc_id": doc_id},
+    elif doc.get("sede_id"):
+        await notify_role_sede(
+            db, "parent", doc.get("sede_id"),
+            "Nuovo documento disponibile", title,
+            {"type": "document", "doc_id": doc_id},
         )
 
     return doc
@@ -197,6 +210,18 @@ async def upload_document_base64(
 
     if not file_b64 or not title:
         raise HTTPException(status_code=400, detail="file_b64 e title obbligatori")
+
+    # Limite dimensione: base64 max ~12MB (MongoDB document limit 16MB), come gallery.
+    if len(file_b64) > 12 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="File troppo grande (max ~12MB base64). Usa un file più piccolo.",
+        )
+
+    # Whitelist del MIME (file_type è controllato dal client): niente text/html,
+    # image/svg+xml, script o eseguibili nel data URL persistito.
+    if file_type not in _ALLOWED_DOC_MIME:
+        raise HTTPException(status_code=400, detail="Tipo di file non consentito")
 
     classe_id = payload.get("classe_id") or None
     if classe_id:

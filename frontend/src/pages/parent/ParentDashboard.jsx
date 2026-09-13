@@ -38,13 +38,6 @@ const EmptyBear = ({ text }) => (
   </div>
 );
 
-const MOCK_GALLERY = [
-  { id: 'mg1', url: 'https://images.unsplash.com/photo-1627764940620-90393d0e8c34?w=400&h=400&fit=crop', caption: 'Giochi in giardino' },
-  { id: 'mg2', url: 'https://images.pexels.com/photos/5435599/pexels-photo-5435599.jpeg?w=400&h=400&fit=crop', caption: 'Blocchi creativi' },
-  { id: 'mg3', url: 'https://images.pexels.com/photos/3662648/pexels-photo-3662648.jpeg?w=400&h=400&fit=crop', caption: 'Attivita artistiche' },
-  { id: 'mg4', url: 'https://images.pexels.com/photos/5905683/pexels-photo-5905683.jpeg?w=400&h=400&fit=crop', caption: 'Ora di pranzo' },
-];
-
 export default function ParentDashboard() {
   const { user, activeChildId } = useAuth();
   const navigate = useNavigate();
@@ -139,7 +132,11 @@ export default function ParentDashboard() {
     { label: 'Frutta',  active: griglia.frutta,  color: C.babyGreen },
   ] : [];
 
-  const displayGallery = galleryItems.length > 0 ? galleryItems : MOCK_GALLERY;
+  // Mostra SOLO le foto reali del bambino/classe. Niente placeholder: prima si
+  // mostravano 4 foto stock (MOCK_GALLERY) quando la galleria era vuota, con un
+  // conteggio falso "4 contenuti" → fuorviante per il genitore (privacy dei minori:
+  // sembravano foto del proprio figlio). Vuoto ⇒ empty-state esplicito.
+  const displayGallery = galleryItems;
 
   return (
     <AppLayout>

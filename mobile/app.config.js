@@ -63,6 +63,15 @@ module.exports = () => {
           // TODO: URL privacy/support Dimensione Bimbo.
         },
 
+        // OTA EAS Update: base.updates.url punta al progetto di Giro. DB ha un progetto EAS
+        // proprio, quindi l'URL DEVE combaciare con extra.eas.projectId qui sopra, altrimenti
+        // il build fallisce (projectId mismatch) o l'OTA raggiunge il progetto sbagliato.
+        // runtimeVersion (policy appVersion) è ereditato da base: risolve la versione di DB.
+        updates: {
+          ...base.updates,
+          url: 'https://u.expo.dev/1f2f0ec6-39de-410e-8e86-3c32b110fcce',
+        },
+
         web: {
           ...base.web,
           name: 'Dimensione Bimbo',

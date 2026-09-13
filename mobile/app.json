@@ -76,6 +76,12 @@
       "android",
       "web"
     ],
-    "description": "Piattaforma gestionale per la Scuola dell'Infanzia Girogirotondo e Il Magico Mondo. Permette a genitori e maestre di comunicare in tempo reale, condividere foto, gestire presenze e menu mensa."
+    "description": "Piattaforma gestionale per la Scuola dell'Infanzia Girogirotondo e Il Magico Mondo. Permette a genitori e maestre di comunicare in tempo reale, condividere foto, gestire presenze e menu mensa.",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/625a201a-6822-4c37-af2e-ffaa3afa03cf"
+    }
   }
 }

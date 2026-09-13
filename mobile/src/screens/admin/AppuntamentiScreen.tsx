@@ -5,6 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -65,7 +66,7 @@ export default function AdminAppuntamenti() {
     Linking.openURL(url);
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = todayLocal();
   const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   const days = daysInMonth(year, month);
   const firstDay = firstDayOfMonth(year, month);

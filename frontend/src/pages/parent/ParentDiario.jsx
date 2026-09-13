@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -37,7 +38,7 @@ export default function ParentDiario() {
                   {new Date(entry.date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </span>
                 {entry.date === today && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: '#32CD32' }}>Oggi</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: C.accentGreen }}>Oggi</span>
                 )}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">{entry.summary}</p>

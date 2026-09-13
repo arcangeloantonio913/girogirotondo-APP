@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -97,7 +98,7 @@ export default function AdminPresenze() {
           ].map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${tab === key ? 'text-white shadow-sm' : 'text-gray-500'}`}
-              style={tab === key ? { backgroundColor: '#4169E1' } : {}}>
+              style={tab === key ? { backgroundColor: C.primary } : {}}>
               <Icon className="w-3.5 h-3.5" />{label}
             </button>
           ))}
@@ -144,8 +145,8 @@ export default function AdminPresenze() {
         {tab === TAB_OGGI && daySummary && (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2" style={{ backgroundColor: '#4169E108' }}>
-              <Users className="w-4 h-4" style={{ color: '#4169E1' }} />
-              <span className="text-sm font-bold" style={{ color: '#4169E1', fontFamily: 'Nunito' }}>
+              <Users className="w-4 h-4" style={{ color: C.primary }} />
+              <span className="text-sm font-bold" style={{ color: C.primary, fontFamily: 'Nunito' }}>
                 Riepilogo tutte le classi
               </span>
             </div>
@@ -158,8 +159,8 @@ export default function AdminPresenze() {
                     className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors ${selectedClass === c.id ? 'bg-blue-50' : ''}`}
                     data-testid={`class-row-${c.id}`}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: selectedClass === c.id ? '#4169E1' : '#EBF0FF' }}>
-                      <BookOpen className="w-4 h-4" style={{ color: selectedClass === c.id ? 'white' : '#4169E1' }} />
+                      style={{ backgroundColor: selectedClass === c.id ? C.primary : C.tintBlue }}>
+                      <BookOpen className="w-4 h-4" style={{ color: selectedClass === c.id ? 'white' : C.primary }} />
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-sm font-semibold text-gray-800">{c.name}</p>
@@ -187,7 +188,7 @@ export default function AdminPresenze() {
             {classes.map(c => (
               <button key={c.id} onClick={() => setSelectedClass(c.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${selectedClass === c.id ? 'text-white border-transparent' : 'border-gray-200 text-gray-500'}`}
-                style={selectedClass === c.id ? { backgroundColor: '#4169E1' } : {}}>
+                style={selectedClass === c.id ? { backgroundColor: C.primary } : {}}>
                 {c.name}
               </button>
             ))}
@@ -198,7 +199,7 @@ export default function AdminPresenze() {
         {tab === TAB_OGGI && selectedClass && (
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100" style={{ backgroundColor: '#4169E108' }}>
-              <p className="text-sm font-bold" style={{ color: '#4169E1', fontFamily: 'Nunito' }}>
+              <p className="text-sm font-bold" style={{ color: C.primary, fontFamily: 'Nunito' }}>
                 {cls?.name} — dettaglio
               </p>
             </div>
@@ -250,7 +251,7 @@ export default function AdminPresenze() {
           ) : (
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100" style={{ backgroundColor: '#4169E108' }}>
-                <p className="text-sm font-bold" style={{ color: '#4169E1', fontFamily: 'Nunito' }}>
+                <p className="text-sm font-bold" style={{ color: C.primary, fontFamily: 'Nunito' }}>
                   {cls?.name} — {tab === TAB_MESE ? MESE_NOMI[archMese] : `Anno ${archAnno}`}
                 </p>
               </div>

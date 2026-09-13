@@ -1,7 +1,8 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
-import { lazy, Suspense, Component } from "react";
+import { C, tenant } from "@/config/tenant";
+import { lazy, Suspense, Component, useEffect } from "react";
 
 // ─── Lazy loading: ogni pagina è un chunk separato ────────────────────────────
 // Riduce il bundle iniziale di ~70%. Il browser scarica solo ciò che serve.
@@ -38,10 +39,10 @@ const ParentAppuntamenti  = lazy(() => import("@/pages/parent/ParentAppuntamenti
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFFDD0' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: C.bg }}>
       <div className="text-center">
         <div className="w-10 h-10 rounded-full mx-auto mb-3 animate-pulse"
-          style={{ background: 'linear-gradient(135deg, #4169E1, #FF69B4)' }} />
+          style={{ background: `linear-gradient(135deg, ${C.primary}, ${C.accentPink})` }} />
         <p className="text-sm text-gray-400">Caricamento...</p>
       </div>
     </div>
@@ -64,7 +65,7 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center p-6"
-          style={{ backgroundColor: '#FFFDD0' }}>
+          style={{ backgroundColor: C.bg }}>
           <div className="text-center max-w-sm">
             <div className="text-5xl mb-4">🌈</div>
             <h2 className="text-xl font-bold text-gray-700 mb-2">
@@ -78,7 +79,7 @@ class ErrorBoundary extends Component {
             <button
               onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
               className="px-6 py-2 rounded-full text-white text-sm font-semibold"
-              style={{ backgroundColor: '#4169E1' }}
+              style={{ backgroundColor: C.primary }}
             >
               Ricarica l'app
             </button>
@@ -95,9 +96,9 @@ function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFFDD0' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: C.bg }}>
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full mx-auto mb-3 animate-pulse" style={{ background: 'linear-gradient(135deg, #4169E1, #FF69B4)' }} />
+          <div className="w-12 h-12 rounded-full mx-auto mb-3 animate-pulse" style={{ background: `linear-gradient(135deg, ${C.primary}, ${C.accentPink})` }} />
           <p className="text-sm text-gray-500">Caricamento...</p>
         </div>
       </div>
@@ -164,6 +165,26 @@ function AppRoutes() {
 
 // ─── App root ─────────────────────────────────────────────────────────────────
 function App() {
+  // Branding runtime per-tenant: titolo tab, theme-color, favicon, titolo iOS.
+  // Funziona sia in dev (craco start) sia in produzione, senza modificare i file statici.
+  useEffect(() => {
+    document.title = tenant.manifest.title;
+    const setMeta = (selector, attr, value) => {
+      let el = document.head.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+    setMeta('meta[name="theme-color"]', 'content', C.primary);
+    setMeta('meta[name="description"]', 'content', tenant.manifest.description);
+    setMeta('meta[name="apple-mobile-web-app-title"]', 'content', tenant.manifest.shortName);
+    // Favicon + apple-touch-icon
+    const setIcon = (selector) => {
+      const el = document.head.querySelector(selector);
+      if (el && tenant.favicon) el.setAttribute('href', tenant.favicon);
+    };
+    setIcon('link[rel="icon"]');
+    setIcon('link[rel="apple-touch-icon"]');
+  }, []);
+
   return (
     <ErrorBoundary>
       <div className="App">

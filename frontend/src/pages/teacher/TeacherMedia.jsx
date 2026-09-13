@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -206,8 +207,8 @@ export default function TeacherMedia() {
           onClick={() => setUploadModalOpen(true)}
           className="w-full bg-white rounded-2xl shadow-md p-6 border-2 border-dashed border-gray-200 hover:border-green-300 transition-all text-center group"
         >
-          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center transition-colors" style={{ backgroundColor: '#F0FFF0' }}>
-            <Plus className="w-7 h-7" style={{ color: '#32CD32' }} />
+          <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center transition-colors" style={{ backgroundColor: C.tintGreen }}>
+            <Plus className="w-7 h-7" style={{ color: C.accentGreen }} />
           </div>
           <p className="text-sm font-bold text-gray-700" style={{ fontFamily: 'Nunito' }}>Carica Nuova Foto o Video</p>
           <p className="text-xs text-gray-400 mt-1">Tocca per aprire il caricamento</p>
@@ -215,14 +216,14 @@ export default function TeacherMedia() {
 
         {uploaded && (
           <div className="bg-green-50 rounded-2xl p-3 text-center" data-testid="upload-success-msg">
-            <p className="text-sm font-semibold" style={{ color: '#32CD32' }}>Media caricato con successo!</p>
+            <p className="text-sm font-semibold" style={{ color: C.accentGreen }}>Media caricato con successo!</p>
           </div>
         )}
 
         {/* Recent Gallery */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="recent-gallery">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-            <Image className="w-4 h-4" style={{ color: '#32CD32' }} />
+            <Image className="w-4 h-4" style={{ color: C.accentGreen }} />
             <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Caricamenti Recenti</span>
             <span className="text-xs text-gray-400 ml-auto">{gallery.length} file</span>
           </div>
@@ -305,11 +306,11 @@ export default function TeacherMedia() {
                     className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   >
                     {allSelected ? (
-                      <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                      <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: C.accentGreen }} />
                     ) : (
                       <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />
                     )}
-                    <span className="text-sm font-bold" style={{ color: allSelected ? '#32CD32' : '#374151' }}>
+                    <span className="text-sm font-bold" style={{ color: allSelected ? C.accentGreen : '#374151' }}>
                       Seleziona Tutti
                     </span>
                     <span className="text-xs text-gray-400 ml-auto">
@@ -329,11 +330,11 @@ export default function TeacherMedia() {
                           className="w-full flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
                         >
                           {isChecked ? (
-                            <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                            <CheckSquare className="w-5 h-5 flex-shrink-0" style={{ color: C.accentGreen }} />
                           ) : (
                             <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />
                           )}
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: isChecked ? '#32CD32' : '#D1D5DB' }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: isChecked ? C.accentGreen : '#D1D5DB' }}>
                             {s.name.charAt(0)}
                           </div>
                           <span className={`text-sm font-medium ${isChecked ? 'text-gray-900' : 'text-gray-600'}`}>
@@ -357,7 +358,7 @@ export default function TeacherMedia() {
                 onClick={handleUpload}
                 disabled={uploading || selectedStudents.length === 0 || selectedFiles.length === 0}
                 className="w-full rounded-2xl font-bold h-11"
-                style={{ backgroundColor: '#32CD32' }}
+                style={{ backgroundColor: C.accentGreen }}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {uploading

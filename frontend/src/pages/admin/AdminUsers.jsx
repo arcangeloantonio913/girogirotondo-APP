@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -21,9 +22,9 @@ function getRoleIcon(role) {
   return Heart;
 }
 function getRoleColor(role) {
-  if (role === 'admin')   return '#4169E1';
-  if (role === 'teacher') return '#FF69B4';
-  return '#32CD32';
+  if (role === 'admin')   return C.primary;
+  if (role === 'teacher') return C.accentPink;
+  return C.accentGreen;
 }
 function getRoleLabel(role) {
   if (role === 'admin')   return 'Amministratore';
@@ -393,17 +394,17 @@ export default function AdminUsers() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <Users className="w-5 h-5" style={{ color: C.primary }} />
             <span className="text-sm font-bold text-gray-700">{users.length} utenti · {students.length} alunni</span>
           </div>
           <div className="flex gap-2">
             <Button data-testid="add-staff-button" onClick={openStaffDialog}
               variant="outline" className="rounded-2xl font-semibold h-9 text-sm border-2"
-              style={{ borderColor: '#FF69B4', color: '#FF69B4' }}>
+              style={{ borderColor: C.accentPink, color: C.accentPink }}>
               <GraduationCap className="w-4 h-4 mr-1" />Aggiungi Staff
             </Button>
             <Button data-testid="add-iscrizione-button" onClick={openIscrizioneDialog}
-              className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: '#4169E1' }}>
+              className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.primary }}>
               <Baby className="w-4 h-4 mr-1" />Iscrivi Bambino
             </Button>
           </div>
@@ -463,7 +464,7 @@ export default function AdminUsers() {
                   disabled={bulkResendLoading}
                   title="Reinvia credenziali a tutte le maestre"
                   className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors hover:bg-pink-100"
-                  style={{ color: '#FF69B4' }}>
+                  style={{ color: C.accentPink }}>
                   <Mail className="w-3 h-3" />
                   {bulkResendLoading ? 'Invio...' : 'Reinvia a tutte'}
                 </button>
@@ -516,7 +517,7 @@ export default function AdminUsers() {
                           <div className="flex gap-1 mt-1 flex-wrap">
                             {childrenOfParent.map(s => (
                               <span key={s.id} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                                style={{ backgroundColor: '#EBF0FF', color: '#4169E1' }}>
+                                style={{ backgroundColor: C.tintBlue, color: C.primary }}>
                                 {s.name} · {getClassName(s.class_id)}
                               </span>
                             ))}
@@ -553,8 +554,8 @@ export default function AdminUsers() {
         {/* ── Sezione Alunni ───────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="students-group">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2" style={{ backgroundColor: '#4169E108' }}>
-            <Baby className="w-4 h-4" style={{ color: '#4169E1' }} />
-            <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#4169E1' }}>
+            <Baby className="w-4 h-4" style={{ color: C.primary }} />
+            <span className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: C.primary }}>
               Alunni ({searchQuery ? filterStudents(students).length : students.length})
             </span>
           </div>
@@ -568,7 +569,7 @@ export default function AdminUsers() {
                     onClick={() => setSelectedStudent(s)}
                     className="flex items-center gap-3 flex-1 text-left min-w-0">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: '#4169E1' }}>
+                      style={{ backgroundColor: C.primary }}>
                       {s.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -576,7 +577,7 @@ export default function AdminUsers() {
                       <div className="flex gap-2 mt-0.5 flex-wrap">
                         {cls && (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                            style={{ backgroundColor: '#FFF0F7', color: '#FF69B4' }}>
+                            style={{ backgroundColor: C.tintPink, color: C.accentPink }}>
                             <BookOpen className="w-2.5 h-2.5 inline mr-1" />{cls.name}
                           </span>
                         )}
@@ -647,7 +648,7 @@ export default function AdminUsers() {
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="edit-cred-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
-                <Key className="w-5 h-5" style={{ color: '#4169E1' }} />
+                <Key className="w-5 h-5" style={{ color: C.primary }} />
                 Credenziali — {credDialog.user?.name}
               </DialogTitle>
             </DialogHeader>
@@ -671,14 +672,14 @@ export default function AdminUsers() {
                   <p><span className="text-gray-400">Password:</span> <strong className="font-mono text-blue-700 select-all">{resendResult.new_password}</strong></p>
                 </div>
                 <Button onClick={() => { setCredDialog({ open: false, user: null }); setResendResult(null); }}
-                  className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+                  className="w-full rounded-2xl h-10" style={{ backgroundColor: C.accentGreen }}>Chiudi</Button>
               </div>
             ) : credSuccess ? (
               <div className="py-4 flex flex-col items-center gap-3">
-                <CheckCircle className="w-10 h-10" style={{ color: '#32CD32' }} />
+                <CheckCircle className="w-10 h-10" style={{ color: C.accentGreen }} />
                 <p className="text-sm font-bold text-gray-900">Credenziali aggiornate!</p>
                 <Button onClick={() => { setCredDialog({ open: false, user: null }); setCredSuccess(false); }}
-                  className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+                  className="w-full rounded-2xl h-10" style={{ backgroundColor: C.accentGreen }}>Chiudi</Button>
               </div>
             ) : (
               <div className="space-y-3 pt-2">
@@ -719,7 +720,7 @@ export default function AdminUsers() {
                     <Label className="text-xs font-medium text-gray-600">Imposta nuova password</Label>
                     <button type="button"
                       onClick={() => setCredForm(f => ({ ...f, password: generatePassword() }))}
-                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>
+                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: C.primary }}>
                       <RefreshCw className="w-3 h-3" />Auto-genera
                     </button>
                   </div>
@@ -745,12 +746,12 @@ export default function AdminUsers() {
                   <Button data-testid="save-cred-submit" onClick={handleSaveCred}
                     disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email)}
                     variant="outline"
-                    className="flex-1 rounded-xl h-10 text-sm border-2" style={{ borderColor: '#4169E1', color: '#4169E1' }}>
+                    className="flex-1 rounded-xl h-10 text-sm border-2" style={{ borderColor: C.primary, color: C.primary }}>
                     {credLoading ? 'Salvo...' : 'Salva'}
                   </Button>
                   <Button data-testid="resend-cred-submit" onClick={handleResendCred}
                     disabled={resendLoading}
-                    className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: '#32CD32' }}>
+                    className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: C.accentGreen }}>
                     <Mail className="w-3.5 h-3.5 mr-1.5" />
                     {resendLoading ? 'Invio...' : 'Salva e Invia Email'}
                   </Button>
@@ -791,7 +792,7 @@ export default function AdminUsers() {
                     <Label className="text-xs font-medium text-gray-600">Password</Label>
                     <button type="button"
                       onClick={() => setStaffForm(f => ({ ...f, password: generatePassword() }))}
-                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: '#4169E1' }}>
+                      className="text-[10px] font-semibold flex items-center gap-1" style={{ color: C.primary }}>
                       <RefreshCw className="w-3 h-3" />Rigenera
                     </button>
                   </div>
@@ -823,7 +824,7 @@ export default function AdminUsers() {
                       {classes.map(c => (
                         <button key={c.id} type="button" onClick={() => toggleClass(c.id)}
                           className={`px-3 py-1 rounded-xl text-xs font-semibold border-2 transition-all ${staffForm.class_ids.includes(c.id) ? 'text-white border-transparent' : 'border-gray-200 text-gray-500'}`}
-                          style={staffForm.class_ids.includes(c.id) ? { backgroundColor: '#FF69B4', borderColor: '#FF69B4' } : {}}>
+                          style={staffForm.class_ids.includes(c.id) ? { backgroundColor: C.accentPink, borderColor: C.accentPink } : {}}>
                           {c.name}
                         </button>
                       ))}
@@ -833,7 +834,7 @@ export default function AdminUsers() {
                 {staffError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{staffError}</p>}
                 <Button data-testid="create-staff-submit" onClick={handleCreateStaff}
                   disabled={staffLoading || !staffForm.name || !staffForm.email || !staffForm.password || !staffForm.role}
-                  className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#4169E1' }}>
+                  className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.primary }}>
                   {staffLoading ? 'Creazione...' : 'Crea Account'}
                 </Button>
               </div>
@@ -846,14 +847,14 @@ export default function AdminUsers() {
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="create-iscrizione-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
-                <Baby className="w-5 h-5" style={{ color: '#32CD32' }} />Iscrizione Bambino
+                <Baby className="w-5 h-5" style={{ color: C.accentGreen }} />Iscrizione Bambino
               </DialogTitle>
             </DialogHeader>
 
             {iscSuccess ? (
               <div className="pt-2 space-y-3">
                 <div className="flex items-center gap-3 py-2">
-                  <CheckCircle className="w-9 h-9 flex-shrink-0" style={{ color: '#32CD32' }} />
+                  <CheckCircle className="w-9 h-9 flex-shrink-0" style={{ color: C.accentGreen }} />
                   <div>
                     <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
                       {iscSuccess.bambino_nome} registrato ✓
@@ -903,7 +904,7 @@ export default function AdminUsers() {
                     setAutogenPwd(true);
                     setIscSuccess(null);
                   }}
-                    className="flex-1 h-10 rounded-xl font-bold text-sm" style={{ backgroundColor: '#4169E1' }}>
+                    className="flex-1 h-10 rounded-xl font-bold text-sm" style={{ backgroundColor: C.primary }}>
                     + Iscrivi un altro
                   </Button>
                   <Button onClick={() => { setDialogOpen(false); setIscSuccess(null); }}
@@ -987,7 +988,7 @@ export default function AdminUsers() {
                   <button type="button"
                     onClick={() => setShowSecondParent(v => !v)}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors hover:bg-gray-50"
-                    style={{ color: showSecondParent ? '#4169E1' : '#9CA3AF' }}
+                    style={{ color: showSecondParent ? C.primary : '#9CA3AF' }}
                     data-testid="toggle-second-parent">
                     <span className="flex items-center gap-1.5">
                       <UserPlus className="w-3.5 h-3.5" />
@@ -1028,7 +1029,7 @@ export default function AdminUsers() {
                 {iscError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{iscError}</p>}
                 <Button data-testid="create-iscrizione-submit" onClick={handleIscrizione}
                   disabled={iscLoading || !iscrizioneValid}
-                  className="w-full rounded-2xl font-bold h-12 text-base" style={{ backgroundColor: '#32CD32' }}>
+                  className="w-full rounded-2xl font-bold h-12 text-base" style={{ backgroundColor: C.accentGreen }}>
                   {iscLoading ? 'Iscrizione...' : '✓ Iscrivi'}
                 </Button>
               </div>
@@ -1087,7 +1088,7 @@ export default function AdminUsers() {
       }}>
         <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="secondo-genitore-dialog">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#32CD32' }}>
+            <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: C.accentGreen }}>
               <UserPlus className="w-5 h-5" />Aggiungi Secondo Genitore
             </DialogTitle>
           </DialogHeader>
@@ -1112,7 +1113,7 @@ export default function AdminUsers() {
                 )}
               </div>
               <Button onClick={() => { setSecondoGenitoreDialog({ open: false, student: null }); setSgSuccess(null); }}
-                className="w-full rounded-2xl h-10" style={{ backgroundColor: '#32CD32' }}>Chiudi</Button>
+                className="w-full rounded-2xl h-10" style={{ backgroundColor: C.accentGreen }}>Chiudi</Button>
             </div>
           ) : (
             <div className="space-y-3 pt-2">
@@ -1142,7 +1143,7 @@ export default function AdminUsers() {
               {sgError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{sgError}</p>}
               <Button onClick={handleSecondoGenitore}
                 disabled={sgLoading || !sgForm.genitore_email}
-                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#32CD32' }}
+                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentGreen }}
                 data-testid="sg-submit">
                 {sgLoading ? 'Aggiunta...' : '✓ Aggiungi Genitore'}
               </Button>

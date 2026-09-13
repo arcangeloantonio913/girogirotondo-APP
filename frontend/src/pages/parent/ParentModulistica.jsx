@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -71,7 +72,7 @@ export default function ParentModulistica() {
       <div className="max-w-lg mx-auto space-y-4" data-testid="parent-modulistica-page">
         {/* GDPR Notice */}
         <div className="rounded-2xl p-4 flex items-start gap-3" style={{ backgroundColor: '#A7C7E715' }} data-testid="gdpr-notice">
-          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#A7C7E7' }} />
+          <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: C.babyBlue }} />
           <p className="text-xs text-gray-700 leading-relaxed">
             Il trattamento di dati e foto è rigorosamente conforme alle normative GDPR e alle leggi sulla privacy vigenti. Tutti i documenti sono gestiti nel rispetto della normativa sulla tutela dei minori.
           </p>
@@ -94,7 +95,7 @@ export default function ParentModulistica() {
               >
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#A7C7E720' }}>
-                    <FileText className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+                    <FileText className="w-5 h-5" style={{ color: C.babyBlue }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>{doc.title}</h3>
@@ -113,7 +114,7 @@ export default function ParentModulistica() {
                       onClick={() => handleDownload(doc)}
                       title="Scarica documento"
                       className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-blue-50 transition-colors"
-                      style={{ color: '#4169E1' }}>
+                      style={{ color: C.primary }}>
                       <Download className="w-4.5 h-4.5" />
                     </button>
                   )}
@@ -121,8 +122,8 @@ export default function ParentModulistica() {
 
                 {ack ? (
                   <div className="flex items-center gap-2 p-2.5 bg-green-50 rounded-xl" data-testid={`document-acknowledged-${doc.id}`}>
-                    <CheckCircle2 className="w-4 h-4" style={{ color: '#32CD32' }} />
-                    <span className="text-xs font-semibold" style={{ color: '#32CD32' }}>Presa Visione Confermata</span>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: C.accentGreen }} />
+                    <span className="text-xs font-semibold" style={{ color: C.accentGreen }}>Presa Visione Confermata</span>
                   </div>
                 ) : (
                   <Button
@@ -130,7 +131,7 @@ export default function ParentModulistica() {
                     onClick={() => handleAcknowledge(doc.id)}
                     disabled={acknowledging === doc.id}
                     className="w-full rounded-xl font-semibold h-10 text-sm"
-                    style={{ backgroundColor: '#A7C7E7' }}
+                    style={{ backgroundColor: C.babyBlue }}
                   >
                     <Circle className="w-4 h-4 mr-2" />
                     {acknowledging === doc.id ? 'Confermando...' : 'Presa Visione'}

@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -8,7 +9,7 @@ const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Lugl
 const DAYS_IT   = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 
 function getStatusStyle(status) {
-  if (status === 'confirmed') return { bg: '#F0FFF0', color: '#32CD32', label: 'Confermato',  Icon: CheckCircle2 };
+  if (status === 'confirmed') return { bg: C.tintGreen, color: C.accentGreen, label: 'Confermato',  Icon: CheckCircle2 };
   if (status === 'cancelled') return { bg: '#FEF2F2', color: '#EF4444', label: 'Annullato',   Icon: XCircle };
   return                             { bg: '#FFFBEB', color: '#F59E0B', label: 'In Attesa',   Icon: AlertCircle };
 }
@@ -81,7 +82,7 @@ export default function AdminAppointments() {
         {/* Header stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-2xl p-3 shadow-md border border-gray-100 text-center">
-            <p className="text-xl font-black" style={{ color: '#4169E1' }}>{appointments.length}</p>
+            <p className="text-xl font-black" style={{ color: C.primary }}>{appointments.length}</p>
             <p className="text-[10px] text-gray-400 font-semibold">Totale</p>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-md border border-gray-100 text-center">
@@ -89,7 +90,7 @@ export default function AdminAppointments() {
             <p className="text-[10px] text-gray-400 font-semibold">In attesa</p>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-md border border-gray-100 text-center">
-            <p className="text-xl font-black" style={{ color: '#32CD32' }}>{totalConfirmed}</p>
+            <p className="text-xl font-black" style={{ color: C.accentGreen }}>{totalConfirmed}</p>
             <p className="text-[10px] text-gray-400 font-semibold">Confermati</p>
           </div>
         </div>
@@ -98,12 +99,12 @@ export default function AdminAppointments() {
         <div className="flex bg-white rounded-2xl shadow-md border border-gray-100 p-1">
           <button onClick={() => setView('calendar')}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${view === 'calendar' ? 'text-white' : 'text-gray-400'}`}
-            style={view === 'calendar' ? { backgroundColor: '#4169E1' } : {}}>
+            style={view === 'calendar' ? { backgroundColor: C.primary } : {}}>
             Calendario
           </button>
           <button onClick={() => setView('list')}
             className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${view === 'list' ? 'text-white' : 'text-gray-400'}`}
-            style={view === 'list' ? { backgroundColor: '#4169E1' } : {}}>
+            style={view === 'list' ? { backgroundColor: C.primary } : {}}>
             Lista
           </button>
         </div>
@@ -150,8 +151,8 @@ export default function AdminAppointments() {
 
                 let bg = 'transparent';
                 let textColor = '#374151';
-                if (isSelected) { bg = '#4169E1'; textColor = 'white'; }
-                else if (hasBusy) { bg = hasPending ? '#FFFBEB' : '#F0FFF0'; }
+                if (isSelected) { bg = C.primary; textColor = 'white'; }
+                else if (hasBusy) { bg = hasPending ? '#FFFBEB' : C.tintGreen; }
 
                 return (
                   <button key={key}
@@ -167,7 +168,7 @@ export default function AdminAppointments() {
                       <div className="flex gap-0.5 mt-0.5">
                         {apts.slice(0, 3).map((a, idx) => (
                           <span key={idx} className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: a.status === 'confirmed' ? '#32CD32' : a.status === 'cancelled' ? '#CBD5E0' : '#F59E0B' }} />
+                            style={{ backgroundColor: a.status === 'confirmed' ? C.accentGreen : a.status === 'cancelled' ? '#CBD5E0' : '#F59E0B' }} />
                         ))}
                       </div>
                     )}
@@ -224,7 +225,7 @@ function AppointmentCard({ apt, onStatus }) {
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{ backgroundColor: '#4169E1' }}>
+            style={{ backgroundColor: C.primary }}>
             {apt.parent_name?.charAt(0) || '?'}
           </div>
           <div>
@@ -262,7 +263,7 @@ function AppointmentCard({ apt, onStatus }) {
           <button data-testid={`confirm-appointment-${apt.id}`}
             onClick={() => onStatus(apt.id, 'confirmed')}
             className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
-            style={{ backgroundColor: '#32CD32' }}>Conferma</button>
+            style={{ backgroundColor: C.accentGreen }}>Conferma</button>
           <button data-testid={`cancel-appointment-${apt.id}`}
             onClick={() => onStatus(apt.id, 'cancelled')}
             className="flex-1 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50">Annulla</button>

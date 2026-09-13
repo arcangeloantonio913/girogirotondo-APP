@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -9,10 +10,10 @@ import { CheckSquare, Save, ChevronLeft, ChevronRight, Info, Moon } from 'lucide
 // Ordine: Merenda PRIMA, poi gli altri pasti
 const MEAL_COLS = [
   { key: 'merenda', label: 'Merenda',  short: 'MER', color: '#FFB347' },
-  { key: 'pasta',   label: 'Pasta',    short: 'PAS', color: '#F4C2C2' },
-  { key: 'secondo', label: 'Secondo',  short: 'SEC', color: '#A7C7E7' },
+  { key: 'pasta',   label: 'Pasta',    short: 'PAS', color: C.babyPink },
+  { key: 'secondo', label: 'Secondo',  short: 'SEC', color: C.babyBlue },
   { key: 'pane',    label: 'Pane',     short: 'PAN', color: '#FFD699' },
-  { key: 'frutta',  label: 'Frutta',   short: 'FRU', color: '#98FB98' },
+  { key: 'frutta',  label: 'Frutta',   short: 'FRU', color: C.babyGreen },
 ];
 
 // Colonne boolean (toggle)
@@ -177,8 +178,8 @@ export default function TeacherGriglia() {
           <span className="text-sm font-semibold text-gray-700">{selectedStudents.length}/{students.length} selezionati</span>
           <Button onClick={toggleSelectAll} variant="outline" size="sm"
             className="rounded-xl text-xs h-8 font-bold border-2"
-            style={{ borderColor: '#F4C2C2', color: selectedStudents.length === students.length ? 'white' : '#E8919A',
-              backgroundColor: selectedStudents.length === students.length ? '#F4C2C2' : 'transparent' }}
+            style={{ borderColor: C.babyPink, color: selectedStudents.length === students.length ? 'white' : '#E8919A',
+              backgroundColor: selectedStudents.length === students.length ? C.babyPink : 'transparent' }}
             data-testid="select-all-button">
             <CheckSquare className="w-3.5 h-3.5 mr-1.5" />Seleziona Tutti
           </Button>
@@ -261,7 +262,7 @@ export default function TeacherGriglia() {
                           data-testid={`student-select-${student.id}`}>
                           <div className={`w-6 h-6 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all
                             ${isSelected ? 'border-transparent' : 'border-gray-300'}`}
-                            style={isSelected ? { backgroundColor: '#F4C2C2' } : {}}>
+                            style={isSelected ? { backgroundColor: C.babyPink } : {}}>
                             {isSelected && <span className="text-white text-[10px] font-bold">✓</span>}
                           </div>
                           <div>
@@ -341,7 +342,7 @@ export default function TeacherGriglia() {
         {/* Salva */}
         <Button onClick={handleSave} disabled={saving} data-testid="save-griglia-button"
           className="w-full rounded-2xl font-bold h-14 text-base shadow-md"
-          style={{ backgroundColor: '#F4C2C2', color: '#7A3B3B' }}>
+          style={{ backgroundColor: C.babyPink, color: '#7A3B3B' }}>
           <Save className="w-5 h-5 mr-2" />
           {saving ? 'Salvataggio...' : 'Salva e Pubblica ai Genitori'}
         </Button>

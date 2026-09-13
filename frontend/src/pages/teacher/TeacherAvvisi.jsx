@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -124,11 +125,11 @@ export default function TeacherAvvisi() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" style={{ color: '#FF69B4' }} />
+            <Bell className="w-5 h-5" style={{ color: C.accentPink }} />
             <span className="text-sm font-bold text-gray-700">{avvisi.length} avvisi</span>
           </div>
           <Button data-testid="add-avviso-button" onClick={openDialog}
-            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: '#FF69B4' }}>
+            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.accentPink }}>
             <Plus className="w-4 h-4 mr-1" />Nuovo Avviso
           </Button>
         </div>
@@ -184,7 +185,7 @@ export default function TeacherAvvisi() {
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="create-avviso-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
-                <Bell className="w-5 h-5" style={{ color: '#FF69B4' }} />
+                <Bell className="w-5 h-5" style={{ color: C.accentPink }} />
                 Avviso per i Genitori
               </DialogTitle>
             </DialogHeader>
@@ -270,7 +271,7 @@ export default function TeacherAvvisi() {
 
               <Button data-testid="create-avviso-submit" onClick={handleCreate}
                 disabled={loading || !form.titolo || !form.testo || !form.class_id}
-                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#FF69B4' }}>
+                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentPink }}>
                 {loading ? 'Pubblicazione...' : 'Pubblica Avviso'}
               </Button>
             </div>

@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -243,7 +244,7 @@ export default function ParentGallery() {
                 ? 'text-white shadow-md'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
-            style={tab === 'personale' ? { backgroundColor: '#FF69B4' } : {}}>
+            style={tab === 'personale' ? { backgroundColor: C.accentPink } : {}}>
             <User className="w-4 h-4" />
             Galleria Personale
             {personalItems.length > 0 && (
@@ -261,7 +262,7 @@ export default function ParentGallery() {
                 ? 'text-white shadow-md'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
-            style={tab === 'classe' ? { backgroundColor: '#4169E1' } : {}}>
+            style={tab === 'classe' ? { backgroundColor: C.primary } : {}}>
             <Users className="w-4 h-4" />
             Galleria di Classe
             {classItems.length > 0 && (

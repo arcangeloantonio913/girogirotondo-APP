@@ -1,3 +1,4 @@
+import { C, tenant } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -46,7 +47,7 @@ export default function ParentProfile() {
         {/* Info bambino */}
         <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#F4C2C2' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: C.babyPink }}>
               {child?.name?.charAt(0) || 'B'}
             </div>
             <div>
@@ -55,7 +56,7 @@ export default function ParentProfile() {
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-            <Hash className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+            <Hash className="w-5 h-5" style={{ color: C.babyBlue }} />
             <div>
               <p className="text-xs text-gray-500 font-medium">Codice Bambino</p>
               <p className="text-sm font-bold text-gray-900">{child?.child_code || '-'}</p>
@@ -68,7 +69,7 @@ export default function ParentProfile() {
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Account Genitore</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <User className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+              <User className="w-5 h-5" style={{ color: C.babyBlue }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Nome</p>
                 <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
@@ -77,7 +78,7 @@ export default function ParentProfile() {
 
             {/* Email con modifica */}
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl" data-testid="parent-email-display">
-              <Mail className="w-5 h-5 flex-shrink-0" style={{ color: '#A7C7E7' }} />
+              <Mail className="w-5 h-5 flex-shrink-0" style={{ color: C.babyBlue }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-500 font-medium">Email</p>
                 <p className="text-sm font-semibold text-gray-900 truncate">{user?.email}</p>
@@ -101,7 +102,7 @@ export default function ParentProfile() {
                   <Button onClick={handleChangeEmail}
                     disabled={emailLoading || !newEmail.trim() || newEmail === user?.email}
                     className="flex-1 h-9 rounded-xl text-sm font-bold"
-                    style={{ backgroundColor: '#A7C7E7' }}>
+                    style={{ backgroundColor: C.babyBlue }}>
                     {emailLoading ? 'Salvo...' : 'Salva email'}
                   </Button>
                   <Button variant="outline" onClick={() => { setEditingEmail(false); setEmailResult(null); }}
@@ -123,19 +124,21 @@ export default function ParentProfile() {
         <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Segreteria & Supporto</h3>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#A7C7E715' }}>
-              <Mail className="w-5 h-5" style={{ color: '#A7C7E7' }} />
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Email Scuola</p>
-                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>scuolagirogirotondo@libero.it</p>
+            {tenant.contacts?.email && (
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: C.babyBlue + '15' }}>
+                <Mail className="w-5 h-5" style={{ color: C.babyBlue }} />
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Email Scuola</p>
+                  <p className="text-sm font-bold" style={{ color: C.primary }}>{tenant.contacts.email}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#A7C7E715' }}>
-              <Phone className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+            )}
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: C.babyBlue + '15' }}>
+              <Phone className="w-5 h-5" style={{ color: C.babyBlue }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Telefono Scuola</p>
-                <p className="text-sm font-bold" style={{ color: '#5A8BB0' }}>
-                  {user?.sede_id === 'il-magico-mondo' ? '392 41 79 110' : '350 16 76 101'}
+                <p className="text-sm font-bold" style={{ color: C.primary }}>
+                  {tenant.contacts?.phoneBySede?.[user?.sede_id] || tenant.contacts?.phoneDefault || ''}
                 </p>
               </div>
             </div>
@@ -144,7 +147,7 @@ export default function ParentProfile() {
 
         {/* Privacy */}
         <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50">
-          <Shield className="w-4 h-4" style={{ color: '#32CD32' }} />
+          <Shield className="w-4 h-4" style={{ color: C.accentGreen }} />
           <p className="text-xs text-gray-600">I tuoi dati sono protetti secondo le normative GDPR vigenti.</p>
         </div>
       </div>

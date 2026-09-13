@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -18,9 +19,9 @@ const QUANTITA_LABELS = {
 const EmptyBear = () => (
   <div className="bg-white rounded-2xl p-8 text-center shadow-md">
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="mx-auto mb-3">
-      <circle cx="32" cy="36" r="18" fill="#F4C2C2"/>
-      <circle cx="18" cy="20" r="8" fill="#F4C2C2"/><circle cx="46" cy="20" r="8" fill="#F4C2C2"/>
-      <circle cx="18" cy="20" r="5" fill="#FFFDD0"/><circle cx="46" cy="20" r="5" fill="#FFFDD0"/>
+      <circle cx="32" cy="36" r="18" fill={C.babyPink}/>
+      <circle cx="18" cy="20" r="8" fill={C.babyPink}/><circle cx="46" cy="20" r="8" fill={C.babyPink}/>
+      <circle cx="18" cy="20" r="5" fill={C.bg}/><circle cx="46" cy="20" r="5" fill={C.bg}/>
       <circle cx="26" cy="32" r="2" fill="#555"/><circle cx="38" cy="32" r="2" fill="#555"/>
       <ellipse cx="32" cy="38" rx="3" ry="2" fill="#555"/>
       <path d="M26 42c0 0 3 3 6 3s6-3 6-3" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
@@ -68,10 +69,10 @@ export default function ParentGriglia() {
 
   const timelineItems = griglia ? [
     { time: '9:30',  label: 'Merenda',  active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
-    { time: '12:00', label: 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: '#F4C2C2', isPasto: true },
-    { time: '12:10', label: 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: '#A7C7E7', isPasto: true },
+    { time: '12:00', label: 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: C.babyPink, isPasto: true },
+    { time: '12:10', label: 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: C.babyBlue, isPasto: true },
     { time: '12:20', label: 'Pane',     active: griglia.pane,    qty: griglia.pane_qty,    color: '#FFD699', isPasto: true },
-    { time: '12:30', label: 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: '#98FB98', isPasto: true },
+    { time: '12:30', label: 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: C.babyGreen, isPasto: true },
     { time: '',      label: 'Pupù',     active: griglia.pupu,    qty: null,                color: '#D4B8E0', isPasto: false },
     { time: '',      label: 'Nanna',    active: griglia.nanna,   qty: null,                color: '#93C5FD', isPasto: false },
   ] : [];
@@ -94,7 +95,7 @@ export default function ParentGriglia() {
               </p>
             </div>
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-              style={{ backgroundColor: '#F4C2C2' }}>
+              style={{ backgroundColor: C.babyPink }}>
               {child?.name?.charAt(0) || '?'}
             </div>
           </div>

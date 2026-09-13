@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "buildCommand": "CI=false craco build",
+  "buildCommand": "CI=false node scripts/apply-tenant.js && CI=false craco build",
   "installCommand": "yarn install",
   "outputDirectory": "build",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],

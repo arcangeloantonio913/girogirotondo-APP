@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -32,9 +33,9 @@ export default function TeacherDashboard() {
   }, [user]);
 
   const cards = [
-    { id: 'griglia',   icon: Grid3X3,      color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera',   subtitle: 'Gestisci le attività quotidiane', path: '/teacher/griglia' },
-    { id: 'presenze',  icon: ClipboardList, color: '#4169E1', bg: '#EBF0FF', title: 'Registro Presenze',     subtitle: 'Segna presenze e assenze',       path: '/teacher/presenze' },
-    { id: 'media',     icon: Camera,        color: '#32CD32', bg: '#F0FFF0', title: 'Carica Media',          subtitle: 'Aggiungi foto e video',           path: '/teacher/media' },
+    { id: 'griglia',   icon: Grid3X3,      color: C.accentPink, bg: C.tintPink, title: 'Griglia Giornaliera',   subtitle: 'Gestisci le attività quotidiane', path: '/teacher/griglia' },
+    { id: 'presenze',  icon: ClipboardList, color: C.primary, bg: C.tintBlue, title: 'Registro Presenze',     subtitle: 'Segna presenze e assenze',       path: '/teacher/presenze' },
+    { id: 'media',     icon: Camera,        color: C.accentGreen, bg: C.tintGreen, title: 'Carica Media',          subtitle: 'Aggiungi foto e video',           path: '/teacher/media' },
   ];
 
   return (
@@ -45,7 +46,7 @@ export default function TeacherDashboard() {
           <p className="text-sm text-gray-500 font-medium">Ciao Maestra,</p>
           <h2 className="text-2xl font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>{user?.name}</h2>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: '#FF69B4' }}>
+            <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: C.accentPink }}>
               Classe {className}
             </span>
             <span className="text-xs font-semibold text-gray-500">
@@ -78,13 +79,13 @@ export default function TeacherDashboard() {
         {/* Students List */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden" data-testid="teacher-students-list">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Users className="w-4 h-4" style={{ color: '#FF69B4' }} />
+            <Users className="w-4 h-4" style={{ color: C.accentPink }} />
             <h3 className="text-sm font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>I Miei Alunni</h3>
           </div>
           <div className="divide-y divide-gray-50">
             {students.map((student) => (
               <div key={student.id} data-testid={`student-row-${student.id}`} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#FF69B4' }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: C.accentPink }}>
                   {student.name.charAt(0)}
                 </div>
                 <div className="flex-1">

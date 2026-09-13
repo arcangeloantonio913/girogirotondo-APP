@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -43,7 +44,7 @@ function formatRange(from, to) {
 function MealBadge({ label, value }) {
   if (!value) return null;
   return (
-    <div className="flex flex-col gap-0.5 p-2.5 rounded-xl" style={{ backgroundColor: '#FFFDD0' }}>
+    <div className="flex flex-col gap-0.5 p-2.5 rounded-xl" style={{ backgroundColor: C.bg }}>
       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
       <span className="text-xs font-semibold text-gray-800">{value}</span>
     </div>
@@ -155,11 +156,11 @@ export default function AdminMensa() {
         {/* Header + Add */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <UtensilsCrossed className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <UtensilsCrossed className="w-5 h-5" style={{ color: C.primary }} />
             <span className="text-sm font-bold text-gray-700">Menu attivi per oggi</span>
           </div>
           <Button onClick={openDialog}
-            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: '#4169E1' }}
+            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.primary }}
             data-testid="add-menu-button">
             <Plus className="w-4 h-4 mr-1" />Aggiungi Menu
           </Button>
@@ -181,7 +182,7 @@ export default function AdminMensa() {
                   <div>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#4169E115' }}>
-                        <UtensilsCrossed className="w-4 h-4" style={{ color: '#4169E1' }} />
+                        <UtensilsCrossed className="w-4 h-4" style={{ color: C.primary }} />
                       </div>
                       <span className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
                         {getClassName(m.class_id)}
@@ -251,7 +252,7 @@ export default function AdminMensa() {
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
                         preset === i ? 'text-white border-transparent' : 'border-gray-200 text-gray-500'
                       }`}
-                      style={preset === i ? { backgroundColor: '#4169E1' } : {}}>
+                      style={preset === i ? { backgroundColor: C.primary } : {}}>
                       {p.label}
                     </button>
                   ))}
@@ -306,7 +307,7 @@ export default function AdminMensa() {
 
               <Button onClick={handleCreate}
                 disabled={loading || !form.primo || !form.secondo || !form.date_from}
-                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#4169E1' }}
+                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.primary }}
                 data-testid="create-menu-submit">
                 {loading ? 'Salvataggio...' : '✓ Pubblica Menu'}
               </Button>

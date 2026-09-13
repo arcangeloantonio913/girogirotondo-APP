@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Linking, Modal, ActivityIndicator } from 'react-native';
-import * as Sharing from 'expo-sharing';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { openFileUrl } from '../../lib/openFile';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
@@ -15,11 +15,13 @@ export default function ParentModulistica() {
   const [receipts, setReceipts] = useState<string[]>([]); // doc ids letti
   const [loading,  setLoading]  = useState(true);
   const [acking,   setAcking]   = useState<string | null>(null);
+  const [opening,  setOpening]  = useState<string | null>(null);
 
   useEffect(() => {
+    // Il parent_id è forzato server-side dal token → non serve passarlo (evita "undefined").
     Promise.allSettled([
       api.get('/documents'),
-      api.get(`/read-receipts?parent_id=${user?.id}`),
+      api.get('/read-receipts'),
     ]).then(([dR, rR]) => {
       const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
       setDocs(val(dR) || []);
@@ -28,10 +30,20 @@ export default function ParentModulistica() {
   }, []);
 
   const handleDownload = async (doc: any) => {
-    if (doc.file_url) {
-      await Linking.openURL(doc.file_url);
-    } else if (doc.data) {
-      Alert.alert('Documento', 'Anteprima non disponibile su mobile. Accedi dalla webapp per scaricarlo.');
+    const url = doc.file_url;
+    if (!url) {
+      Alert.alert('Documento', 'File non disponibile.');
+      return;
+    }
+    setOpening(doc.id);
+    try {
+      // I documenti sono salvati come data URL base64: Linking.openURL non li apre →
+      // l'helper li decodifica su file e li condivide.
+      await openFileUrl(url, doc.title);
+    } catch {
+      Alert.alert('Errore', 'Impossibile aprire il documento. Riprova.');
+    } finally {
+      setOpening(null);
     }
   };
 
@@ -39,7 +51,8 @@ export default function ParentModulistica() {
     if (receipts.includes(docId)) return;
     setAcking(docId);
     try {
-      await api.post('/read-receipts', { document_id: docId, parent_id: user?.id });
+      // parent_id forzato server-side dal token: non lo inviamo.
+      await api.post('/read-receipts', { document_id: docId });
       setReceipts(prev => [...prev, docId]);
     } catch { Alert.alert('Errore', 'Impossibile confermare la lettura'); }
     finally { setAcking(null); }
@@ -74,10 +87,11 @@ export default function ParentModulistica() {
                 </View>
               </View>
               <View style={s.cardActions}>
-                {(item.file_url || item.data) && (
-                  <TouchableOpacity onPress={() => handleDownload(item)} style={s.downloadBtn}>
+                {item.file_url && (
+                  <TouchableOpacity onPress={() => handleDownload(item)} style={s.downloadBtn}
+                    disabled={opening === item.id}>
                     <Ionicons name="download-outline" size={16} color={C.babyBlue} />
-                    <Text style={s.downloadText}>Apri / Scarica</Text>
+                    <Text style={s.downloadText}>{opening === item.id ? 'Apertura…' : 'Apri / Scarica'}</Text>
                   </TouchableOpacity>
                 )}
                 {isRead ? (

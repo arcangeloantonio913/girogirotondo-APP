@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import axios from 'axios';
+import { SEDI as TENANT_SEDI } from '@/config/tenant';
 
 // Import dinamico — evita crash se firebase/messaging non è disponibile
 const requestPushPermission = async () => {
@@ -16,10 +17,9 @@ const AuthContext = createContext(null);
 
 const VALID_ROLES = ['admin', 'teacher', 'parent'];
 
-export const SEDI = [
-  { id: 'girogirotondo',  label: 'Girogirotondo',    color: '#4169E1' },
-  { id: 'il-magico-mondo', label: 'Il Magico Mondo', color: '#FF69B4' },
-];
+// Sedi del tenant attivo (branding per-tenant). Ri-esportate qui per retro-compatibilità
+// con i componenti che le importano da '@/lib/AuthContext' (es. AppLayout).
+export const SEDI = TENANT_SEDI;
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
 
@@ -56,9 +56,9 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(() => !localStorage.getItem('ggt_user'));
 
-  // Sede attiva: default "girogirotondo"
+  // Sede attiva: default = prima sede del tenant (mai hardcoded 'girogirotondo').
   const [sede, setSede] = useState(
-    () => localStorage.getItem('ggt_sede') || 'girogirotondo'
+    () => localStorage.getItem('ggt_sede') || (SEDI[0] && SEDI[0].id) || 'girogirotondo'
   );
 
   // Bambino attivo (per famiglie con più figli)

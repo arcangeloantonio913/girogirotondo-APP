@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -20,7 +21,7 @@ export default function ParentAvvisi() {
         {/* Info */}
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" style={{ color: '#32CD32' }} />
+            <Bell className="w-5 h-5" style={{ color: C.accentGreen }} />
             <div>
               <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>Comunicazioni dalla Scuola</p>
               <p className="text-[10px] text-gray-400">Avvisi generali e della tua classe</p>

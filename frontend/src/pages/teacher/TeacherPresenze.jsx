@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -152,7 +153,7 @@ export default function TeacherPresenze() {
         {/* Header classe */}
         <div className="bg-white rounded-2xl shadow-md px-5 py-4 border border-gray-100 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#FF69B415' }}>
-            <BookOpen className="w-5 h-5" style={{ color: '#FF69B4' }} />
+            <BookOpen className="w-5 h-5" style={{ color: C.accentPink }} />
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
@@ -171,7 +172,7 @@ export default function TeacherPresenze() {
           ].map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setTab(key)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${tab === key ? 'text-white shadow-sm' : 'text-gray-500'}`}
-              style={tab === key ? { backgroundColor: '#FF69B4' } : {}}>
+              style={tab === key ? { backgroundColor: C.accentPink } : {}}>
               <Icon className="w-3.5 h-3.5" />{label}
             </button>
           ))}
@@ -269,7 +270,7 @@ export default function TeacherPresenze() {
             {/* Salva */}
             <Button onClick={handleSave} disabled={saving}
               className="w-full rounded-2xl font-bold h-12 text-base shadow-md"
-              style={{ backgroundColor: '#FF69B4', color: 'white' }}
+              style={{ backgroundColor: C.accentPink, color: 'white' }}
               data-testid="save-presenze-btn">
               <Save className="w-5 h-5 mr-2" />
               {saving ? 'Salvataggio...' : 'Salva Registro'}

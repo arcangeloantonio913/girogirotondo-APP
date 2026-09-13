@@ -8,11 +8,12 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const MOODS = ['😊','😢','😴','🤒','😤','🎉','😍','😮'];
 const ACTIVITIES = ['Lettura','Pittura','Musica','Sport','Natura','Cucina','Teatro','Puzzle','Danza','Canto'];
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = todayLocal();
 
 export default function TeacherDiario() {
   const { user } = useAuth();

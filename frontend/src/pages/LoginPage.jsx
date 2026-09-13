@@ -1,3 +1,4 @@
+import { C, SEDI, tenant } from '@/config/tenant';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -6,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Lock, Mail, Eye, EyeOff, KeyRound } from 'lucide-react';
 
-const SCHOOLS = [
-  { id: 'girogirotondo', name: 'Girogirotondo', logo: '/logo-girogirotondo.png' },
-  { id: 'il-magico-mondo', name: 'Il Magico Mondo', logo: '/logo-magico-mondo.png' },
-];
+// Le "scuole" mostrate nel selettore = le sedi del tenant attivo (branding per-tenant).
+const SCHOOLS = SEDI.map((s) => ({ id: s.id, name: s.label, logo: s.logo }));
+// Wordmark multicolore solo per Girogirotondo; gli altri tenant usano il nome in tinta unita.
+const IS_GIRO = tenant.appName === 'Girogirotondo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -80,12 +81,12 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #FFFDD0 0%, #FFF8E1 100%)' }}
+      style={{ background: `linear-gradient(180deg, ${C.bg} 0%, #FFFFFF 100%)` }}
     >
       {/* Decorative circles */}
-      <div className="absolute top-[-60px] left-[-60px] w-[180px] h-[180px] rounded-full bg-[#4169E1] opacity-10 pointer-events-none" />
-      <div className="absolute bottom-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full bg-[#FF69B4] opacity-10 pointer-events-none" />
-      <div className="absolute top-[30%] right-[-30px] w-[100px] h-[100px] rounded-full bg-[#32CD32] opacity-10 pointer-events-none" />
+      <div className="absolute top-[-60px] left-[-60px] w-[180px] h-[180px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: C.primary }} />
+      <div className="absolute bottom-[-40px] right-[-40px] w-[140px] h-[140px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: C.accentPink }} />
+      <div className="absolute top-[30%] right-[-30px] w-[100px] h-[100px] rounded-full opacity-10 pointer-events-none" style={{ backgroundColor: C.accentGreen }} />
 
       <div className="w-full max-w-sm relative z-10">
 
@@ -109,10 +110,10 @@ export default function LoginPage() {
                     style={{
                       padding: isSelected ? '3px' : '2px',
                       background: isSelected
-                        ? 'linear-gradient(135deg, #A7C7E7, #F4C2C2)'
+                        ? `linear-gradient(135deg, ${C.babyBlue}, ${C.babyPink})`
                         : 'transparent',
                       boxShadow: isSelected
-                        ? '0 0 0 2px #A7C7E7, 0 4px 12px rgba(167,199,231,0.5)'
+                        ? `0 0 0 2px ${C.babyBlue}, 0 4px 12px rgba(0,0,0,0.15)`
                         : '0 2px 6px rgba(0,0,0,0.08)',
                       opacity: isOther ? 0.45 : 1,
                       transform: isSelected ? 'scale(1.1)' : 'scale(1)',
@@ -128,7 +129,7 @@ export default function LoginPage() {
                     className="text-[10px] font-semibold transition-all duration-200"
                     style={{
                       fontFamily: 'Nunito, sans-serif',
-                      color: isSelected ? '#4169E1' : '#9CA3AF',
+                      color: isSelected ? C.primary : '#9CA3AF',
                       opacity: isOther ? 0.5 : 1,
                     }}
                   >
@@ -145,12 +146,18 @@ export default function LoginPage() {
             className="text-3xl sm:text-4xl font-black tracking-tight"
             style={{ fontFamily: 'Nunito, sans-serif' }}
           >
-            <span style={{ color: '#A7C7E7' }}>Giro</span>
-            <span style={{ color: '#F4C2C2' }}>giro</span>
-            <span style={{ color: '#98FB98' }}>tondo</span>
+            {IS_GIRO ? (
+              <>
+                <span style={{ color: C.babyBlue }}>Giro</span>
+                <span style={{ color: C.babyPink }}>giro</span>
+                <span style={{ color: C.babyGreen }}>tondo</span>
+              </>
+            ) : (
+              <span style={{ color: C.primary }}>{tenant.appName}</span>
+            )}
           </h1>
           <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
-            La tua scuola a portata di mano
+            {tenant.tagline}
           </p>
         </div>
 
@@ -215,7 +222,7 @@ export default function LoginPage() {
                   type="submit"
                   disabled={loading}
                   className="w-full h-11 rounded-2xl font-bold text-white shadow-sm"
-                  style={{ backgroundColor: '#A7C7E7' }}
+                  style={{ backgroundColor: C.babyBlue }}
                 >
                   {loading ? 'Accesso in corso...' : 'Accedi'}
                 </Button>
@@ -276,7 +283,7 @@ export default function LoginPage() {
                   type="submit"
                   disabled={resetLoading}
                   className="w-full h-11 rounded-2xl font-bold text-white shadow-sm"
-                  style={{ backgroundColor: '#A7C7E7' }}
+                  style={{ backgroundColor: C.babyBlue }}
                 >
                   {resetLoading ? 'Invio in corso...' : 'Invia Link di Reset'}
                 </Button>
@@ -295,8 +302,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-[10px] text-center text-gray-400 mt-8 leading-relaxed px-4">
-          &copy; 2026 Piattaforma Istituzionale Girogirotondo — Conforme GDPR e normative EU.<br />
-          <span className="text-gray-300">Realizzato da Omnia</span>
+          {tenant.footer}
         </p>
       </div>
     </div>

@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import api from '../../lib/api';
+import { openFileUrl } from '../../lib/openFile';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
+
+async function openAttachment(url?: string, name?: string) {
+  if (!url) return;
+  try { await openFileUrl(url, name); }
+  catch { Alert.alert('Errore', 'Impossibile aprire l\'allegato.'); }
+}
 
 export default function ParentAvvisi() {
   const [avvisi, setAvvisi] = useState<any[]>([]);
@@ -29,6 +37,13 @@ export default function ParentAvvisi() {
             </View>
             <Text style={s.cardTitle}>{item.titolo || item.title}</Text>
             {(item.testo || item.body) && <Text style={s.cardBody}>{item.testo || item.body}</Text>}
+            {item.attachment_name && (
+              <TouchableOpacity onPress={() => openAttachment(item.attachment_url, item.attachment_name)}
+                style={s.attachChip}>
+                <Ionicons name="attach-outline" size={14} color="#BE185D" />
+                <Text style={s.attachChipText} numberOfLines={1}>{item.attachment_name}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       />
@@ -46,4 +61,6 @@ const s = StyleSheet.create({
   date:     { fontSize: 11, color: C.muted },
   cardTitle:{ fontSize: 14, fontWeight: '700', color: C.text },
   cardBody: { fontSize: 12, color: '#374151', lineHeight: 18, marginTop: 4 },
+  attachChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start', backgroundColor: C.babyPink + '30', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '95%' },
+  attachChipText: { fontSize: 12, color: '#BE185D', fontWeight: '600', flexShrink: 1 },
 });

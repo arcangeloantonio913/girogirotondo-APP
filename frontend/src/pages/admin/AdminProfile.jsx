@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState } from 'react';
 import { useAuth, SEDI } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -51,7 +52,7 @@ export default function AdminProfile() {
         <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
-              style={{ backgroundColor: '#A7C7E7' }}>
+              style={{ backgroundColor: C.babyBlue }}>
               {initials}
             </div>
             <div>
@@ -59,8 +60,8 @@ export default function AdminProfile() {
                 {user?.name}
               </h2>
               <div className="flex items-center gap-1.5 mt-1">
-                <Shield className="w-3.5 h-3.5" style={{ color: '#4169E1' }} />
-                <span className="text-xs font-semibold" style={{ color: '#4169E1' }}>{roleLabel}</span>
+                <Shield className="w-3.5 h-3.5" style={{ color: C.primary }} />
+                <span className="text-xs font-semibold" style={{ color: C.primary }}>{roleLabel}</span>
               </div>
             </div>
           </div>
@@ -80,7 +81,7 @@ export default function AdminProfile() {
                 <div>
                   <p className="text-xs font-medium" style={{ color: '#8B5CF6' }}>Accesso</p>
                   <p className="text-sm font-semibold" style={{ color: '#8B5CF6' }}>
-                    Tutte le sedi (Girogirotondo + Il Magico Mondo)
+                    Tutte le sedi ({SEDI.map((s) => s.label).join(' + ')})
                   </p>
                 </div>
               </div>
@@ -102,7 +103,7 @@ export default function AdminProfile() {
         {/* Cambio password */}
         <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
           <div className="flex items-center gap-2 mb-4">
-            <Key className="w-4 h-4" style={{ color: '#4169E1' }} />
+            <Key className="w-4 h-4" style={{ color: C.primary }} />
             <h3 className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
               Cambia Password
             </h3>
@@ -154,7 +155,7 @@ export default function AdminProfile() {
               onClick={handleChangePwd}
               disabled={saving || !newPwd || !confirmPwd}
               className="w-full rounded-2xl h-11 font-bold"
-              style={{ backgroundColor: '#4169E1' }}
+              style={{ backgroundColor: C.primary }}
             >
               {saving ? 'Salvataggio...' : 'Aggiorna Password'}
             </Button>

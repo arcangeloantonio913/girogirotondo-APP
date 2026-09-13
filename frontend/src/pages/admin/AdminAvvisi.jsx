@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth, SEDI } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 
 // ── Chip multi-select ─────────────────────────────────────────────────────────
-function MultiChip({ items, selected, onToggle, colorActive = '#4169E1', labelKey = 'name', valueKey = 'id', allLabel = 'Tutti' }) {
+function MultiChip({ items, selected, onToggle, colorActive = C.primary, labelKey = 'name', valueKey = 'id', allLabel = 'Tutti' }) {
   const allSelected = selected.length === 0;
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -212,11 +213,11 @@ export default function AdminAvvisi() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <Bell className="w-5 h-5" style={{ color: C.primary }} />
             <span className="text-sm font-bold text-gray-700">{avvisi.length} avvisi</span>
           </div>
           <Button data-testid="add-avviso-button" onClick={openDialog}
-            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: '#4169E1' }}>
+            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.primary }}>
             <Plus className="w-4 h-4 mr-1" />Nuovo Avviso
           </Button>
         </div>
@@ -237,7 +238,7 @@ export default function AdminAvvisi() {
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: '#4169E115' }}>
-                      <Bell className="w-4 h-4" style={{ color: '#4169E1' }} />
+                      <Bell className="w-4 h-4" style={{ color: C.primary }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -297,7 +298,7 @@ export default function AdminAvvisi() {
                 <Button variant="outline" onClick={() => setEditDialog({ open: false, avviso: null })}
                   className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
                 <Button onClick={handleEdit} disabled={editLoading || !editForm.titolo || !editForm.testo}
-                  className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: '#4169E1' }}>
+                  className="flex-1 rounded-xl h-10 text-sm font-bold" style={{ backgroundColor: C.primary }}>
                   {editLoading ? 'Salvataggio...' : 'Salva'}
                 </Button>
               </div>
@@ -333,7 +334,7 @@ export default function AdminAvvisi() {
               {/* Sezione 1: Sede */}
               <div className="border-t border-gray-100 pt-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-3.5 h-3.5" style={{ color: '#4169E1' }} />
+                  <Building2 className="w-3.5 h-3.5" style={{ color: C.primary }} />
                   <Label className="text-xs font-bold text-gray-700">Sede destinataria</Label>
                 </div>
                 <MultiChip
@@ -345,7 +346,7 @@ export default function AdminAvvisi() {
                     target_class_ids: [],   // reset classi quando cambia sede
                     target_parent_ids: [],
                   }))}
-                  colorActive={sedeInfo?.color || '#4169E1'}
+                  colorActive={sedeInfo?.color || C.primary}
                   labelKey="label"
                   valueKey="id"
                   allLabel="Entrambe"
@@ -355,7 +356,7 @@ export default function AdminAvvisi() {
               {/* Sezione 2: Destinatari (ruoli) */}
               <div className="border-t border-gray-100 pt-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-3.5 h-3.5" style={{ color: '#4169E1' }} />
+                  <Users className="w-3.5 h-3.5" style={{ color: C.primary }} />
                   <Label className="text-xs font-bold text-gray-700">Destinatari</Label>
                 </div>
                 <MultiChip
@@ -377,7 +378,7 @@ export default function AdminAvvisi() {
               {availableClasses.length > 0 && (
                 <div className="border-t border-gray-100 pt-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <BookOpen className="w-3.5 h-3.5" style={{ color: '#FF69B4' }} />
+                    <BookOpen className="w-3.5 h-3.5" style={{ color: C.accentPink }} />
                     <Label className="text-xs font-bold text-gray-700">Classi</Label>
                   </div>
                   <MultiChip
@@ -388,7 +389,7 @@ export default function AdminAvvisi() {
                       target_class_ids: toggleInList(prev.target_class_ids, val),
                       target_parent_ids: [],
                     }))}
-                    colorActive="#FF69B4"
+                    colorActive={C.accentPink}
                     labelKey="name"
                     valueKey="id"
                     allLabel="Tutte le classi"
@@ -402,7 +403,7 @@ export default function AdminAvvisi() {
                   <button type="button"
                     onClick={() => setShowParentPicker(v => !v)}
                     className="flex items-center gap-2 w-full text-left">
-                    <Users className="w-3.5 h-3.5" style={{ color: '#32CD32' }} />
+                    <Users className="w-3.5 h-3.5" style={{ color: C.accentGreen }} />
                     <Label className="text-xs font-bold text-gray-700 cursor-pointer">
                       Seleziona genitori specifici
                       <span className="text-gray-400 font-normal ml-1">
@@ -447,7 +448,7 @@ export default function AdminAvvisi() {
               <Button data-testid="create-avviso-submit" onClick={handleCreate}
                 disabled={loading || !form.titolo || !form.testo}
                 className="w-full rounded-2xl font-bold h-11 mt-2"
-                style={{ backgroundColor: '#4169E1' }}>
+                style={{ backgroundColor: C.primary }}>
                 {loading ? 'Pubblicazione...' : 'Pubblica Avviso'}
               </Button>
             </div>

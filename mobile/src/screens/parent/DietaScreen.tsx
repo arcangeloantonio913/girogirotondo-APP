@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -22,7 +23,7 @@ function addDays(d: string, n: number) {
 }
 
 export default function ParentDieta() {
-  const [date,  setDate]  = useState(new Date().toISOString().split('T')[0]);
+  const [date,  setDate]  = useState(todayLocal());
   const [meal,  setMeal]  = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

@@ -5,10 +5,11 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-const TODAY = new Date().toISOString().split('T')[0];
+const TODAY = todayLocal();
 
 // Etichette ufficiali pasti (da screenshot Girogirotondo)
 const PASTI = [
@@ -69,8 +70,12 @@ export default function AdminMensa() {
     api.get('/sedi').then(r => setSedi(r.data ?? [])).catch(() => setSedi([]));
   }, []);
 
-  // Filtro per data selezionata
-  const todayMeals = meals.filter(m => m.date_from <= navDate && m.date_to >= navDate);
+  // Filtro per data selezionata. I menu a data SINGOLA (creati con solo `date`, senza
+  // date_from/date_to — es. dalla web app) non hanno il range: vanno confrontati su `date`,
+  // altrimenti (undefined <= navDate === false) sparirebbero dalla lista admin.
+  const todayMeals = meals.filter(m =>
+    (m.date_from && m.date_to) ? (m.date_from <= navDate && m.date_to >= navDate) : (m.date === navDate)
+  );
 
   const applyPreset = (days: number) => {
     setForm(p => ({ ...p, date_to: addDays(p.date_from, days) }));
@@ -86,7 +91,10 @@ export default function AdminMensa() {
         // singola data se from == to, altrimenti range (date = null) — come la web app
         date: form.date_from === form.date_to ? form.date_from : null,
       };
-      const res = await api.post('/meals/menu', payload);
+      // Il backend deriva la sede dall'header X-Sede-Id (non dal body): passiamo la sede
+      // scelta così la selezione ha davvero effetto (per il superadmin che opera su più sedi).
+      const cfg = form.sede_ids[0] ? { headers: { 'X-Sede-Id': form.sede_ids[0] } } : undefined;
+      const res = await api.post('/meals/menu', payload, cfg);
       setMeals(prev => [res.data, ...prev]);
       setShowForm(false);
       setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
@@ -104,11 +112,11 @@ export default function AdminMensa() {
     ]);
   };
 
+  // Selezione SINGOLA: un menu viene creato in UNA sede (il backend salva un solo doc con
+  // una sola sede). La multi-selezione precedente era fuorviante — venivano scartate tutte
+  // tranne la prima. Ora si sceglie esattamente la sede di destinazione.
   const toggleSede = (id: string) => {
-    setForm(p => ({
-      ...p,
-      sede_ids: p.sede_ids.includes(id) ? p.sede_ids.filter(s => s !== id) : [...p.sede_ids, id],
-    }));
+    setForm(p => ({ ...p, sede_ids: [id] }));
   };
 
   return (

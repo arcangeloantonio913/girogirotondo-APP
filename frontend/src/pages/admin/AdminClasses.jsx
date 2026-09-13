@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -125,7 +126,7 @@ export default function AdminClasses() {
       })
     : classes;
 
-  const classColors = ['#4169E1', '#FF69B4', '#32CD32', '#F59E0B', '#8B5CF6'];
+  const classColors = [C.primary, C.accentPink, C.accentGreen, '#F59E0B', '#8B5CF6'];
 
   return (
     <AppLayout title="Gestione Classi" showBack>
@@ -134,7 +135,7 @@ export default function AdminClasses() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5" style={{ color: '#FF69B4' }} />
+            <BookOpen className="w-5 h-5" style={{ color: C.accentPink }} />
             <span className="text-sm font-bold text-gray-700">
               {searchQuery ? filteredClasses.length : classes.length} classi
             </span>
@@ -144,7 +145,7 @@ export default function AdminClasses() {
             </span>
           </div>
           <Button data-testid="add-class-button" onClick={() => setDialogOpen(true)}
-            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: '#FF69B4' }}>
+            className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.accentPink }}>
             <Plus className="w-4 h-4 mr-1" />Nuova Classe
           </Button>
         </div>
@@ -271,7 +272,7 @@ export default function AdminClasses() {
                 /* Maestra assegnata — con edit/rimozione */
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                    style={{ backgroundColor: '#FF69B4' }}>
+                    style={{ backgroundColor: C.accentPink }}>
                     {detailTeacher.name.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -321,7 +322,7 @@ export default function AdminClasses() {
                         onClick={() => setSelectedStudent(s)}
                         className="flex items-center gap-3 py-2 px-3 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors w-full text-left">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                          style={{ backgroundColor: '#4169E1' }}>
+                          style={{ backgroundColor: C.primary }}>
                           {s.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -471,7 +472,7 @@ export default function AdminClasses() {
               </div>
               <Button data-testid="create-class-submit" onClick={handleCreate}
                 disabled={!form.name}
-                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: '#FF69B4' }}>
+                className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentPink }}>
                 Crea Classe
               </Button>
             </div>

@@ -5,6 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -22,7 +23,7 @@ export default function ParentDiario() {
   const { activeChildId, user } = useAuth();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date,    setDate]    = useState(new Date().toISOString().split('T')[0]);
+  const [date,    setDate]    = useState(todayLocal());
   const [viewAll, setViewAll] = useState(false);
 
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
@@ -39,7 +40,7 @@ export default function ParentDiario() {
       .finally(() => setLoading(false));
   }, [childId, date, viewAll]);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   return (
     <ScreenLayout title="Diario di Bordo" showBack color={C.babyBlue} loading={loading} scrollable={false}>

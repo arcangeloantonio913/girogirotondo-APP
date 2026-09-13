@@ -7,9 +7,16 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { openFileUrl } from '../../lib/openFile';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
+
+async function openAttachment(url?: string, name?: string) {
+  if (!url) return;
+  try { await openFileUrl(url, name); }
+  catch { Alert.alert('Errore', 'Impossibile aprire l\'allegato.'); }
+}
 
 export default function TeacherAvvisi() {
   const { user } = useAuth();
@@ -121,6 +128,14 @@ export default function TeacherAvvisi() {
                     </View>
                   )}
                 </View>
+                {/* Allegato */}
+                {item.attachment_name && (
+                  <TouchableOpacity onPress={() => openAttachment(item.attachment_url, item.attachment_name)}
+                    style={s.attachChip}>
+                    <Ionicons name="attach-outline" size={14} color={C.accentPink} />
+                    <Text style={s.attachChipText} numberOfLines={1}>{item.attachment_name}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.deleteBtn}>
                 <Ionicons name="trash-outline" size={16} color={C.red} />
@@ -230,6 +245,8 @@ const s = StyleSheet.create({
   cardBody:        { fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 17 },
   targetBadge:     { backgroundColor: '#FFF0F7', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
   targetText:      { fontSize: 10, color: C.accentPink, fontWeight: '700' },
+  attachChip:      { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start', backgroundColor: '#FFF0F7', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '90%' },
+  attachChipText:  { fontSize: 12, color: C.accentPink, fontWeight: '600', flexShrink: 1 },
   deleteBtn:       { padding: 8, backgroundColor: '#FEF2F2', borderRadius: 8, alignSelf: 'flex-start' },
   modal:           { flex: 1, padding: 20, backgroundColor: '#FFFDD0' },
   modalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

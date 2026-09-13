@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "craco start",
+    "prebuild": "node scripts/apply-tenant.js",
     "build": "craco build",
     "start": "craco start",
-    "test": "craco test"
+    "test": "craco test",
+    "build:dimensione-bimbo": "REACT_APP_TENANT=dimensione-bimbo npm run build"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.1.2",

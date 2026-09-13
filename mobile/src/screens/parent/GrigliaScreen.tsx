@@ -5,6 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -38,12 +39,12 @@ function addDays(d: string, n: number) {
 
 export default function ParentGriglia() {
   const { activeChildId, user } = useAuth();
-  const [date,   setDate]   = useState(new Date().toISOString().split('T')[0]);
+  const [date,   setDate]   = useState(todayLocal());
   const [griglia,setGriglia]= useState<any>(null);
   const [loading,setLoading]= useState(true);
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   useEffect(() => {
     if (!childId) { setLoading(false); return; }

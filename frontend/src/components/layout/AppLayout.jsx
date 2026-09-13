@@ -1,3 +1,4 @@
+import { C, tenant } from '@/config/tenant';
 import { useAuth, SEDI } from '@/lib/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -7,12 +8,10 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-const SEDE_LOGOS = {
-  'girogirotondo':  '/logo-girogirotondo.png',
-  'il-magico-mondo': '/logo-magico-mondo.png',
-};
+// Loghi per sede derivati dal tenant attivo (branding per-tenant).
+const SEDE_LOGOS = SEDI.reduce((acc, s) => { acc[s.id] = s.logo || tenant.logo; return acc; }, {});
 
-const FOOTER_TEXT = "\u00A9 2026 Omnia - Piattaforma Istituzionale Girogirotondo. Conforme alle normative GDPR, tutela dei minori e standard digitali EU.";
+const FOOTER_TEXT = tenant.footer;
 
 function getNavItems(role) {
   if (role === 'parent') {
@@ -62,9 +61,9 @@ function getNavItems(role) {
 }
 
 function getRoleColor(role) {
-  if (role === 'admin')   return '#A7C7E7';
-  if (role === 'teacher') return '#F4C2C2';
-  return '#98FB98';
+  if (role === 'admin')   return C.babyBlue;
+  if (role === 'teacher') return C.babyPink;
+  return C.babyGreen;
 }
 
 function getRoleLabel(role) {
@@ -175,7 +174,7 @@ function ChildSwitcher({ students, compact = false }) {
               className={`flex items-center gap-2 w-full px-3 py-2.5 text-xs font-semibold text-left transition-colors
                 ${s.id === activeChildId ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50'}`}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                style={{ backgroundColor: '#32CD32' }}>
+                style={{ backgroundColor: C.accentGreen }}>
                 {s.name?.charAt(0)}
               </div>
               <span>{s.name?.split(' ')[0]} <span className="font-normal text-gray-400">{s.cognome || ''}</span></span>
@@ -213,7 +212,7 @@ export default function AppLayout({ children, title, showBack }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FFFDD0' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: C.bg }}>
       {/* Top App Bar */}
       <header className="sticky top-0 z-40 bg-white shadow-sm" data-testid="app-header">
         <div className="flex items-center justify-between px-4 h-16">
@@ -250,7 +249,7 @@ export default function AppLayout({ children, title, showBack }) {
             ) : (
               <>
                 <img
-                  src={SEDE_LOGOS[sede] || SEDE_LOGOS['girogirotondo']}
+                  src={SEDE_LOGOS[sede] || tenant.logo}
                   alt="Logo sede"
                   className="w-8 h-8 rounded-full object-cover border-2 border-gray-100 shadow-sm"
                   data-testid="header-logo"
@@ -258,7 +257,7 @@ export default function AppLayout({ children, title, showBack }) {
                 <span
                   data-testid="header-sede-badge"
                   className="text-[9px] font-bold tracking-wide leading-none mt-0.5"
-                  style={{ color: sedeInfo?.color || '#4169E1', fontFamily: 'Poppins, sans-serif' }}
+                  style={{ color: sedeInfo?.color || C.primary, fontFamily: 'Poppins, sans-serif' }}
                 >
                   {sedeInfo?.label}
                 </span>

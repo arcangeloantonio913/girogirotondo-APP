@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -118,7 +119,7 @@ export default function TeacherDiario() {
         {/* Nuovo entry */}
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 space-y-3">
           <div className="flex items-center gap-2">
-            <BookMarked className="w-4 h-4" style={{ color: '#A7C7E7' }} />
+            <BookMarked className="w-4 h-4" style={{ color: C.babyBlue }} />
             <p className="text-sm font-bold text-gray-800" style={{ fontFamily: 'Nunito' }}>
               Scrivi nel diario — <span className="text-gray-400 font-normal capitalize">{formatted}</span>
             </p>
@@ -160,7 +161,7 @@ export default function TeacherDiario() {
                         ${isSel ? 'bg-blue-100 text-blue-700 font-semibold' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>
                       {isSel && <Check className="w-3 h-3 flex-shrink-0" />}
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                        style={{ backgroundColor: '#A7C7E7' }}>
+                        style={{ backgroundColor: C.babyBlue }}>
                         {s.name.charAt(0)}
                       </div>
                       {s.name} {s.cognome || ''}
@@ -191,7 +192,7 @@ export default function TeacherDiario() {
           <Button onClick={handleSubmit}
             disabled={loading || !summary.trim() || (!allStudents && selStudents.length === 0)}
             className="w-full rounded-2xl h-11 font-bold"
-            style={{ backgroundColor: '#A7C7E7' }}>
+            style={{ backgroundColor: C.babyBlue }}>
             {loading ? 'Salvataggio...' : 'Pubblica nel Diario'}
           </Button>
         </div>

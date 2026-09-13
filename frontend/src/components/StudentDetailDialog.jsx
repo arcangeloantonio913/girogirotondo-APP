@@ -11,6 +11,7 @@
  *   onSaved(s)     — chiamato dopo salvataggio con lo studente aggiornato
  *   onDeleted(id)  — chiamato dopo eliminazione (solo admin)
  */
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -123,7 +124,7 @@ export default function StudentDetailDialog({
       <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="student-detail-dialog">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
-            <Baby className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <Baby className="w-5 h-5" style={{ color: C.primary }} />
             {editing ? 'Modifica Bambino' : fullName || student.name}
           </DialogTitle>
         </DialogHeader>
@@ -133,13 +134,13 @@ export default function StudentDetailDialog({
           <div className="space-y-3 pt-1">
             {/* Info principali */}
             <div className="grid grid-cols-2 gap-2">
-              <InfoCard icon={Baby} label="Nome" value={fullName || student.name} color="#4169E1" />
+              <InfoCard icon={Baby} label="Nome" value={fullName || student.name} color={C.primary} />
               <InfoCard icon={BookOpen} label="Classe"
-                value={cls?.name || (student.class_id ? '—' : 'Nessuna classe')} color="#FF69B4" />
+                value={cls?.name || (student.class_id ? '—' : 'Nessuna classe')} color={C.accentPink} />
               {student.date_of_birth && (
                 <InfoCard icon={Calendar} label="Data nascita"
                   value={new Date(student.date_of_birth + 'T12:00:00').toLocaleDateString('it-IT')}
-                  color="#32CD32" />
+                  color={C.accentGreen} />
               )}
               <InfoCard icon={Tag} label="Codice" value={student.child_code || '—'} color="#F59E0B" />
             </div>
@@ -166,8 +167,8 @@ export default function StudentDetailDialog({
 
             {/* Genitore */}
             {parent && (
-              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#F0FFF0' }}>
-                <Heart className="w-4 h-4 flex-shrink-0" style={{ color: '#32CD32' }} />
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: C.tintGreen }}>
+                <Heart className="w-4 h-4 flex-shrink-0" style={{ color: C.accentGreen }} />
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-gray-700">{parent.name}</p>
                   <p className="text-[10px] text-gray-400 truncate">{parent.email}</p>
@@ -181,7 +182,7 @@ export default function StudentDetailDialog({
             <div className="flex gap-2 pt-1">
               <Button onClick={() => setEditing(true)}
                 className="flex-1 h-9 rounded-xl text-sm font-semibold"
-                style={{ backgroundColor: '#4169E1' }}>
+                style={{ backgroundColor: C.primary }}>
                 <Pencil className="w-3.5 h-3.5 mr-1.5" />Modifica
               </Button>
               {student.class_id && (
@@ -262,7 +263,7 @@ export default function StudentDetailDialog({
               <Button variant="outline" onClick={() => { setEditing(false); setError(''); }}
                 className="flex-1 h-10 rounded-xl text-sm">Annulla</Button>
               <Button onClick={handleSave} disabled={loading || !form.name}
-                className="flex-1 h-10 rounded-xl text-sm font-bold" style={{ backgroundColor: '#4169E1' }}>
+                className="flex-1 h-10 rounded-xl text-sm font-bold" style={{ backgroundColor: C.primary }}>
                 {loading ? 'Salvataggio...' : <><Check className="w-4 h-4 mr-1" />Salva</>}
               </Button>
             </div>

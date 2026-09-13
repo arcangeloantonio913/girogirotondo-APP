@@ -36,3 +36,29 @@ class GrigliaEntry(BaseModel):
 
     # ── Note libere ───────────────────────────────────────────────────────────
     notes: str = ""
+
+
+class GrigliaStudentEntry(BaseModel):
+    """Griglia di UN singolo bambino (valori propri) — usata dal salvataggio bulk."""
+    student_id: str
+    merenda:  bool = False
+    pasta:    bool = False
+    secondo:  bool = False
+    pane:     bool = False
+    frutta:   bool = False
+    merenda_qty: Optional[str] = ""
+    pasta_qty:   Optional[str] = ""
+    secondo_qty: Optional[str] = ""
+    pane_qty:    Optional[str] = ""
+    frutta_qty:  Optional[str] = ""
+    pupu:  bool = False
+    nanna: bool = False
+    notes: str = ""
+
+
+class GrigliaBulk(BaseModel):
+    """Salvataggio in un'unica richiesta della griglia di più bambini, ciascuno con i
+    propri valori. Consente di notificare i genitori UNA sola volta (niente spam)."""
+    class_id: str
+    date: str
+    entries: List[GrigliaStudentEntry]

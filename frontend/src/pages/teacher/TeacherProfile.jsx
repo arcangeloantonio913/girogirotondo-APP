@@ -1,3 +1,4 @@
+import { C, tenant, SEDI } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -50,7 +51,7 @@ export default function TeacherProfile() {
         {/* Info card */}
         <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <div className="flex items-center gap-4 mb-5">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: '#F4C2C2' }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{ backgroundColor: C.babyPink }}>
               {user?.name?.charAt(0) || 'M'}
             </div>
             <div>
@@ -62,7 +63,7 @@ export default function TeacherProfile() {
           {/* Email con pulsante modifica */}
           <div className="space-y-2">
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl" data-testid="teacher-email-display">
-              <Mail className="w-5 h-5 flex-shrink-0" style={{ color: '#4169E1' }} />
+              <Mail className="w-5 h-5 flex-shrink-0" style={{ color: C.primary }} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-500 font-medium">Email di Accesso</p>
                 <p className="text-sm font-bold text-gray-900 truncate">{user?.email}</p>
@@ -84,7 +85,7 @@ export default function TeacherProfile() {
                   data-testid="new-email-input" />
                 <div className="flex gap-2">
                   <Button onClick={handleChangeEmail} disabled={emailLoading || !newEmail.trim() || newEmail === user?.email}
-                    className="flex-1 h-9 rounded-xl text-sm font-bold" style={{ backgroundColor: '#4169E1' }}>
+                    className="flex-1 h-9 rounded-xl text-sm font-bold" style={{ backgroundColor: C.primary }}>
                     {emailLoading ? 'Salvo...' : 'Salva email'}
                   </Button>
                   <Button variant="outline" onClick={() => { setEditingEmail(false); setEmailResult(null); }}
@@ -107,17 +108,17 @@ export default function TeacherProfile() {
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Assegnazione Classe</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-xl">
-              <BookOpen className="w-5 h-5" style={{ color: '#FF69B4' }} />
+              <BookOpen className="w-5 h-5" style={{ color: C.accentPink }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Classe Assegnata</p>
-                <p className="text-sm font-bold" style={{ color: '#FF69B4' }}>{className || 'Nessuna classe assegnata'}</p>
+                <p className="text-sm font-bold" style={{ color: C.accentPink }}>{className || 'Nessuna classe assegnata'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-xl">
-              <Users className="w-5 h-5" style={{ color: '#FF69B4' }} />
+              <Users className="w-5 h-5" style={{ color: C.accentPink }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">Numero Alunni</p>
-                <p className="text-sm font-bold" style={{ color: '#FF69B4' }}>{studentCount} bambini</p>
+                <p className="text-sm font-bold" style={{ color: C.accentPink }}>{studentCount} bambini</p>
               </div>
             </div>
           </div>
@@ -127,21 +128,23 @@ export default function TeacherProfile() {
         <div className="bg-white rounded-2xl shadow-md p-6 border border-gray-100">
           <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Contatti Scuola</h3>
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-              <Mail className="w-5 h-5" style={{ color: '#4169E1' }} />
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Email Segreteria</p>
-                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>scuolagirogirotondo@libero.it</p>
+            {tenant.contacts?.email && (
+              <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: C.tintBlue }}>
+                <Mail className="w-5 h-5" style={{ color: C.primary }} />
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Email Segreteria</p>
+                  <p className="text-sm font-bold" style={{ color: C.primary }}>{tenant.contacts.email}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-              <GraduationCap className="w-5 h-5" style={{ color: '#4169E1' }} />
+            )}
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: C.tintBlue }}>
+              <GraduationCap className="w-5 h-5" style={{ color: C.primary }} />
               <div>
                 <p className="text-xs text-gray-500 font-medium">
-                  Telefono {user?.sede_id === 'il-magico-mondo' ? 'Il Magico Mondo' : 'Girogirotondo'}
+                  Telefono {SEDI.find((s) => s.id === user?.sede_id)?.label || tenant.appName}
                 </p>
-                <p className="text-sm font-bold" style={{ color: '#4169E1' }}>
-                  {user?.sede_id === 'il-magico-mondo' ? '392 41 79 110' : '350 16 76 101'}
+                <p className="text-sm font-bold" style={{ color: C.primary }}>
+                  {tenant.contacts?.phoneBySede?.[user?.sede_id] || tenant.contacts?.phoneDefault || ''}
                 </p>
               </div>
             </div>
@@ -150,7 +153,7 @@ export default function TeacherProfile() {
 
         {/* Privacy */}
         <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50">
-          <Shield className="w-4 h-4" style={{ color: '#32CD32' }} />
+          <Shield className="w-4 h-4" style={{ color: C.accentGreen }} />
           <p className="text-xs text-gray-600">I tuoi dati sono protetti secondo le normative GDPR vigenti.</p>
         </div>
       </div>

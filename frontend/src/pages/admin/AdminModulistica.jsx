@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -135,14 +136,14 @@ export default function AdminModulistica() {
       <div className="max-w-2xl mx-auto space-y-4" data-testid="admin-modulistica-page">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: '#32CD32' }} />
+            <FileText className="w-5 h-5" style={{ color: C.accentGreen }} />
             <span className="text-sm font-bold text-gray-700">{documents.length} documenti</span>
           </div>
           <Button
             data-testid="add-document-button"
             onClick={() => setDialogOpen(true)}
             className="rounded-2xl font-semibold h-9 text-sm"
-            style={{ backgroundColor: '#32CD32' }}
+            style={{ backgroundColor: C.accentGreen }}
           >
             <Plus className="w-4 h-4 mr-1" />
             Nuovo Documento
@@ -184,12 +185,12 @@ export default function AdminModulistica() {
               <div className="mt-3">
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="text-gray-500 font-medium">Prese Visione</span>
-                  <span className="font-bold" style={{ color: progress === 100 ? '#32CD32' : '#4169E1' }}>{readCount}/{parents.length}</span>
+                  <span className="font-bold" style={{ color: progress === 100 ? C.accentGreen : C.primary }}>{readCount}/{parents.length}</span>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%`, backgroundColor: progress === 100 ? '#32CD32' : '#4169E1' }}
+                    style={{ width: `${progress}%`, backgroundColor: progress === 100 ? C.accentGreen : C.primary }}
                   />
                 </div>
               </div>
@@ -227,7 +228,7 @@ export default function AdminModulistica() {
               {/* File picker area */}
               {selectedFile ? (
                 <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
-                  <File className="w-5 h-5 flex-shrink-0" style={{ color: '#32CD32' }} />
+                  <File className="w-5 h-5 flex-shrink-0" style={{ color: C.accentGreen }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-800 truncate">{selectedFile.name}</p>
                     <p className="text-[10px] text-gray-500">{(selectedFile.size / 1024).toFixed(0)} KB</p>
@@ -253,7 +254,7 @@ export default function AdminModulistica() {
                 onClick={handleCreate}
                 disabled={!form.title || !selectedFile || uploading}
                 className="w-full rounded-2xl font-bold h-11"
-                style={{ backgroundColor: '#32CD32' }}
+                style={{ backgroundColor: C.accentGreen }}
               >
                 <Upload className="w-4 h-4 mr-2" />
                 {uploading ? 'Caricamento in corso...' : 'Pubblica Documento'}
@@ -280,7 +281,7 @@ export default function AdminModulistica() {
                   return (
                     <div className="flex items-center justify-between text-xs mb-1 px-1">
                       <span className="font-bold text-gray-700">{detailDoc.title}</span>
-                      <span className="font-bold" style={{ color: pct === 100 ? '#32CD32' : '#4169E1' }}>
+                      <span className="font-bold" style={{ color: pct === 100 ? C.accentGreen : C.primary }}>
                         {readCount}/{total} ({pct}%)
                       </span>
                     </div>
@@ -304,13 +305,13 @@ export default function AdminModulistica() {
                             className="flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 mb-1">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                                style={{ backgroundColor: read ? '#32CD32' : '#CBD5E0' }}>
+                                style={{ backgroundColor: read ? C.accentGreen : '#CBD5E0' }}>
                                 {parent.name.charAt(0)}
                               </div>
                               <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
                             </div>
                             {read
-                              ? <CheckCircle2 className="w-5 h-5" style={{ color: '#32CD32' }} />
+                              ? <CheckCircle2 className="w-5 h-5" style={{ color: C.accentGreen }} />
                               : <XCircle className="w-5 h-5 text-gray-300" />}
                           </div>
                         );

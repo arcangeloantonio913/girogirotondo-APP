@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -35,19 +36,19 @@ export default function AdminDashboard() {
   }, [sede]); // ← dipendenza su sede: ricarica automaticamente al cambio
 
   const statCards = [
-    { label: 'Utenti',        value: stats.users,        color: '#4169E1', bg: '#EBF0FF', icon: Users },
-    { label: 'Classi',        value: stats.classes,      color: '#FF69B4', bg: '#FFF0F7', icon: BookOpen },
-    { label: 'Alunni',        value: stats.students,     color: '#32CD32', bg: '#F0FFF0', icon: TrendingUp },
+    { label: 'Utenti',        value: stats.users,        color: C.primary, bg: C.tintBlue, icon: Users },
+    { label: 'Classi',        value: stats.classes,      color: C.accentPink, bg: C.tintPink, icon: BookOpen },
+    { label: 'Alunni',        value: stats.students,     color: C.accentGreen, bg: C.tintGreen, icon: TrendingUp },
     { label: 'Appuntamenti',  value: stats.appointments, color: '#F59E0B', bg: '#FFFBEB', icon: Calendar },
   ];
 
   const navCards = [
-    { id: 'users',       icon: Users,          color: '#4169E1', bg: '#EBF0FF', title: 'Gestione Utenti',         subtitle: 'Crea e gestisci account',            path: '/admin/users' },
-    { id: 'classes',     icon: BookOpen,       color: '#FF69B4', bg: '#FFF0F7', title: 'Gestione Classi',         subtitle: 'Organizza le classi',                path: '/admin/classes' },
+    { id: 'users',       icon: Users,          color: C.primary, bg: C.tintBlue, title: 'Gestione Utenti',         subtitle: 'Crea e gestisci account',            path: '/admin/users' },
+    { id: 'classes',     icon: BookOpen,       color: C.accentPink, bg: C.tintPink, title: 'Gestione Classi',         subtitle: 'Organizza le classi',                path: '/admin/classes' },
     { id: 'appointments',icon: Calendar,       color: '#F59E0B', bg: '#FFFBEB', title: 'Appuntamenti',            subtitle: 'Visualizza prenotazioni',            path: '/admin/appointments' },
     { id: 'presenze',    icon: ClipboardList,  color: '#FF9500', bg: '#FFF7E6', title: 'Registro Presenze',       subtitle: 'Presenze e assenze di tutte le classi', path: '/admin/presenze' },
-    { id: 'modulistica', icon: FileText,       color: '#32CD32', bg: '#F0FFF0', title: 'Modulistica',             subtitle: 'Documenti e prese visione',          path: '/admin/modulistica' },
-    { id: 'mensa',       icon: UtensilsCrossed,color: '#4169E1', bg: '#EBF0FF', title: 'Menu della Mensa',        subtitle: 'Gestisci i menu giornalieri',        path: '/admin/mensa' },
+    { id: 'modulistica', icon: FileText,       color: C.accentGreen, bg: C.tintGreen, title: 'Modulistica',             subtitle: 'Documenti e prese visione',          path: '/admin/modulistica' },
+    { id: 'mensa',       icon: UtensilsCrossed,color: C.primary, bg: C.tintBlue, title: 'Menu della Mensa',        subtitle: 'Gestisci i menu giornalieri',        path: '/admin/mensa' },
     { id: 'avvisi',      icon: Megaphone,      color: '#8B5CF6', bg: '#F5F3FF', title: 'Avvisi e Comunicazioni',  subtitle: 'Pubblica comunicazioni ai genitori', path: '/admin/avvisi' },
   ];
 

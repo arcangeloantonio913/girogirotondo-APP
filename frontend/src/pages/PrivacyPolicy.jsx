@@ -3,17 +3,24 @@
  * Conforme a: GDPR (Reg. UE 2016/679), D.Lgs. 196/2003 (Codice Privacy)
  * Trattamento dati di minori ai sensi dell'art. 8 GDPR e art. 2-quinquies D.Lgs. 196/2003
  */
+import { C, tenant } from '@/config/tenant';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Shield } from 'lucide-react';
+
+// Titolare del trattamento costruito dai dati legali reali del tenant attivo.
+const _legal = tenant.legal || {};
+const _titolareContent =
+  `Il Titolare del trattamento dei dati personali è ${_legal.ragioneSociale || tenant.appName}` +
+  (_legal.piva ? ` (P.IVA ${_legal.piva})` : '') +
+  (_legal.indirizzo ? `, con sede in ${_legal.indirizzo}` : '') +
+  `.\n\n` +
+  (_legal.email ? `Indirizzo e-mail: ${_legal.email}\n\n` : '') +
+  `Per qualsiasi questione relativa al trattamento dei tuoi dati personali, puoi contattare il Titolare all'indirizzo sopra indicato.`;
 
 const SECTIONS = [
   {
     title: '1. Titolare del Trattamento',
-    content: `Il Titolare del trattamento dei dati personali è la Scuola dell'Infanzia Girogirotondo, gestita da Omnia Studio, con sede in Carini (PA).
-
-Indirizzo e-mail: scuolagirogirotondo@libero.it
-
-Per qualsiasi questione relativa al trattamento dei tuoi dati personali, puoi contattare il Titolare all'indirizzo sopra indicato.`,
+    content: _titolareContent,
   },
   {
     title: '2. Categorie di Dati Trattati',
@@ -144,9 +151,9 @@ Non utilizziamo cookie di profilazione o di terze parti per finalità pubblicita
     title: '10. Aggiornamenti della Presente Informativa',
     content: `La presente Informativa può essere aggiornata per riflettere modifiche normative o ai servizi offerti. Gli utenti registrati saranno informati di eventuali modifiche significative tramite e-mail o notifica nella piattaforma.
 
-La versione più aggiornata è sempre disponibile al seguente indirizzo: girogirotondowebapp.it/privacy
+La versione più aggiornata è sempre disponibile all'interno di questa piattaforma, alla pagina /privacy.
 
-**Ultima revisione:** Maggio 2026`,
+**Ultima revisione:** Settembre 2026`,
   },
 ];
 
@@ -154,7 +161,7 @@ export default function PrivacyPolicy() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFFDD0' }}>
+    <div className="min-h-screen" style={{ backgroundColor: C.bg }}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="flex items-center gap-3 px-4 h-14 max-w-3xl mx-auto">
@@ -163,7 +170,7 @@ export default function PrivacyPolicy() {
             <ChevronLeft className="w-5 h-5 text-gray-700" />
           </button>
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5" style={{ color: '#4169E1' }} />
+            <Shield className="w-5 h-5" style={{ color: C.primary }} />
             <h1 className="text-base font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
               Informativa sulla Privacy
             </h1>
@@ -176,14 +183,14 @@ export default function PrivacyPolicy() {
         {/* Intro */}
         <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100 mb-6">
           <div className="flex items-start gap-3">
-            <Shield className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: '#4169E1' }} />
+            <Shield className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: C.primary }} />
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'Nunito' }}>
-                Girogirotondo — Piattaforma Gestionale per la Scuola dell'Infanzia
+                {tenant.appName} — Piattaforma Gestionale per la Scuola dell'Infanzia
               </h2>
               <p className="text-sm text-gray-600 leading-relaxed">
                 Questa Informativa descrive come raccogliamo, utilizziamo e proteggiamo i dati personali
-                degli utenti della piattaforma Girogirotondo, con particolare attenzione alla tutela
+                degli utenti della piattaforma {tenant.appName}, con particolare attenzione alla tutela
                 dei dati personali dei <strong>minori</strong>, in conformità al Regolamento UE 2016/679
                 (GDPR) e al D.Lgs. 196/2003.
               </p>
@@ -195,7 +202,7 @@ export default function PrivacyPolicy() {
         <div className="space-y-4">
           {SECTIONS.map((s, i) => (
             <div key={i} className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
-              <h3 className="text-sm font-bold text-gray-900 mb-3" style={{ fontFamily: 'Nunito', color: '#4169E1' }}>
+              <h3 className="text-sm font-bold text-gray-900 mb-3" style={{ fontFamily: 'Nunito', color: C.primary }}>
                 {s.title}
               </h3>
               <div className="text-sm text-gray-600 leading-relaxed space-y-2">
@@ -224,7 +231,7 @@ export default function PrivacyPolicy() {
         {/* Footer legal */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-400 leading-relaxed">
-            © 2026 Girogirotondo — Scuola dell'Infanzia<br />
+            © 2026 {tenant.legal?.ragioneSociale || tenant.appName} — Scuola dell'Infanzia<br />
             Informativa redatta in conformità al GDPR (Reg. UE 2016/679) e al D.Lgs. 196/2003<br />
             Garante per la Protezione dei Dati Personali: <a href="https://www.garanteprivacy.it" target="_blank" rel="noopener noreferrer" className="text-blue-500">garanteprivacy.it</a>
           </p>

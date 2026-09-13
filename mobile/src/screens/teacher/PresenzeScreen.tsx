@@ -5,16 +5,17 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal, localYMD } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-function addDays(n:number){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
+function addDays(n:number){const d=new Date();d.setDate(d.getDate()+n);return localYMD(d);}
 
 export default function TeacherPresenze() {
   const { user } = useAuth();
   const classId = user?.class_ids?.[0] || user?.class_id;
   const [tab, setTab]         = useState<'oggi'|'mese'|'anno'>('oggi');
-  const [date, setDate]       = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate]       = useState(todayLocal());
   const [students, setStudents] = useState<any[]>([]);
   const [presenze, setPresenze] = useState<Record<string,{presente:boolean;nota:string}>>({});
   const [archivio, setArchivio] = useState<any[]>([]);
@@ -103,8 +104,8 @@ export default function TeacherPresenze() {
               <Text style={s.dateStats}>{presentCount}/{students.length} presenti</Text>
             </View>
             <TouchableOpacity onPress={()=>setDate(addDays(1))} style={s.navBtn}
-              disabled={date>=new Date().toISOString().split('T')[0]}>
-              <Ionicons name="chevron-forward" size={20} color={date>=new Date().toISOString().split('T')[0]?C.muted:C.text}/>
+              disabled={date>=todayLocal()}>
+              <Ionicons name="chevron-forward" size={20} color={date>=todayLocal()?C.muted:C.text}/>
             </TouchableOpacity>
           </View>
 

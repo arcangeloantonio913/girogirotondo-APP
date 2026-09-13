@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -5,11 +6,11 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Bell, Megaphone, FileText, Camera, UtensilsCrossed, BookMarked } from 'lucide-react';
 
 const ICON_MAP = {
-  avviso:   { icon: Megaphone,      color: '#4169E1', bg: '#EBF0FF' },
-  document: { icon: FileText,       color: '#32CD32', bg: '#F0FFF0' },
-  gallery:  { icon: Camera,         color: '#FF69B4', bg: '#FFF0F7' },
+  avviso:   { icon: Megaphone,      color: C.primary, bg: C.tintBlue },
+  document: { icon: FileText,       color: C.accentGreen, bg: C.tintGreen },
+  gallery:  { icon: Camera,         color: C.accentPink, bg: C.tintPink },
   meal:     { icon: UtensilsCrossed,color: '#F59E0B', bg: '#FFFBEB' },
-  diary:    { icon: BookMarked,     color: '#A7C7E7', bg: '#EBF5FF' },
+  diary:    { icon: BookMarked,     color: C.babyBlue, bg: '#EBF5FF' },
 };
 
 export default function ParentNotifiche() {
@@ -49,7 +50,7 @@ export default function ParentNotifiche() {
 
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <Bell className="w-5 h-5" style={{ color: '#4169E1' }} />
+          <Bell className="w-5 h-5" style={{ color: C.primary }} />
           <span className="text-sm font-bold text-gray-700">{allItems.length} notifiche</span>
         </div>
 

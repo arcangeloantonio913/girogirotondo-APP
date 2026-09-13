@@ -5,6 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { todayLocal } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const SLOTS = ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00'];
@@ -18,12 +19,29 @@ export default function ParentAppuntamenti() {
   const [slot,   setSlot]   = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const [booked, setBooked] = useState<string[]>([]);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   useEffect(() => {
     api.get('/appointments').then(r => setAppointments(r.data || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  // Al cambio data (valida): carica gli slot già occupati per disabilitarli e non far
+  // prenotare un orario preso (il backend rifiuta comunque con 409).
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setBooked([]); return; }
+    let cancelled = false;
+    api.get(`/appointments/slots?date=${date}`)
+      .then(r => { if (!cancelled) setBooked(r.data?.booked_slots || []); })
+      .catch(() => { if (!cancelled) setBooked([]); });
+    return () => { cancelled = true; };
+  }, [date]);
+
+  // Se lo slot selezionato risulta occupato dopo il refresh, deselezionalo.
+  useEffect(() => {
+    if (slot && booked.includes(slot)) setSlot('');
+  }, [booked]);
 
   const handleBook = async () => {
     if (!date || !slot || !reason.trim()) { Alert.alert('Attenzione', 'Compila tutti i campi'); return; }
@@ -31,8 +49,17 @@ export default function ParentAppuntamenti() {
     try {
       const res = await api.post('/appointments', { parent_id: user?.id, date, time_slot: slot, reason });
       setAppointments(prev => [res.data, ...prev]);
-      setShowForm(false); setDate(''); setSlot(''); setReason('');
-    } catch { Alert.alert('Errore', 'Impossibile prenotare'); }
+      setShowForm(false); setDate(''); setSlot(''); setReason(''); setBooked([]);
+    } catch (e: any) {
+      if (e?.response?.status === 409) {
+        // Slot preso nel frattempo: aggiorna la disponibilità e avvisa.
+        Alert.alert('Orario non disponibile', e?.response?.data?.detail || 'Questo orario è già stato prenotato.');
+        api.get(`/appointments/slots?date=${date}`).then(r => setBooked(r.data?.booked_slots || [])).catch(() => {});
+        setSlot('');
+      } else {
+        Alert.alert('Errore', 'Impossibile prenotare');
+      }
+    }
     finally { setSaving(false); }
   };
 
@@ -55,13 +82,19 @@ export default function ParentAppuntamenti() {
                 <TextInput style={s.input} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
                 <Text style={s.formLabel}>Orario</Text>
                 <View style={s.slotsGrid}>
-                  {SLOTS.map(sl => (
-                    <TouchableOpacity key={sl} onPress={() => setSlot(sl)}
-                      style={[s.slotBtn, slot === sl && s.slotBtnActive]}>
-                      <Text style={[s.slotText, slot === sl && { color: C.white }]}>{sl}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {SLOTS.map(sl => {
+                    const isBooked = booked.includes(sl);
+                    return (
+                      <TouchableOpacity key={sl} disabled={isBooked} onPress={() => setSlot(sl)}
+                        style={[s.slotBtn, slot === sl && s.slotBtnActive, isBooked && s.slotBtnBooked]}>
+                        <Text style={[s.slotText, slot === sl && { color: C.white }, isBooked && s.slotTextBooked]}>{sl}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
+                {!!date && /^\d{4}-\d{2}-\d{2}$/.test(date) && booked.length > 0 && (
+                  <Text style={s.slotHint}>Gli orari in grigio sono già prenotati.</Text>
+                )}
                 <Text style={s.formLabel}>Motivo</Text>
                 <TextInput style={s.input} value={reason} onChangeText={setReason} placeholder="Es. Colloquio, informazioni..." />
                 <TouchableOpacity style={s.submitBtn} onPress={handleBook} disabled={saving}>
@@ -100,7 +133,10 @@ const s = StyleSheet.create({
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slotBtn:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: '#F9FAFB' },
   slotBtnActive:{ backgroundColor: C.babyBlue, borderColor: C.babyBlue },
+  slotBtnBooked:{ backgroundColor: '#E5E7EB', borderColor: '#E5E7EB', opacity: 0.6 },
   slotText:  { fontSize: 13, fontWeight: '600', color: '#374151' },
+  slotTextBooked:{ color: '#9CA3AF', textDecorationLine: 'line-through' },
+  slotHint:  { fontSize: 11, color: C.muted, marginTop: 8 },
   submitBtn: { backgroundColor: C.babyBlue, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
   submitText:{ color: C.white, fontWeight: '700', fontSize: 14 },
   empty:     { alignItems: 'center', paddingTop: 60 },

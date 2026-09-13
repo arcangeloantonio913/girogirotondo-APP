@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -14,7 +15,7 @@ import {
 const today = new Date().toISOString().split('T')[0];
 
 function getStatusStyle(status) {
-  if (status === 'confirmed') return { bg: '#F0FFF0', color: '#32CD32', label: 'Confermato', Icon: CheckCircle2 };
+  if (status === 'confirmed') return { bg: C.tintGreen, color: C.accentGreen, label: 'Confermato', Icon: CheckCircle2 };
   if (status === 'cancelled') return { bg: '#FEF2F2', color: '#EF4444', label: 'Annullato',  Icon: XCircle };
   return                             { bg: '#FFFBEB', color: '#F59E0B', label: 'In Attesa',  Icon: AlertCircle };
 }
@@ -100,14 +101,14 @@ export default function ParentAppuntamenti() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" style={{ color: '#A7C7E7' }} />
+            <Calendar className="w-5 h-5" style={{ color: C.babyBlue }} />
             <span className="text-sm font-bold text-gray-700">
               {appointments.length} prenotazion{appointments.length === 1 ? 'e' : 'i'}
             </span>
           </div>
           <Button onClick={openBooking}
             className="rounded-2xl font-semibold h-9 text-sm"
-            style={{ backgroundColor: '#A7C7E7' }}>
+            style={{ backgroundColor: C.babyBlue }}>
             <Plus className="w-4 h-4 mr-1" />
             Nuova Prenotazione
           </Button>
@@ -124,7 +125,7 @@ export default function ParentAppuntamenti() {
 
         {/* Confermate */}
         {confirmed.length > 0 && (
-          <Section title="Confermate" color="#32CD32">
+          <Section title="Confermate" color={C.accentGreen}>
             {confirmed.filter(a => a.date >= today).map(apt => (
               <AptCard key={apt.id} apt={apt} onDelete={() => setDeleteId(apt.id)} />
             ))}
@@ -159,13 +160,13 @@ export default function ParentAppuntamenti() {
             </DialogHeader>
             {bookingSuccess ? (
               <div className="py-6 flex flex-col items-center gap-3 text-center">
-                <CheckCircle2 className="w-14 h-14" style={{ color: '#32CD32' }} />
+                <CheckCircle2 className="w-14 h-14" style={{ color: C.accentGreen }} />
                 <p className="text-base font-bold text-gray-900">Prenotazione inviata!</p>
                 <p className="text-sm text-gray-500">
                   Riceverai una email di conferma. L'amministrazione confermerà l'appuntamento a breve.
                 </p>
                 <Button onClick={() => { setBookingOpen(false); setBookingSuccess(false); }}
-                  className="w-full rounded-2xl h-10 mt-2" style={{ backgroundColor: '#A7C7E7' }}>
+                  className="w-full rounded-2xl h-10 mt-2" style={{ backgroundColor: C.babyBlue }}>
                   Chiudi
                 </Button>
               </div>
@@ -189,7 +190,7 @@ export default function ParentAppuntamenti() {
                         {availableSlots.map(slot => (
                           <button key={slot} type="button" onClick={() => setBookingSlot(slot)}
                             className={`py-2 rounded-xl text-sm font-semibold border-2 transition-all ${bookingSlot === slot ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-blue-200'}`}
-                            style={bookingSlot === slot ? { backgroundColor: '#A7C7E7', borderColor: '#A7C7E7' } : {}}>
+                            style={bookingSlot === slot ? { backgroundColor: C.babyBlue, borderColor: C.babyBlue } : {}}>
                             {slot}
                           </button>
                         ))}
@@ -213,7 +214,7 @@ export default function ParentAppuntamenti() {
                 <Button onClick={handleBook}
                   disabled={bookingLoading || !bookingDate || !bookingSlot || !bookingReason.trim()}
                   className="w-full rounded-2xl font-bold h-11"
-                  style={{ backgroundColor: '#A7C7E7' }}>
+                  style={{ backgroundColor: C.babyBlue }}>
                   {bookingLoading ? 'Invio in corso...' : 'Prenota e Invia Richiesta'}
                 </Button>
               </div>
@@ -263,7 +264,7 @@ function AptCard({ apt, onDelete }) {
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: '#A7C7E715' }}>
-            <Calendar className="w-4 h-4" style={{ color: '#A7C7E7' }} />
+            <Calendar className="w-4 h-4" style={{ color: C.babyBlue }} />
           </div>
           <div>
             <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>{apt.reason}</p>

@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -40,12 +41,12 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: '#FFFDD0' }}>
+      style={{ backgroundColor: C.bg }}>
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
-            style={{ backgroundColor: '#EBF0FF' }}>
-            <KeyRound className="w-7 h-7" style={{ color: '#4169E1' }} />
+            style={{ backgroundColor: C.tintBlue }}>
+            <KeyRound className="w-7 h-7" style={{ color: C.primary }} />
           </div>
           <h1 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
             Nuova Password
@@ -55,11 +56,11 @@ export default function ResetPasswordPage() {
 
         {success ? (
           <div className="text-center space-y-4">
-            <CheckCircle className="w-14 h-14 mx-auto" style={{ color: '#32CD32' }} />
+            <CheckCircle className="w-14 h-14 mx-auto" style={{ color: C.accentGreen }} />
             <p className="text-base font-bold text-gray-900">Password aggiornata!</p>
             <p className="text-sm text-gray-500">Ora puoi accedere con la nuova password.</p>
             <Button onClick={() => navigate('/login')}
-              className="w-full rounded-2xl h-11 font-bold" style={{ backgroundColor: '#4169E1' }}>
+              className="w-full rounded-2xl h-11 font-bold" style={{ backgroundColor: C.primary }}>
               Vai al Login
             </Button>
           </div>
@@ -89,7 +90,7 @@ export default function ResetPasswordPage() {
               <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>
             )}
             <Button type="submit" disabled={loading || !password || !confirm}
-              className="w-full rounded-2xl h-11 font-bold" style={{ backgroundColor: '#4169E1' }}>
+              className="w-full rounded-2xl h-11 font-bold" style={{ backgroundColor: C.primary }}>
               {loading ? 'Salvataggio...' : 'Imposta nuova password'}
             </Button>
             <button type="button" onClick={() => navigate('/login')}

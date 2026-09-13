@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -12,23 +13,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 /* Illustrated SVG icons for friendly feel */
 const IllustratedDiary = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="8" y="6" width="28" height="32" rx="5" fill="#A7C7E7"/><rect x="12" y="12" width="16" height="2.5" rx="1" fill="white" opacity="0.8"/><rect x="12" y="17" width="20" height="2" rx="1" fill="white" opacity="0.5"/><rect x="12" y="22" width="14" height="2" rx="1" fill="white" opacity="0.5"/><circle cx="32" cy="32" r="8" fill="#98FB98"/><path d="M29 32l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="8" y="6" width="28" height="32" rx="5" fill={C.babyBlue}/><rect x="12" y="12" width="16" height="2.5" rx="1" fill="white" opacity="0.8"/><rect x="12" y="17" width="20" height="2" rx="1" fill="white" opacity="0.5"/><rect x="12" y="22" width="14" height="2" rx="1" fill="white" opacity="0.5"/><circle cx="32" cy="32" r="8" fill={C.babyGreen}/><path d="M29 32l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
 );
 const IllustratedGrid = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="6" width="32" height="32" rx="6" fill="#F4C2C2"/><rect x="11" y="11" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="24" y="11" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="11" y="24" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="24" y="24" width="9" height="9" rx="2" fill="white" opacity="0.7"/><circle cx="15.5" cy="15.5" r="2" fill="#F4C2C2"/><circle cx="28.5" cy="15.5" r="2" fill="#F4C2C2"/></svg>
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="6" width="32" height="32" rx="6" fill={C.babyPink}/><rect x="11" y="11" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="24" y="11" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="11" y="24" width="9" height="9" rx="2" fill="white" opacity="0.7"/><rect x="24" y="24" width="9" height="9" rx="2" fill="white" opacity="0.7"/><circle cx="15.5" cy="15.5" r="2" fill={C.babyPink}/><circle cx="28.5" cy="15.5" r="2" fill={C.babyPink}/></svg>
 );
 const IllustratedCamera = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="12" width="32" height="24" rx="5" fill="#98FB98"/><circle cx="22" cy="24" r="7" fill="white" opacity="0.8"/><circle cx="22" cy="24" r="4" fill="#98FB98"/><rect x="16" y="8" width="12" height="6" rx="2" fill="#98FB98"/></svg>
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="12" width="32" height="24" rx="5" fill={C.babyGreen}/><circle cx="22" cy="24" r="7" fill="white" opacity="0.8"/><circle cx="22" cy="24" r="4" fill={C.babyGreen}/><rect x="16" y="8" width="12" height="6" rx="2" fill={C.babyGreen}/></svg>
 );
 const IllustratedMeal = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><ellipse cx="22" cy="28" rx="14" ry="10" fill="#F4C2C2" opacity="0.5"/><circle cx="22" cy="22" r="12" fill="#FFFBEB" stroke="#F4C2C2" strokeWidth="2"/><path d="M16 20c0 0 2-3 6-3s6 3 6 3" stroke="#F4C2C2" strokeWidth="1.5" strokeLinecap="round"/><circle cx="18" cy="22" r="1.5" fill="#98FB98"/><circle cx="22" cy="24" r="1.5" fill="#A7C7E7"/><circle cx="26" cy="21" r="1.5" fill="#F4C2C2"/></svg>
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><ellipse cx="22" cy="28" rx="14" ry="10" fill={C.babyPink} opacity="0.5"/><circle cx="22" cy="22" r="12" fill="#FFFBEB" stroke={C.babyPink} strokeWidth="2"/><path d="M16 20c0 0 2-3 6-3s6 3 6 3" stroke={C.babyPink} strokeWidth="1.5" strokeLinecap="round"/><circle cx="18" cy="22" r="1.5" fill={C.babyGreen}/><circle cx="22" cy="24" r="1.5" fill={C.babyBlue}/><circle cx="26" cy="21" r="1.5" fill={C.babyPink}/></svg>
 );
 const EmptyBear = ({ text }) => (
   <div className="flex flex-col items-center py-6">
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-      <circle cx="32" cy="36" r="18" fill="#F4C2C2"/>
-      <circle cx="18" cy="20" r="8" fill="#F4C2C2"/><circle cx="46" cy="20" r="8" fill="#F4C2C2"/>
-      <circle cx="18" cy="20" r="5" fill="#FFFDD0"/><circle cx="46" cy="20" r="5" fill="#FFFDD0"/>
+      <circle cx="32" cy="36" r="18" fill={C.babyPink}/>
+      <circle cx="18" cy="20" r="8" fill={C.babyPink}/><circle cx="46" cy="20" r="8" fill={C.babyPink}/>
+      <circle cx="18" cy="20" r="5" fill={C.bg}/><circle cx="46" cy="20" r="5" fill={C.bg}/>
       <circle cx="26" cy="32" r="2" fill="#555"/><circle cx="38" cy="32" r="2" fill="#555"/>
       <ellipse cx="32" cy="38" rx="3" ry="2" fill="#555"/>
       <path d="M26 42c0 0 3 3 6 3s6-3 6-3" stroke="#555" strokeWidth="1.5" strokeLinecap="round"/>
@@ -132,10 +133,10 @@ export default function ParentDashboard() {
   };
 
   const grigliaActivities = griglia ? [
-    { label: 'Pasta',   active: griglia.pasta,   color: '#F4C2C2' },
-    { label: 'Secondo', active: griglia.secondo, color: '#A7C7E7' },
+    { label: 'Pasta',   active: griglia.pasta,   color: C.babyPink },
+    { label: 'Secondo', active: griglia.secondo, color: C.babyBlue },
     { label: 'Pane',    active: griglia.pane,    color: '#FFD699' },
-    { label: 'Frutta',  active: griglia.frutta,  color: '#98FB98' },
+    { label: 'Frutta',  active: griglia.frutta,  color: C.babyGreen },
   ] : [];
 
   const displayGallery = galleryItems.length > 0 ? galleryItems : MOCK_GALLERY;
@@ -151,13 +152,13 @@ export default function ParentDashboard() {
               {user?.name}
             </h2>
           </div>
-          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm" style={{ backgroundColor: '#F4C2C2' }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm" style={{ backgroundColor: C.babyPink }}>
             {child?.name?.charAt(0) || user?.name?.charAt(0) || '?'}
           </div>
         </div>
         {child && (
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: '#A7C7E7' }}>
+            <span className="text-xs font-bold px-3 py-1 rounded-full text-white" style={{ backgroundColor: C.babyBlue }}>
               {child.name}
             </span>
             <span className="text-xs font-semibold text-gray-500">
@@ -302,7 +303,7 @@ export default function ParentDashboard() {
         data-testid="book-appointment-fab"
         onClick={() => setBookingOpen(true)}
         className="fixed bottom-20 right-4 md:bottom-8 md:right-8 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 active:scale-95 z-20"
-        style={{ backgroundColor: '#A7C7E7' }}
+        style={{ backgroundColor: C.babyBlue }}
       >
         <Calendar className="w-6 h-6 text-white" />
       </button>
@@ -347,7 +348,7 @@ export default function ParentDashboard() {
                             ? 'text-white border-transparent'
                             : 'border-gray-200 text-gray-600 hover:border-blue-200'
                         }`}
-                        style={bookingSlot === slot ? { backgroundColor: '#A7C7E7', borderColor: '#A7C7E7' } : {}}
+                        style={bookingSlot === slot ? { backgroundColor: C.babyBlue, borderColor: C.babyBlue } : {}}
                         data-testid={`slot-${slot}`}
                       >
                         {slot}
@@ -380,7 +381,7 @@ export default function ParentDashboard() {
               onClick={handleBooking}
               disabled={bookingLoading || !bookingDate || !bookingSlot || !bookingReason}
               className="w-full rounded-2xl font-bold h-11"
-              style={{ backgroundColor: '#A7C7E7' }}
+              style={{ backgroundColor: C.babyBlue }}
             >
               {bookingLoading ? 'Prenotazione...' : 'Conferma Prenotazione'}
             </Button>

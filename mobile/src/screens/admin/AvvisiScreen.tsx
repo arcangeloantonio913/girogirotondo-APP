@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, Alert, Modal, ScrollView, Linking,
+  StyleSheet, Alert, Modal, ScrollView,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,9 +10,20 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
+import { openFileUrl } from '../../lib/openFile';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
+
+/** Apre l'allegato di un avviso (salvato come data URL base64): Linking non apre i data: URL. */
+async function openAttachment(url?: string, name?: string) {
+  if (!url) return;
+  try {
+    await openFileUrl(url, name);
+  } catch {
+    Alert.alert('Errore', 'Impossibile aprire l\'allegato.');
+  }
+}
 
 type Sede = { id: string; name: string; color?: string };
 
@@ -206,7 +217,7 @@ export default function AdminAvvisi() {
                   <Text style={s.cardBody} numberOfLines={2}>{item.testo || item.body || item.message}</Text>}
                 {/* Allegato */}
                 {item.attachment_name && (
-                  <TouchableOpacity onPress={() => item.attachment_url && Linking.openURL(item.attachment_url)}
+                  <TouchableOpacity onPress={() => openAttachment(item.attachment_url, item.attachment_name)}
                     style={s.attachRow}>
                     <Text style={{ fontSize: 16 }}>{getFileIcon(item.attachment_name)}</Text>
                     <Text style={s.attachName} numberOfLines={1}>{item.attachment_name}</Text>

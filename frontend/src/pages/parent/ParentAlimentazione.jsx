@@ -1,3 +1,4 @@
+import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
@@ -46,9 +47,9 @@ export default function ParentAlimentazione() {
 
   const mealItems = meal ? [
     { label: 'Merenda Mattina',    value: meal.merenda_mattina,   icon: Coffee,         color: '#F59E0B', bg: '#FFFBEB' },
-    { label: 'Primo Piatto',       value: meal.primo,             icon: UtensilsCrossed,color: '#FF69B4', bg: '#FFF0F7' },
-    { label: 'Secondo Piatto',     value: meal.secondo,           icon: UtensilsCrossed,color: '#4169E1', bg: '#EBF0FF' },
-    { label: 'Contorno',           value: meal.contorno,          icon: Apple,          color: '#32CD32', bg: '#F0FFF0' },
+    { label: 'Primo Piatto',       value: meal.primo,             icon: UtensilsCrossed,color: C.accentPink, bg: C.tintPink },
+    { label: 'Secondo Piatto',     value: meal.secondo,           icon: UtensilsCrossed,color: C.primary, bg: C.tintBlue },
+    { label: 'Contorno',           value: meal.contorno,          icon: Apple,          color: C.accentGreen, bg: C.tintGreen },
     { label: 'Frutta',             value: meal.frutta,            icon: Apple,          color: '#EF4444', bg: '#FEF2F2' },
     { label: 'Merenda Pomeriggio', value: meal.merenda_pomeriggio,icon: Cookie,         color: '#8B5CF6', bg: '#F5F3FF' },
   ].filter(i => i.value) : [];
@@ -69,7 +70,7 @@ export default function ParentAlimentazione() {
                 {dateDisplay}
               </p>
               {dateOffset === 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: '#4169E1' }}>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: C.primary }}>
                   Oggi
                 </span>
               )}

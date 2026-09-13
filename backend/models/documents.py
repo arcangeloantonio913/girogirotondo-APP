@@ -23,4 +23,6 @@ class DocumentCreate(BaseModel):
 
 class ReadReceiptCreate(BaseModel):
     document_id: str
-    parent_id: str
+    # parent_id è IGNORATO server-side (forzato dal token per sicurezza): opzionale così
+    # il client può ometterlo senza incorrere in un 422.
+    parent_id: Optional[str] = None

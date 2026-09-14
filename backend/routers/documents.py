@@ -5,7 +5,7 @@ import logging
 from typing import Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Header, BackgroundTasks
 
 from services.database import get_db
 from models.documents import DocumentCreate, DocumentCategory
@@ -17,6 +17,29 @@ from utils.expo_push import notify_role as notify_role_sede  # variante con scop
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+async def _notify_document_parents(classe_id, sede_id, doc_id, title):
+    """Push ai genitori per un nuovo documento. Eseguita come BackgroundTask DOPO la
+    risposta: prima era `await`-ata inline e la risposta di upload aspettava la
+    risoluzione dei destinatari (fino a ~tutta la sede) + la chiamata Expo → upload
+    lentissimo. Ora l'upload risponde subito e la notifica parte in background."""
+    db = get_db()
+    try:
+        if classe_id:
+            await notify_class(
+                db, classe_id, ["parent"],
+                title="Nuovo documento disponibile", body=title,
+                data={"type": "document", "doc_id": doc_id},
+            )
+        elif sede_id:
+            await notify_role_sede(
+                db, "parent", sede_id,
+                "Nuovo documento disponibile", title,
+                {"type": "document", "doc_id": doc_id},
+            )
+    except Exception:
+        logger.exception("[documents] push notifica fallita (non bloccante)")
 
 
 def _refresh_url(doc: dict) -> dict:
@@ -129,6 +152,7 @@ async def get_document(doc_id: str, ctx: TenantContext = Depends(get_tenant_cont
 
 @router.post("/upload", status_code=201)
 async def upload_document_file(
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: str = Form(""),
     categoria: DocumentCategory = Form(DocumentCategory.altro),
@@ -170,21 +194,9 @@ async def upload_document_file(
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-notify: classe → genitori della classe; documento di sede (senza classe) →
-    # SOLO i genitori della stessa sede (mai globale multi-tenant, come upload-b64).
-    if classe_id:
-        await notify_class(
-            db, classe_id, ["parent"],
-            title="Nuovo documento disponibile",
-            body=title,
-            data={"type": "document", "doc_id": doc_id},
-        )
-    elif doc.get("sede_id"):
-        await notify_role_sede(
-            db, "parent", doc.get("sede_id"),
-            "Nuovo documento disponibile", title,
-            {"type": "document", "doc_id": doc_id},
-        )
+    # Auto-notify non bloccante (BackgroundTask, dopo la risposta): classe → genitori
+    # della classe; documento di sede → genitori della SEDE (mai globale multi-tenant).
+    background_tasks.add_task(_notify_document_parents, classe_id or None, doc.get("sede_id"), doc_id, title)
 
     return doc
 
@@ -196,6 +208,7 @@ async def upload_document_file(
 @router.post("/upload-b64", status_code=201)
 async def upload_document_base64(
     payload: dict,
+    background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
@@ -253,23 +266,10 @@ async def upload_document_base64(
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
 
-    # Notifica i genitori (non bloccante): classe → genitori della classe;
-    # documento di sede (senza classe) → genitori della SEDE (mai globale multi-tenant).
-    try:
-        if classe_id:
-            await notify_class(
-                db, classe_id, ["parent"],
-                title="Nuovo documento disponibile", body=title,
-                data={"type": "document", "doc_id": doc_id},
-            )
-        elif doc.get("sede_id"):
-            await notify_role_sede(
-                db, "parent", doc.get("sede_id"),
-                "Nuovo documento disponibile", title,
-                {"type": "document", "doc_id": doc_id},
-            )
-    except Exception:
-        pass
+    # Notifica i genitori DAVVERO non bloccante: schedulata come BackgroundTask, parte
+    # DOPO che la risposta è stata inviata → l'upload non aspetta la risoluzione dei
+    # destinatari né la chiamata Expo (era la causa della lentezza).
+    background_tasks.add_task(_notify_document_parents, classe_id, doc.get("sede_id"), doc_id, title)
     return doc
 
 

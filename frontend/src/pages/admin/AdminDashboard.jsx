@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Users, BookOpen, Calendar, FileText, ChevronRight, TrendingUp, UtensilsCrossed, Megaphone, ClipboardList } from 'lucide-react';
+import { Users, BookOpen, Calendar, FileText, ChevronRight, TrendingUp, UtensilsCrossed, Megaphone, ClipboardList, UserPlus } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, sede, sedeInfo } = useAuth();
@@ -50,6 +50,7 @@ export default function AdminDashboard() {
     { id: 'modulistica', icon: FileText,       color: C.accentGreen, bg: C.tintGreen, title: 'Modulistica',             subtitle: 'Documenti e prese visione',          path: '/admin/modulistica' },
     { id: 'mensa',       icon: UtensilsCrossed,color: C.primary, bg: C.tintBlue, title: 'Menu della Mensa',        subtitle: 'Gestisci i menu giornalieri',        path: '/admin/mensa' },
     { id: 'avvisi',      icon: Megaphone,      color: '#8B5CF6', bg: '#F5F3FF', title: 'Avvisi e Comunicazioni',  subtitle: 'Pubblica comunicazioni ai genitori', path: '/admin/avvisi' },
+    { id: 'iscrizioni',  icon: UserPlus,       color: C.accentPink, bg: C.tintPink, title: 'Raccolta Iscrizioni',     subtitle: 'Link scuola, revisione ed export',   path: '/admin/iscrizioni' },
   ];
 
   return (

@@ -2,6 +2,7 @@
 Expo Push Notifications — usa l'API HTTP di Expo (no SDK, no Firebase).
 Funziona sia con account Expo gratuito che a pagamento.
 """
+import asyncio
 import json
 import logging
 import urllib.request
@@ -79,7 +80,11 @@ async def notify_users(db, user_ids: List[str], title: str, body: str, data: Opt
         return 0
     tokens_cursor = db.push_tokens.find({"user_id": {"$in": user_ids}}, {"token": 1})
     tokens = [doc["token"] async for doc in tokens_cursor]
-    return send_expo_push(tokens, title, body, data)
+    # send_expo_push è SINCRONA e bloccante (urllib, timeout 15s). Chiamarla direttamente
+    # dentro un endpoint async BLOCCA l'intero event loop finché Expo non risponde per
+    # TUTTI i token → l'upload documenti/mensa "girava all'infinito". La eseguiamo in un
+    # thread separato così il loop resta libero e la risposta HTTP torna subito.
+    return await asyncio.to_thread(send_expo_push, tokens, title, body, data)
 
 
 async def notify_role(db, role: str, sede_id: Optional[str], title: str, body: str, data: Optional[dict] = None) -> int:

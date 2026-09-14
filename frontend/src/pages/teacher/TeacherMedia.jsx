@@ -12,38 +12,42 @@ import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Sq
 // Comprime immagine via canvas — riduce il peso da 3-5MB a ~200-400KB
 function compressImage(file, maxSize = 1200, quality = 0.75) {
   return new Promise((resolve, reject) => {
-    if (file.type.startsWith('video/')) {
-      // Video: nessuna compressione, leggi direttamente
+    let settled = false;
+    let url = null;
+    const done = (v) => { if (settled) return; settled = true; clearTimeout(timer); if (url) URL.revokeObjectURL(url); resolve(v); };
+    const fail = (e) => { if (settled) return; settled = true; clearTimeout(timer); if (url) URL.revokeObjectURL(url); reject(e); };
+    // Fallback: legge il file originale come data URL (senza compressione).
+    const readOriginal = () => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror  = () => reject(new Error('Errore lettura video'));
+      reader.onloadend = () => done(reader.result);
+      reader.onerror  = () => fail(new Error('File non leggibile'));
       reader.readAsDataURL(file);
-      return;
-    }
+    };
+    if (file.type.startsWith('video/')) { readOriginal(); return; }
+    // TIMEOUT di sicurezza: alcune immagini (es. HEIC iPhone) non si decodificano e NON
+    // scatenano onload/onerror → prima la Promise restava appesa e l'upload girava
+    // all'infinito. Dopo 6s carichiamo l'originale.
+    const timer = setTimeout(readOriginal, 6000);
     const img = new window.Image();
-    const url = URL.createObjectURL(file);
+    url = URL.createObjectURL(file);
     img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > maxSize || height > maxSize) {
-        const ratio = Math.min(maxSize / width, maxSize / height);
-        width  = Math.round(width  * ratio);
-        height = Math.round(height * ratio);
+      try {
+        let { width, height } = img;
+        if (width > maxSize || height > maxSize) {
+          const ratio = Math.min(maxSize / width, maxSize / height);
+          width  = Math.round(width  * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        done(canvas.toDataURL('image/jpeg', quality));
+      } catch {
+        readOriginal();
       }
-      const canvas = document.createElement('canvas');
-      canvas.width  = width;
-      canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      // Fallback: leggi senza compressione
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror  = () => reject(new Error('File non leggibile'));
-      reader.readAsDataURL(file);
-    };
+    img.onerror = () => readOriginal();
     img.src = url;
   });
 }

@@ -13,23 +13,39 @@ import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X, Bo
 async function compressIfImage(file) {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
-    const img = new Image();
     const url = URL.createObjectURL(file);
-    img.onload = () => {
+    let settled = false;
+    // finish() risolve UNA sola volta e ripulisce. Serve un TIMEOUT di sicurezza:
+    // alcune immagini (es. HEIC delle foto/scansioni iPhone) non si decodificano nel
+    // browser e NON scatenano né onload né onerror → la Promise restava appesa per
+    // sempre e l'upload "girava all'infinito". Col timeout carichiamo l'originale.
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
-      const MAX = 1600;
-      let { width: w, height: h } = img;
-      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-      else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(
-        (blob) => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })),
-        'image/jpeg', 0.85
-      );
+      resolve(result || file);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    const timer = setTimeout(() => finish(file), 6000);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const MAX = 1600;
+        let { width: w, height: h } = img;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => finish(blob ? new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+          'image/jpeg', 0.85
+        );
+      } catch {
+        finish(file);   // qualsiasi errore di canvas → carica l'originale
+      }
+    };
+    img.onerror = () => finish(file);
     img.src = url;
   });
 }

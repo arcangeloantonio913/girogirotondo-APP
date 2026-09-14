@@ -253,9 +253,22 @@ async def patch_submission(submission_id: str, payload: IntakeSubmissionPatch,
     _require_admin(current_user)
     org = _caller_org(current_user)
     db = get_db()
+
+    if payload.children is not None or payload.staff is not None:
+        valid_sedi = {s["id"] for s in await db.sedi.find(
+            {"org_id": org, "active": True}, {"_id": 0, "id": 1}).to_list(50)}
+        if payload.children is not None:
+            for c in payload.children:
+                if c.sede_id not in valid_sedi:
+                    raise HTTPException(status_code=400, detail=f"Sede '{c.sede_id}' non valida per questa scuola")
+        if payload.staff is not None:
+            for s in payload.staff:
+                if s.sede_id not in valid_sedi:
+                    raise HTTPException(status_code=400, detail=f"Sede '{s.sede_id}' non valida per questa scuola")
+
     updates = {}
     if payload.children is not None:
-        updates["children"] = [c.model_dump(exclude_none=True) for c in payload.children]
+        updates["children"] = [c.model_dump() for c in payload.children]
     if payload.staff is not None:
         updates["staff"] = [s.model_dump() for s in payload.staff]
     if payload.direttrici is not None:
@@ -297,10 +310,15 @@ async def export_submission(submission_id: str, current_user: dict = Depends(get
 
     students, parents, seen_email = [], [], set()
     for c in children:
-        _add_class(c["sede_id"], c["classe"])
+        sede_id = c.get("sede_id", "")
+        classe = c.get("classe", "")
+        cognome = c.get("cognome", "")
+        if not sede_id or not classe:
+            continue   # riga malformata: salta invece di far crashare l'export
+        _add_class(sede_id, classe)
         students.append({
-            "sede_id": c["sede_id"], "class_name": c["classe"],
-            "name": c["nome"], "cognome": c["cognome"],
+            "sede_id": sede_id, "class_name": classe,
+            "name": c.get("nome", ""), "cognome": cognome,
             "date_of_birth": c.get("data_nascita", ""),
             "email_genitore": c.get("genitore_email", ""),
         })
@@ -308,7 +326,7 @@ async def export_submission(submission_id: str, current_user: dict = Depends(get
         if em and em not in seen_email:
             seen_email.add(em)
             full = f"{c.get('genitore_nome','')} {c.get('genitore_cognome','')}".strip()
-            parents.append({"email": em, "name": full or f"Famiglia {c['cognome']}"})
+            parents.append({"email": em, "name": full or f"Famiglia {cognome}"})
 
     # sezioni citate dalle maestre → classi anche senza bambini
     staff = []

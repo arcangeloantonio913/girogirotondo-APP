@@ -1,6 +1,6 @@
 """Modelli Raccolta Iscrizioni — token scuola + submission (scheda/scansioni)."""
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import List, Optional, Literal
 
 from pydantic import BaseModel, EmailStr, field_validator
@@ -19,6 +19,22 @@ class IntakeTokenCreate(BaseModel):
         if not v or not v.strip():
             raise ValueError("Etichetta obbligatoria")
         return v.strip()
+
+    @field_validator("expires_at")
+    @classmethod
+    def _normalize_expires_at(cls, v):
+        if not v:
+            return v
+        raw = v.strip()
+        if not raw:
+            return None
+        try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("expires_at non valido: usa formato ISO8601")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).isoformat()
 
 
 class IntakeChild(BaseModel):
@@ -95,21 +111,13 @@ class IntakeSubmissionUpsert(BaseModel):
     submission_id: Optional[str] = None   # se presente → update della bozza esistente
 
 
-class IntakeChildPatch(BaseModel):
-    """Correzione admin di un bambino in revisione (tutti opzionali)."""
-    nome: Optional[str] = None
-    cognome: Optional[str] = None
-    data_nascita: Optional[str] = None
-    sede_id: Optional[str] = None
-    classe: Optional[str] = None
-    genitore_nome: Optional[str] = None
-    genitore_cognome: Optional[str] = None
-    genitore_email: Optional[str] = None
-
-
 class IntakeSubmissionPatch(BaseModel):
-    """PATCH admin: sostituisce l'elenco children corretto."""
-    children: Optional[List[IntakeChildPatch]] = None
+    """PATCH admin: sostituisce l'elenco children corretto.
+
+    children usa il modello completo IntakeChild (non parziale): ogni riga deve
+    essere validata per intero, così una submission salvata non può mai avere
+    bambini con campi mancanti (che farebbero KeyError in fase di export)."""
+    children: Optional[List[IntakeChild]] = None
     staff: Optional[List[IntakeStaff]] = None
     direttrici: Optional[List[IntakeDirettrice]] = None
     status: Optional[Literal["bozza", "inviata", "revisionata", "importata"]] = None

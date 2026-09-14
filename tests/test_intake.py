@@ -341,6 +341,54 @@ async def test_admin_patch_corrects_staff_and_direttrici(client, super2_headers)
 
 
 @pytest.mark.asyncio
+async def test_patch_rejects_partial_child(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        cr = await client.post(f"/api/intake/submissions?t={raw}",
+                               json={"mode": "form", "status": "inviata", "children": [_child()]})
+        sid = cr.json()["id"]
+        p = await client.patch(f"/api/intake/submissions/{sid}", headers=super2_headers, json={
+            "children": [{"nome": "SoloNome"}],
+        })
+        assert p.status_code == 422
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_patch_rejects_child_bad_sede(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        cr = await client.post(f"/api/intake/submissions?t={raw}",
+                               json={"mode": "form", "status": "inviata", "children": [_child()]})
+        sid = cr.json()["id"]
+        p = await client.patch(f"/api/intake/submissions/{sid}", headers=super2_headers, json={
+            "children": [_child(sede_id="girogirotondo")],   # sede di ALTRA org
+        })
+        assert p.status_code == 400
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_token_expires_at_normalized(client, super2_headers):
+    db = get_db()
+    try:
+        r = await client.post("/api/intake/tokens",
+                              json={"label": "Con scadenza", "expires_at": "2030-01-01"},
+                              headers=super2_headers)
+        assert r.status_code == 201
+        doc = await db.intake_tokens.find_one({"id": r.json()["id"]})
+        assert "T" in doc["expires_at"] and "+00:00" in doc["expires_at"]
+    finally:
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
 async def test_export_maps_to_importer_format(client, super2_headers):
     db = get_db()
     try:

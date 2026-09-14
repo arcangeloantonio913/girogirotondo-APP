@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { C } from '@/config/tenant';
+import { C, SEDI } from '@/config/tenant';
+import AppLayout from '@/components/layout/AppLayout';
 import {
   createToken, listTokens, revokeToken,
   listSubmissions, getSubmission, patchSubmission, exportSubmission,
+  formatApiError,
 } from '@/lib/intakeApi';
 
 export default function AdminIscrizioni() {
@@ -44,6 +46,7 @@ export default function AdminIscrizioni() {
   }
 
   return (
+    <AppLayout title="Raccolta Iscrizioni" showBack>
     <div style={{ padding: 20 }} data-testid="admin-iscrizioni">
       <h1 style={{ color: C.primary }}>Raccolta Iscrizioni</h1>
 
@@ -97,6 +100,7 @@ export default function AdminIscrizioni() {
         onSaved={async () => { await reload(); setSel(null); }} />}
       {msg && <p data-testid="admin-msg">{msg}</p>}
     </div>
+    </AppLayout>
   );
 }
 
@@ -115,7 +119,7 @@ function SubmissionDetail({ sub, onClose, onSaved }) {
 
   const addStaffRow = () => setStaff(cs => [...cs, { nome: '', cognome: '', email: '', sede_id: sub.staff?.[0]?.sede_id || '', sezioni: [] }]);
   const delStaffRow = (i) => setStaff(cs => cs.filter((_, idx) => idx !== i));
-  const addChildRow = () => setChildren(cs => [...cs, { nome: '', cognome: '', data_nascita: '', sede_id: '', classe: '', genitore_nome: '', genitore_cognome: '', genitore_email: '' }]);
+  const addChildRow = () => setChildren(cs => [...cs, { nome: '', cognome: '', data_nascita: '', sede_id: SEDI[0]?.id || '', classe: '', genitore_nome: '', genitore_cognome: '', genitore_email: '' }]);
   const delChildRow = (i) => setChildren(cs => cs.filter((_, idx) => idx !== i));
   const addDirRow = () => setDirettrici(cs => [...cs, { nome: '', cognome: '', email: '' }]);
   const delDirRow = (i) => setDirettrici(cs => cs.filter((_, idx) => idx !== i));
@@ -134,7 +138,7 @@ function SubmissionDetail({ sub, onClose, onSaved }) {
       await patchSubmission(sub.id, { children, staff, direttrici, status: 'revisionata' });
       onSaved();
     } catch (e) {
-      setErr(e?.response?.data?.detail || 'Errore nel salvataggio.');
+      setErr(formatApiError(e, 'Errore nel salvataggio.'));
     } finally { setSaving(false); }
   }
 
@@ -171,7 +175,13 @@ function SubmissionDetail({ sub, onClose, onSaved }) {
             <input data-testid={`detail-nome-${i}`} placeholder="Nome" value={c.nome || ''} onChange={e => setChildCell(i, 'nome', e.target.value)} />
             <input placeholder="Cognome" value={c.cognome || ''} onChange={e => setChildCell(i, 'cognome', e.target.value)} />
             <input placeholder="Data nascita" value={c.data_nascita || ''} onChange={e => setChildCell(i, 'data_nascita', e.target.value)} />
+            <select data-testid={`detail-sede-${i}`} value={c.sede_id || ''} onChange={e => setChildCell(i, 'sede_id', e.target.value)}>
+              <option value="">— Sede —</option>
+              {SEDI.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
             <input placeholder="Sezione" value={c.classe || ''} onChange={e => setChildCell(i, 'classe', e.target.value)} />
+            <input data-testid={`detail-genitore-nome-${i}`} placeholder="Genitore nome" value={c.genitore_nome || ''} onChange={e => setChildCell(i, 'genitore_nome', e.target.value)} />
+            <input data-testid={`detail-genitore-cognome-${i}`} placeholder="Genitore cognome" value={c.genitore_cognome || ''} onChange={e => setChildCell(i, 'genitore_cognome', e.target.value)} />
             <input placeholder="Email genitore" value={c.genitore_email || ''} onChange={e => setChildCell(i, 'genitore_email', e.target.value)} />
             <button onClick={() => delChildRow(i)}>✕</button>
           </div>

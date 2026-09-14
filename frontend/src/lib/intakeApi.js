@@ -6,6 +6,16 @@ import api from './api';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
 const BASE = `${BACKEND_URL}/api/intake`;
 
+// FastAPI restituisce `detail` come stringa OPPURE come array di error object (422 di
+// validazione Pydantic: [{msg, loc, type, ...}]). Renderizzare l'array direttamente in
+// React ("Objects are not valid as a React child") crasha la pagina: normalizza sempre
+// in una stringa leggibile prima di mostrarla all'utente.
+export function formatApiError(e, fallback = 'Errore.') {
+  const d = e?.response?.data?.detail;
+  if (Array.isArray(d)) return d.map(x => (x && x.msg) ? x.msg : (typeof x === 'string' ? x : JSON.stringify(x))).join(', ');
+  return (typeof d === 'string' && d) ? d : fallback;
+}
+
 // ── Pubblici (token) ─────────────────────────────────────────────
 export async function getConfig(token) {
   const { data } = await axios.get(`${BASE}/config`, { params: { t: token } });

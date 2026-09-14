@@ -32,7 +32,7 @@ export default function IscrizioniPage() {
         <img src={tenant.logo} alt={tenant.appName} style={{ height: 48, borderRadius: 12 }} />
         <div>
           <h1 style={{ color: C.primary, margin: 0 }}>{tenant.appName}</h1>
-          <p style={{ margin: 0 }}>Raccolta iscrizioni {config.org_id ? '' : ''}</p>
+          <p style={{ margin: 0 }}>Raccolta iscrizioni</p>
         </div>
       </header>
 
@@ -55,7 +55,7 @@ export default function IscrizioniPage() {
         )}
 
         {mode === 'form' && <SchedaStrutturata token={token} config={config} onBack={() => setMode(null)} />}
-        {mode === 'scan' && <UploadRegistro token={token} config={config} onBack={() => setMode(null)} />}
+        {mode === 'scan' && <UploadRegistro token={token} onBack={() => setMode(null)} />}
       </main>
 
       <footer style={{ textAlign: 'center', padding: 20, fontSize: 12, color: '#666' }}>

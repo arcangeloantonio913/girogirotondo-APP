@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { C } from '@/config/tenant';
-import { upsertSubmission, uploadScan } from '@/lib/intakeApi';
+import { upsertSubmission, uploadScan, formatApiError } from '@/lib/intakeApi';
 
 const OK_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB — limite di storage documenti lato backend
@@ -29,14 +29,19 @@ export default function UploadRegistro({ token, onBack }) {
         setUploaded(u => [...u, res.scan.filename]);
       }
     } catch (e) {
-      setMsg(e?.response?.data?.detail || 'Errore nel caricamento.');
+      setMsg(formatApiError(e, 'Errore nel caricamento.'));
     } finally { setBusy(false); }
   }
 
   async function finish() {
     if (!submissionId) { setMsg('Carica almeno una scansione.'); return; }
-    await upsertSubmission(token, { mode: 'scan', status: 'inviata', submission_id: submissionId, children: [] });
-    setMsg('Registro inviato! Grazie.');
+    setBusy(true);
+    try {
+      await upsertSubmission(token, { mode: 'scan', status: 'inviata', submission_id: submissionId, children: [] });
+      setMsg('Registro inviato! Grazie.');
+    } catch (e) {
+      setMsg(formatApiError(e, 'Errore nell\'invio.'));
+    } finally { setBusy(false); }
   }
 
   return (

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { C } from '@/config/tenant';
-import { upsertSubmission } from '@/lib/intakeApi';
+import { upsertSubmission, formatApiError } from '@/lib/intakeApi';
 
 const EMPTY_CHILD = {
   nome: '', cognome: '', data_nascita: '', sede_id: '', classe: '',
@@ -71,6 +71,13 @@ export default function SchedaStrutturata({ token, config, onBack }) {
   const childrenNonEmpty = useMemo(() => children.filter(r => !isChildEmpty(r)), [children]);
   const childErrors = useMemo(() => childrenNonEmpty.map(validateChild), [childrenNonEmpty]);
   const hasChildErrors = childErrors.some(e => Object.keys(e).length > 0);
+  // Solo le righe non-vuote E valide vengono inviate al backend (bozza inclusa):
+  // il backend valida IntakeChild per intero anche in stato "bozza", quindi una riga
+  // parzialmente compilata farebbe 422 e perderebbe tutto il salvataggio.
+  const childrenValid = useMemo(
+    () => childrenNonEmpty.filter(r => Object.keys(validateChild(r)).length === 0),
+    [childrenNonEmpty]
+  );
 
   // ── Maestre ───────────────────────────────────────────────────
   const setStaffCell = (i, k, v) =>
@@ -96,6 +103,10 @@ export default function SchedaStrutturata({ token, config, onBack }) {
   const staffNonEmpty = useMemo(() => staff.filter(r => !isStaffEmpty(r)), [staff]);
   const staffErrors = useMemo(() => staffNonEmpty.map(validateStaff), [staffNonEmpty]);
   const hasStaffErrors = staffErrors.some(e => Object.keys(e).length > 0);
+  const staffValid = useMemo(
+    () => staffNonEmpty.filter(r => Object.keys(validateStaff(r)).length === 0),
+    [staffNonEmpty]
+  );
 
   // ── Direttrice ────────────────────────────────────────────────
   const setDirCell = (i, k, v) =>
@@ -106,22 +117,29 @@ export default function SchedaStrutturata({ token, config, onBack }) {
   const dirNonEmpty = useMemo(() => direttrici.filter(r => !isDirEmpty(r)), [direttrici]);
   const dirErrors = useMemo(() => dirNonEmpty.map(validateDir), [dirNonEmpty]);
   const hasDirErrors = dirErrors.some(e => Object.keys(e).length > 0);
+  const dirValid = useMemo(
+    () => dirNonEmpty.filter(r => Object.keys(validateDir(r)).length === 0),
+    [dirNonEmpty]
+  );
 
   const hasErrors = hasChildErrors || hasStaffErrors || hasDirErrors;
 
   async function save(status) {
     setSaving(true); setMsg('');
     try {
+      // Solo le righe valide vengono persistite (sia bozza che invio): righe non-vuote
+      // ma incomplete restano nello stato locale per essere completate in seguito, senza
+      // far fallire il salvataggio con un 422 del backend.
       const res = await upsertSubmission(token, {
         mode: 'form', status, submission_id: submissionId,
-        children: childrenNonEmpty,
-        staff: staffNonEmpty,
-        direttrici: dirNonEmpty,
+        children: childrenValid,
+        staff: staffValid,
+        direttrici: dirValid,
       });
       setSubmissionId(res.id);
       setMsg(status === 'inviata' ? 'Iscrizioni inviate! Grazie.' : 'Bozza salvata.');
     } catch (e) {
-      setMsg(e?.response?.data?.detail || 'Errore nel salvataggio.');
+      setMsg(formatApiError(e, 'Errore nel salvataggio.'));
     } finally { setSaving(false); }
   }
 

@@ -1,0 +1,62 @@
+// Client per gli endpoint Raccolta Iscrizioni (/api/intake).
+// Gli endpoint pubblici usano il token in query (?t=); quelli admin l'axios `api` (JWT).
+import axios from 'axios';
+import api from './api';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+const BASE = `${BACKEND_URL}/api/intake`;
+
+// FastAPI restituisce `detail` come stringa OPPURE come array di error object (422 di
+// validazione Pydantic: [{msg, loc, type, ...}]). Renderizzare l'array direttamente in
+// React ("Objects are not valid as a React child") crasha la pagina: normalizza sempre
+// in una stringa leggibile prima di mostrarla all'utente.
+export function formatApiError(e, fallback = 'Errore.') {
+  const d = e?.response?.data?.detail;
+  if (Array.isArray(d)) return d.map(x => (x && x.msg) ? x.msg : (typeof x === 'string' ? x : JSON.stringify(x))).join(', ');
+  return (typeof d === 'string' && d) ? d : fallback;
+}
+
+// ── Pubblici (token) ─────────────────────────────────────────────
+export async function getConfig(token) {
+  const { data } = await axios.get(`${BASE}/config`, { params: { t: token } });
+  return data;
+}
+
+export async function upsertSubmission(token, payload) {
+  const { data } = await axios.post(`${BASE}/submissions`, payload, { params: { t: token } });
+  return data;
+}
+
+export async function uploadScan(token, submissionId, file) {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await axios.post(`${BASE}/submissions/${submissionId}/scans`, form, {
+    params: { t: token },
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+// ── Admin (JWT via api client) ───────────────────────────────────
+export async function createToken(label, expiresAt = null) {
+  const { data } = await api.post('/intake/tokens', { label, expires_at: expiresAt });
+  return data; // { id, org_id, label, token }  ← token in chiaro UNA volta
+}
+export async function listTokens() {
+  return (await api.get('/intake/tokens')).data;
+}
+export async function revokeToken(id) {
+  return (await api.delete(`/intake/tokens/${id}`)).data;
+}
+export async function listSubmissions() {
+  return (await api.get('/intake/submissions')).data;
+}
+export async function getSubmission(id) {
+  return (await api.get(`/intake/submissions/${id}`)).data;
+}
+export async function patchSubmission(id, payload) {
+  return (await api.patch(`/intake/submissions/${id}`, payload)).data;
+}
+export async function exportSubmission(id) {
+  return (await api.post(`/intake/submissions/${id}/export`)).data;
+}

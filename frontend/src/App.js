@@ -35,6 +35,8 @@ const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
 const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
 const ParentNotifiche     = lazy(() => import("@/pages/parent/ParentNotifiche"));
 const ParentAppuntamenti  = lazy(() => import("@/pages/parent/ParentAppuntamenti"));
+const IscrizioniPage      = lazy(() => import("@/pages/iscrizioni/IscrizioniPage"));
+const AdminIscrizioni     = lazy(() => import("@/pages/admin/AdminIscrizioni"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -152,10 +154,12 @@ function AppRoutes() {
         <Route path="/admin/mensa"          element={<ProtectedRoute allowedRoles={['admin']}><AdminMensa /></ProtectedRoute>} />
         <Route path="/admin/profile"    element={<ProtectedRoute allowedRoles={['admin']}><AdminProfile /></ProtectedRoute>} />
         <Route path="/admin/presenze"   element={<ProtectedRoute allowedRoles={['admin']}><AdminPresenze /></ProtectedRoute>} />
+        <Route path="/admin/iscrizioni" element={<ProtectedRoute allowedRoles={['admin']}><AdminIscrizioni /></ProtectedRoute>} />
 
         {/* Pagina pubblica — nessuna autenticazione richiesta */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/iscrizioni" element={<IscrizioniPage />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

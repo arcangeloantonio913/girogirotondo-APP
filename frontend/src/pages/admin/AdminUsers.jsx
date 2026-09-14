@@ -45,7 +45,7 @@ const EMPTY_ISCRIZIONE = {
 };
 
 export default function AdminUsers() {
-  const { sede, sedeInfo } = useAuth();
+  const { sede, sedeInfo, isSuperAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -58,6 +58,7 @@ export default function AdminUsers() {
   const [dialogType, setDialogType] = useState('staff');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [credDialog, setCredDialog] = useState({ open: false, user: null });
 
   // form staff
@@ -302,12 +303,15 @@ export default function AdminUsers() {
   const handleDelete = async () => {
     if (!deleteDialog.user) return;
     setDeleteLoading(true);
+    setDeleteError('');
     try {
       const uid = deleteDialog.user.id;
       await api.delete(`/users/${uid}`);
       setUsers(prev => prev.filter(u => u.id !== uid));
       setDeleteDialog({ open: false, user: null });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      setDeleteError(err.response?.data?.detail || 'Errore durante l\'eliminazione');
+    }
     finally { setDeleteLoading(false); }
   };
 
@@ -529,8 +533,9 @@ export default function AdminUsers() {
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        {/* Modifica credenziali (non per superadmin) */}
-                        {!u.is_superadmin && (
+                        {/* Modifica credenziali. Nascosta sugli account SuperAdmin agli
+                            admin normali; una direttrice (SuperAdmin) può gestirli. */}
+                        {(!u.is_superadmin || isSuperAdmin) && (
                           <button data-testid={`edit-cred-${u.id}`}
                             onClick={() => openCredDialog(u)}
                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-gray-300 hover:text-blue-500 transition-colors"
@@ -539,7 +544,7 @@ export default function AdminUsers() {
                           </button>
                         )}
                         <button data-testid={`delete-user-${u.id}`}
-                          onClick={() => setDeleteDialog({ open: true, user: u })}
+                          onClick={() => { setDeleteError(''); setDeleteDialog({ open: true, user: u }); }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -619,7 +624,7 @@ export default function AdminUsers() {
         </div>
 
         {/* ── Dialog Elimina ───────────────────────────────────────────────── */}
-        <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, user: null })}>
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => { if (!open) { setDeleteDialog({ open: false, user: null }); setDeleteError(''); } }}>
           <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-user-dialog">
             <DialogHeader>
               <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
@@ -632,8 +637,13 @@ export default function AdminUsers() {
                 <br /><span className="text-xs text-gray-400">{deleteDialog.user?.email}</span>
               </p>
               <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">⚠️ Azione irreversibile.</p>
+              {deleteError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2" data-testid="delete-user-error">
+                  {deleteError}
+                </p>
+              )}
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setDeleteDialog({ open: false, user: null })}
+                <Button variant="outline" onClick={() => { setDeleteDialog({ open: false, user: null }); setDeleteError(''); }}
                   className="flex-1 rounded-xl h-10 text-sm" data-testid="cancel-delete-user">Annulla</Button>
                 <Button onClick={handleDelete} disabled={deleteLoading}
                   className="flex-1 rounded-xl h-10 text-sm font-bold text-white"

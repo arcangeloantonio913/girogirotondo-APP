@@ -711,11 +711,14 @@ async def delete_user(
     sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
-    # Verifica che l'utente appartenga alla sede (SuperAdmin esclusi)
     target = await db.users.find_one({"id": user_id})
     if not target:
         raise HTTPException(status_code=404, detail="Utente non trovato")
-    if target.get("is_superadmin"):
+    # Convenzione identica a /credentials e /resend-credentials: un admin normale NON può
+    # eliminare un SuperAmministratore; un SuperAdmin sì (mai sé stesso — già bloccato sopra),
+    # così la direzione può gestire/rimuovere gli altri account admin. L'admin normale resta
+    # confinato alla propria sede.
+    if target.get("is_superadmin") and not current_user.get("is_superadmin"):
         raise HTTPException(status_code=403, detail="Non puoi eliminare un SuperAmministratore")
     if not current_user.get("is_superadmin") and target.get("sede_id") != sede_id:
         raise HTTPException(status_code=403, detail="Utente non appartiene alla sede selezionata")

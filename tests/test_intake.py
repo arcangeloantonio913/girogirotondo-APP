@@ -338,3 +338,65 @@ async def test_admin_patch_corrects_staff_and_direttrici(client, super2_headers)
     finally:
         await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
         await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_export_maps_to_importer_format(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        # due bambini con la STESSA email genitore (fratelli) → un solo parent
+        children = [
+            _child(nome="Alice", cognome="Grasso", genitore_email="fam@example.com",
+                   genitore_nome="Simona", genitore_cognome="Ferracane", classe="Sez A"),
+            _child(nome="Marco", cognome="Grasso", data_nascita="2023-02-01",
+                   genitore_email="fam@example.com", genitore_nome="Simona",
+                   genitore_cognome="Ferracane", classe="Sez A"),
+        ]
+        cr = await client.post(f"/api/intake/submissions?t={raw}",
+                               json={"mode": "form", "status": "inviata", "children": children})
+        sid = cr.json()["id"]
+        ex = await client.post(f"/api/intake/submissions/{sid}/export", headers=super2_headers)
+        assert ex.status_code == 200
+        data = ex.json()
+        assert data["org_id"] == "dimensione-bimbo"
+        # una sola classe (sede_id, name) distinta
+        assert data["classes_to_create"] == [{"sede_id": "db-sede-1", "name": "Sez A"}]
+        # due studenti col formato importer
+        assert len(data["students"]) == 2
+        assert data["students"][0]["class_name"] == "Sez A"
+        assert data["students"][0]["date_of_birth"] == "2021-05-30"
+        assert data["students"][0]["email_genitore"] == "fam@example.com"
+        # un solo parent (dedup per email), name = "Nome Cognome"
+        assert data["parents"] == [{"email": "fam@example.com", "name": "Simona Ferracane"}]
+        # la submission passa a stato "revisionata"
+        doc = await db.intake_submissions.find_one({"id": sid})
+        assert doc["status"] == "revisionata"
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_export_includes_staff_and_direttrici(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        payload = {
+            "mode": "form", "status": "inviata",
+            "children": [_child(classe="Sez A")],
+            "staff": [{"nome": "Valeria", "cognome": "Rossi", "email": "v@ex.it",
+                       "sede_id": "db-sede-1", "sezioni": ["Sez A", "Sez Solo-Maestra"]}],
+            "direttrici": [{"nome": "Cetty", "cognome": "B", "email": "cetty@ex.it"}],
+        }
+        sid = (await client.post(f"/api/intake/submissions?t={raw}", json=payload)).json()["id"]
+        data = (await client.post(f"/api/intake/submissions/{sid}/export", headers=super2_headers)).json()
+        # sezione senza bambini ma citata dalla maestra è comunque creata
+        names = {c["name"] for c in data["classes_to_create"]}
+        assert {"Sez A", "Sez Solo-Maestra"} <= names
+        assert data["staff"] == [{"email": "v@ex.it", "name": "Valeria", "cognome": "Rossi",
+                                  "sede_id": "db-sede-1", "class_names": ["Sez A", "Sez Solo-Maestra"]}]
+        assert data["direttrici"] == [{"email": "cetty@ex.it", "name": "Cetty", "cognome": "B"}]
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})

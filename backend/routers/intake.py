@@ -271,3 +271,58 @@ async def patch_submission(submission_id: str, payload: IntakeSubmissionPatch,
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Submission non trovata")
     return await db.intake_submissions.find_one({"id": submission_id}, {"_id": 0})
+
+
+# ── Export → formato importer iscrizioni_normalized.json ─────────────────────
+@router.post("/submissions/{submission_id}/export")
+async def export_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    org = _caller_org(current_user)
+    db = get_db()
+    sub = await db.intake_submissions.find_one({"id": submission_id, "org_id": org}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission non trovata")
+
+    children = sub.get("children", [])
+    staff_rows = sub.get("staff", [])
+    dirs_rows = sub.get("direttrici", [])
+
+    classes, seen_cls = [], set()
+
+    def _add_class(sede_id, name):
+        key = (sede_id, name)
+        if name and key not in seen_cls:
+            seen_cls.add(key)
+            classes.append({"sede_id": sede_id, "name": name})
+
+    students, parents, seen_email = [], [], set()
+    for c in children:
+        _add_class(c["sede_id"], c["classe"])
+        students.append({
+            "sede_id": c["sede_id"], "class_name": c["classe"],
+            "name": c["nome"], "cognome": c["cognome"],
+            "date_of_birth": c.get("data_nascita", ""),
+            "email_genitore": c.get("genitore_email", ""),
+        })
+        em = c.get("genitore_email")
+        if em and em not in seen_email:
+            seen_email.add(em)
+            full = f"{c.get('genitore_nome','')} {c.get('genitore_cognome','')}".strip()
+            parents.append({"email": em, "name": full or f"Famiglia {c['cognome']}"})
+
+    # sezioni citate dalle maestre → classi anche senza bambini
+    staff = []
+    for s in staff_rows:
+        for sez in s.get("sezioni", []):
+            _add_class(s["sede_id"], sez)
+        staff.append({"email": s["email"], "name": s["nome"], "cognome": s["cognome"],
+                      "sede_id": s["sede_id"], "class_names": list(s.get("sezioni", []))})
+
+    direttrici = [{"email": d["email"], "name": d["nome"], "cognome": d["cognome"]}
+                  for d in dirs_rows]
+
+    await db.intake_submissions.update_one(
+        {"id": submission_id}, {"$set": {"status": "revisionata", "updated_at": _now_iso()}}
+    )
+    return {"org_id": org, "classes_to_create": classes, "students": students,
+            "parents": parents, "staff": staff, "direttrici": direttrici}

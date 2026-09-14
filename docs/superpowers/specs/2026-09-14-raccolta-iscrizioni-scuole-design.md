@@ -25,8 +25,10 @@ Servizio offerto alle scuole come "primo inserimento" durante l'onboarding.
 
 ## 2. Contesto (cosa esiste già e che riusiamo)
 
-- **Frontend**: Next.js in `frontend/` con `src/config/tenant.js` → branding per-tenant
-  (colori, logo, footer, sedi) scelto a build-time via `REACT_APP_TENANT`.
+- **Frontend**: Create React App + craco + `react-router-dom` in `frontend/` (NON Next.js —
+  il CLAUDE.md è datato). Routing centralizzato in `src/App.js`; `src/config/tenant.js` →
+  branding per-tenant (colori, logo, footer, sedi) scelto a **build-time** via `REACT_APP_TENANT`,
+  con deploy separato per tenant (`npm run build:dimensione-bimbo`).
 - **Backend**: FastAPI + MongoDB (Motor). Router in `backend/routers/`, modelli in
   `backend/models/`, middleware `auth`, `rate_limiter`, `error_handler` già presenti.
 - **Endpoint iscrizione**: `POST /api/users/iscrizione` (solo admin) crea studente + genitore;
@@ -60,9 +62,10 @@ Servizio offerto alle scuole come "primo inserimento" durante l'onboarding.
 
 ## 5. La pagina pubblica — 2 modalità
 
-Vive nel frontend Next.js — Pages Router, coerente con `frontend/src/pages/` (nuova route
-`frontend/src/pages/iscrizioni.js`) — brandizzata via `tenant.js` in base all'org del token. Footer GDPR del tenant obbligatorio.
-All'ingresso: informativa privacy + selezione modalità.
+Nuova route pubblica `react-router-dom` in `frontend/src/App.js` (es. `/iscrizioni`), con la pagina
+in `frontend/src/pages/iscrizioni/`. Branding **build-time** via `tenant.js`/`REACT_APP_TENANT`
+(ogni scuola ha il proprio deploy brandizzato); il token scopa org/dati lato backend.
+Footer GDPR del tenant obbligatorio. All'ingresso: informativa privacy + selezione modalità.
 
 ### Modalità A — Scheda strutturata (bulk)
 - Elenco "aggiungi bambino" con i campi:
@@ -161,7 +164,7 @@ Segue il pattern degli altri router (prefix `/api/intake`, dipendenze auth dove 
 2. **Config pubblica**: `GET /api/intake/config` con validazione token → branding + sedi/sezioni.
 3. **Submission modalità A**: `POST /submissions` (bozza/invio) + validazione Pydantic.
 4. **Submission modalità B**: upload scansioni su Firebase Storage.
-5. **Pagina pubblica** (Next.js) brandizzata: selezione modalità, scheda A, upload B, footer GDPR.
+5. **Pagina pubblica** (CRA + react-router) brandizzata: selezione modalità, scheda A, upload B, footer GDPR.
 6. **Dashboard admin**: lista + dettaglio + editing children + viewer scansioni.
 7. **Export**: `POST /{id}/export` → `iscrizioni_normalized.json` (mappatura diretta) + download.
 8. **Test end-to-end** con token DB: compila → invia → revisiona → export → dry-run importer.

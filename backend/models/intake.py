@@ -55,11 +55,43 @@ class IntakeChild(BaseModel):
         return v
 
 
+class IntakeStaff(BaseModel):
+    """Maestra: crea account teacher legato alle sezioni assegnate."""
+    nome: str
+    cognome: str
+    email: EmailStr
+    sede_id: str
+    sezioni: List[str] = []            # nomi classi/sezioni assegnate
+
+    @field_validator("nome", "cognome", "sede_id")
+    @classmethod
+    def _non_empty(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("Campo obbligatorio")
+        return str(v).strip()
+
+
+class IntakeDirettrice(BaseModel):
+    """Direttrice: crea account admin is_superadmin dell'org."""
+    nome: str
+    cognome: str
+    email: EmailStr
+
+    @field_validator("nome", "cognome")
+    @classmethod
+    def _non_empty(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("Campo obbligatorio")
+        return str(v).strip()
+
+
 class IntakeSubmissionUpsert(BaseModel):
     """Crea/aggiorna una submission in modalità form (bozza o invio)."""
     mode: Literal["form", "scan"] = "form"
     status: Literal["bozza", "inviata"] = "bozza"
     children: List[IntakeChild] = []
+    staff: List[IntakeStaff] = []
+    direttrici: List[IntakeDirettrice] = []
     submission_id: Optional[str] = None   # se presente → update della bozza esistente
 
 
@@ -78,4 +110,6 @@ class IntakeChildPatch(BaseModel):
 class IntakeSubmissionPatch(BaseModel):
     """PATCH admin: sostituisce l'elenco children corretto."""
     children: Optional[List[IntakeChildPatch]] = None
+    staff: Optional[List[IntakeStaff]] = None
+    direttrici: Optional[List[IntakeDirettrice]] = None
     status: Optional[Literal["bozza", "inviata", "revisionata", "importata"]] = None

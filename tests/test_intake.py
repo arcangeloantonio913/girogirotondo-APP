@@ -121,3 +121,21 @@ async def test_config_rejects_revoked_token(client, super2_headers):
         assert (await client.get(f"/api/intake/config?t={raw}")).status_code == 401
     finally:
         await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+def test_staff_and_direttrice_models():
+    from models.intake import IntakeStaff, IntakeDirettrice, IntakeSubmissionUpsert
+    s = IntakeStaff(nome="Valeria", cognome="Rossi", email="v@ex.it",
+                    sede_id="db-sede-1", sezioni=["Sez A", "Sez B"])
+    assert s.sezioni == ["Sez A", "Sez B"]
+    d = IntakeDirettrice(nome="Cetty", cognome="Bianchi", email="c@ex.it")
+    assert d.email == "c@ex.it"
+    sub = IntakeSubmissionUpsert(mode="form", status="bozza", children=[],
+                                 staff=[s], direttrici=[d])
+    assert sub.staff[0].nome == "Valeria" and sub.direttrici[0].nome == "Cetty"
+
+
+def test_staff_rejects_bad_email():
+    from models.intake import IntakeStaff
+    with pytest.raises(Exception):
+        IntakeStaff(nome="X", cognome="Y", email="nope", sede_id="db-sede-1", sezioni=[])

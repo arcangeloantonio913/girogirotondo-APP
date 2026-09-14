@@ -52,6 +52,23 @@ function PhotoGrid({ items, onSelect }) {
 function Lightbox({ item, items, onClose }) {
   const idx = items.findIndex(i => i.id === item.id);
 
+  // La lista /gallery ora restituisce media_url = null quando esiste una thumbnail
+  // (per alleggerire la risposta). Qui recuperiamo il full-res on demand.
+  const [fullUrl, setFullUrl] = useState(item.media_url || null);
+  const [loadingFull, setLoadingFull] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (item.media_url) { setFullUrl(item.media_url); return; }
+    setFullUrl(null);
+    setLoadingFull(true);
+    api.get(`/gallery/${item.id}`)
+      .then(res => { if (!cancelled) setFullUrl(res.data?.media_url || item.thumbnail_url || null); })
+      .catch(() => { if (!cancelled) setFullUrl(item.thumbnail_url || null); })
+      .finally(() => { if (!cancelled) setLoadingFull(false); });
+    return () => { cancelled = true; };
+  }, [item.id, item.media_url, item.thumbnail_url]);
+
   const goPrev = useCallback((e) => {
     e.stopPropagation();
     if (idx > 0) onClose(items[idx - 1]);
@@ -88,10 +105,14 @@ function Lightbox({ item, items, onClose }) {
           <X className="w-6 h-6" />
         </button>
 
-        {item.media_type === 'video' ? (
-          <video src={item.media_url} controls autoPlay className="w-full rounded-2xl" />
+        {loadingFull && !fullUrl ? (
+          <div className="w-full aspect-square rounded-2xl bg-white/5 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        ) : item.media_type === 'video' ? (
+          <video src={fullUrl} controls autoPlay className="w-full rounded-2xl" />
         ) : (
-          <img src={item.media_url} alt={item.caption} className="w-full rounded-2xl" />
+          <img src={fullUrl || item.thumbnail_url} alt={item.caption} className="w-full rounded-2xl" />
         )}
 
         <div className="flex items-center justify-between mt-3 px-1">
@@ -102,9 +123,9 @@ function Lightbox({ item, items, onClose }) {
               {items.length > 1 && <span className="ml-2 text-gray-500">{idx + 1}/{items.length}</span>}
             </p>
           </div>
-          {/* Download foto */}
-          {item.media_type !== 'video' && (
-            <a href={item.media_url} download={item.caption || 'foto'}
+          {/* Download foto — usa il full-res recuperato on demand */}
+          {item.media_type !== 'video' && fullUrl && (
+            <a href={fullUrl} download={item.caption || 'foto'}
               onClick={e => e.stopPropagation()}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors ml-3 flex-shrink-0"
               title="Scarica foto">

@@ -64,12 +64,11 @@ export default function ParentDashboard() {
     const load = async () => {
       // allSettled: ogni sezione è indipendente. Se una richiesta fallisce (es. 404 su
       // un caso limite di dati) le altre continuano a popolarsi — niente dashboard vuota.
-      const [childRes, diaryRes, grigliaRes, galleryRes, mealRes, classesRes] = await Promise.allSettled([
+      const [childRes, diaryRes, grigliaRes, galleryRes, classesRes] = await Promise.allSettled([
         api.get(`/students/${primaryChildId}`),
         api.get(`/diary?student_id=${primaryChildId}&date=${today}`),
         api.get(`/griglia?student_id=${primaryChildId}&date=${today}`),
-        api.get(`/gallery?student_id=${primaryChildId}`),
-        api.get(`/meals?date=${today}`),
+        api.get(`/gallery?student_id=${primaryChildId}&limit=6`),
         api.get('/classes'),
       ]);
       const val = (r) => r.status === 'fulfilled' ? r.value.data : undefined;
@@ -78,11 +77,22 @@ export default function ParentDashboard() {
       setDiary(val(diaryRes)?.[0] || null);
       setGriglia(val(grigliaRes)?.[0] || null);
       setGalleryItems(val(galleryRes) || []);
-      setMeal(val(mealRes)?.[0] || null);
       // La classe si ricava dal bambino (non più direttamente dal genitore)
       const classes = val(classesRes);
       const cls = Array.isArray(classes) ? classes.find(c => c.id === child?.class_id) : null;
       if (cls) setClassName(cls.name);
+      // Menu del giorno: scoping per class_id del bambino (come ParentAlimentazione),
+      // altrimenti [0] poteva mostrare il menu di un'altra classe.
+      try {
+        const childClassId = child?.class_id;
+        const mealUrl = childClassId
+          ? `/meals?class_id=${childClassId}&date=${today}`
+          : `/meals?date=${today}`;
+        const mRes = await api.get(mealUrl);
+        setMeal(mRes.data?.[0] || null);
+      } catch {
+        setMeal(null);
+      }
     };
     load();
   }, [user, today, activeChildId]);
@@ -245,7 +255,7 @@ export default function ParentDashboard() {
                 className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 relative group"
                 data-testid={`gallery-thumb-${idx}`}
               >
-                <img src={item.media_url || item.url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
+                <img src={item.thumbnail_url || item.media_url || item.url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}

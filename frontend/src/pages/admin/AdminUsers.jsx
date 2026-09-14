@@ -273,6 +273,10 @@ export default function AdminUsers() {
   const handleBulkResendTeachers = async () => {
     const teachers = users.filter(u => u.role === 'teacher');
     if (!teachers.length) return;
+    if (!window.confirm(
+      `⚠️ ATTENZIONE: verrà generata una NUOVA password per TUTTE le ${teachers.length} maestre e inviata via email. ` +
+      `Le password attuali smetteranno di funzionare. Procedere?`
+    )) return;
     setBulkResendLoading(true);
     setBulkResendResults(null);
     const results = [];

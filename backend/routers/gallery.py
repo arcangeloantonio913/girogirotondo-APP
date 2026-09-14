@@ -45,6 +45,52 @@ def _refresh_signed_url(item: dict) -> dict:
     return item
 
 
+def _thumbnail_from_data_url(data_url: str, max_px: int = 400, quality: int = 60) -> Optional[str]:
+    """Generate a small JPEG thumbnail (base64 data URL) from a base64 image data URL.
+
+    Decode base64 → PIL open → thumbnail to ~400px longest side → JPEG q60 → base64.
+    Returns None on ANY failure (never raises) so a thumbnail miss can't fail an upload.
+    """
+    try:
+        import base64
+        import io
+        from PIL import Image
+
+        if not data_url or not data_url.startswith("data:"):
+            return None
+        _, _, b64 = data_url.partition(",")
+        if not b64:
+            return None
+        raw = base64.b64decode(b64)
+        img = Image.open(io.BytesIO(raw))
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        img.thumbnail((max_px, max_px), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        thumb_b64 = base64.b64encode(buf.getvalue()).decode()
+        return f"data:image/jpeg;base64,{thumb_b64}"
+    except Exception:
+        logger.warning("[GALLERY] thumbnail generation failed", exc_info=True)
+        return None
+
+
+def _slim_list_item(item: dict) -> dict:
+    """Prepare a gallery doc for the LIST response.
+
+    - Refresh signed URLs (Firebase items keep small signed URLs).
+    - Add `has_media` flag.
+    - If a thumbnail exists, strip the heavy full `media_url` from the list item;
+      the client fetches full media on demand via GET /gallery/{id}.
+      Items with NO thumbnail (old photos, videos) keep media_url (backward compatible).
+    """
+    item = _refresh_signed_url(item)
+    item["has_media"] = bool(item.get("media_url") or item.get("thumbnail_url"))
+    if item.get("thumbnail_url"):
+        item["media_url"] = None
+    return item
+
+
 async def _class_sede(db, class_id: str) -> Optional[str]:
     cls = await _resolve_class(db, class_id)
     return cls.get("sede_id") if cls else None
@@ -110,7 +156,7 @@ async def get_gallery(
         .sort("created_at", -1) \
         .skip(offset) \
         .to_list(limit)
-    return [_refresh_signed_url(i) for i in items]
+    return [_slim_list_item(i) for i in items]
 
 
 @router.get("/{media_id}")
@@ -256,13 +302,20 @@ async def upload_media_base64(
     sede_id = await _class_sede(db, class_id)
     valid_student_ids = await _students_in_class(db, class_id, student_ids)
     media_id = str(uuid.uuid4())
+
+    # Genera una thumbnail leggera dalla data URL base64 (solo foto — mai video).
+    # Il fallimento non deve bloccare l'upload (già gestito in _thumbnail_from_data_url).
+    thumbnail_url = None
+    if media_type != "video":
+        thumbnail_url = _thumbnail_from_data_url(media_url)
+
     doc = {
         "id":            media_id,
         "class_id":      class_id,
         "sede_id":       sede_id,
         "student_ids":   valid_student_ids,
         "media_url":     media_url,
-        "thumbnail_url": None,
+        "thumbnail_url": thumbnail_url,
         "storage_path":  None,
         "thumbnail_path":None,
         "media_type":    media_type,
@@ -313,7 +366,11 @@ async def upload_media_url(
     doc["student_ids"] = await _students_in_class(db, doc.get("class_id"), doc.get("student_ids") or [])
     doc["id"] = str(uuid.uuid4())
     doc["uploaded_by"] = ctx.user_id
+    # Se media_url è un data URL base64 di una foto, genera una thumbnail leggera
+    # così la lista /gallery può servire la miniatura al posto del full base64.
     doc["thumbnail_url"] = None
+    if _media_url.startswith("data:") and doc.get("media_type") != "video":
+        doc["thumbnail_url"] = _thumbnail_from_data_url(_media_url)
     doc["storage_path"] = None
     doc["thumbnail_path"] = None
     doc["published"] = True

@@ -10,6 +10,8 @@ const TAB_MESE = 'mese';
 const TAB_ANNO = 'anno';
 const MESE_NOMI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 function pad(n) { return String(n).padStart(2,'0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 export default function AdminPresenze() {
   const { sede } = useAuth();
@@ -20,8 +22,8 @@ export default function AdminPresenze() {
   const [selectedClass, setSelectedClass] = useState(null);
   const [loading, setLoading]     = useState(false);
 
-  // Oggi
-  const today = new Date().toISOString().split('T')[0];
+  // Oggi (data locale, non UTC)
+  const today = localDateStr(new Date());
   const [viewDate, setViewDate]   = useState(today);
   const [daySummary, setDaySummary] = useState(null);  // { date, classes: {classId: {presenti,assenti,totale}} }
   const [dayRecords, setDayRecords] = useState([]);    // records della classe selezionata
@@ -108,15 +110,15 @@ export default function AdminPresenze() {
         {tab === TAB_OGGI && (
           <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 flex items-center justify-between">
             <button onClick={() => {
-              const d = new Date(viewDate); d.setDate(d.getDate() - 1);
-              setViewDate(d.toISOString().split('T')[0]);
+              const d = new Date(viewDate + 'T12:00:00'); d.setDate(d.getDate() - 1);
+              setViewDate(localDateStr(d));
             }} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100">
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
             <p className="text-sm font-bold capitalize" style={{ fontFamily: 'Nunito' }}>{dateDisplay}</p>
             <button onClick={() => {
-              const d = new Date(viewDate); d.setDate(d.getDate() + 1);
-              setViewDate(d.toISOString().split('T')[0]);
+              const d = new Date(viewDate + 'T12:00:00'); d.setDate(d.getDate() + 1);
+              setViewDate(localDateStr(d));
             }} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100">
               <ChevronRight className="w-5 h-5 text-gray-600" />
             </button>

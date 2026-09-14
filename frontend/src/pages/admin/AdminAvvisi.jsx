@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Bell, Plus, Trash2, Globe, BookOpen, Users, GraduationCap,
-  Building2, Check, ChevronDown, ChevronUp, Pencil,
+  Building2, Check, ChevronDown, ChevronUp, Pencil, Paperclip,
 } from 'lucide-react';
 
 // ── Chip multi-select ─────────────────────────────────────────────────────────
@@ -58,6 +58,9 @@ export default function AdminAvvisi() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showParentPicker, setShowParentPicker] = useState(false);
+  const [error, setError] = useState('');           // feedback errori scrittura/allegato
+  const [deletingId, setDeletingId] = useState(null);   // in-flight guard delete
+  const [downloadingId, setDownloadingId] = useState(null); // loading download allegato
 
   // Edit avviso
   const [editDialog, setEditDialog] = useState({ open: false, avviso: null });
@@ -102,7 +105,37 @@ export default function AdminAvvisi() {
       target_parent_ids:[],
     });
     setShowParentPicker(false);
+    setError('');
     setDialogOpen(true);
+  };
+
+  // Scarica l'allegato: la lista non trasporta più attachment_url (stripped per PERF),
+  // quindi lo recuperiamo on-demand da GET /avvisi/{id}, poi lo apriamo/scarichiamo.
+  const handleDownloadAttachment = async (a) => {
+    if (downloadingId) return;
+    setError('');
+    setDownloadingId(a.id);
+    try {
+      let url = a.attachment_url;
+      if (!url) {
+        const res = await api.get(`/avvisi/${a.id}`);
+        url = res.data?.attachment_url;
+      }
+      if (!url) { setError('Allegato non disponibile'); return; }
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = a.attachment_name || 'allegato';
+      link.target = '_blank';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Impossibile scaricare l'allegato");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // Classi delle sedi selezionate
@@ -148,6 +181,8 @@ export default function AdminAvvisi() {
   }, [students, users, form.target_class_ids, availableClasses]);
 
   const handleCreate = async () => {
+    if (loading) return;   // in-flight guard: niente doppia pubblicazione
+    setError('');
     setLoading(true);
     try {
       const payload = {
@@ -162,28 +197,45 @@ export default function AdminAvvisi() {
       await api.post('/avvisi', payload);
       setDialogOpen(false);
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Errore durante la pubblicazione dell'avviso");
+    }
     finally { setLoading(false); }
   };
 
   const handleDelete = async (id) => {
+    if (deletingId) return;   // in-flight guard: niente doppio delete
+    if (!window.confirm('Eliminare definitivamente questo avviso?')) return;
+    setError('');
+    setDeletingId(id);
     try { await api.delete(`/avvisi/${id}`); loadData(); }
-    catch (err) { console.error(err); }
+    catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Errore durante l'eliminazione dell'avviso");
+    }
+    finally { setDeletingId(null); }
   };
 
   const openEdit = (a) => {
     setEditForm({ titolo: a.titolo, testo: a.testo });
+    setError('');
     setEditDialog({ open: true, avviso: a });
   };
 
   const handleEdit = async () => {
     if (!editDialog.avviso) return;
+    if (editLoading) return;   // in-flight guard
+    setError('');
     setEditLoading(true);
     try {
       await api.put(`/avvisi/${editDialog.avviso.id}`, editForm);
       setEditDialog({ open: false, avviso: null });
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Errore durante la modifica dell'avviso");
+    }
     finally { setEditLoading(false); }
   };
 
@@ -222,6 +274,9 @@ export default function AdminAvvisi() {
           </Button>
         </div>
 
+        {/* Errore globale (delete / allegato) */}
+        {error && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+
         {/* Lista avvisi */}
         {avvisi.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100">
@@ -253,6 +308,16 @@ export default function AdminAvvisi() {
                         )}
                       </div>
                       <p className="text-xs text-gray-600 line-clamp-2">{a.testo}</p>
+                      {(a.has_attachment || a.attachment_url) && (
+                        <button type="button"
+                          data-testid={`attachment-avviso-${a.id}`}
+                          onClick={() => handleDownloadAttachment(a)}
+                          disabled={downloadingId === a.id}
+                          className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-[11px] font-semibold hover:bg-blue-100 transition-colors disabled:opacity-50">
+                          <Paperclip className="w-3 h-3" />
+                          {downloadingId === a.id ? 'Apertura...' : (a.attachment_name || 'Allegato')}
+                        </button>
+                      )}
                       <p className="text-[10px] text-gray-400 mt-1">
                         {new Date(a.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                         {' · '}{a.author_name}
@@ -264,7 +329,8 @@ export default function AdminAvvisi() {
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button data-testid={`delete-avviso-${a.id}`} onClick={() => handleDelete(a.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                        disabled={deletingId === a.id}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -294,6 +360,7 @@ export default function AdminAvvisi() {
                 <textarea value={editForm.testo} onChange={e => setEditForm({ ...editForm, testo: e.target.value })}
                   rows={4} className="w-full rounded-xl mt-1 border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" />
               </div>
+              {error && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setEditDialog({ open: false, avviso: null })}
                   className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
@@ -443,6 +510,9 @@ export default function AdminAvvisi() {
                   )}
                 </div>
               )}
+
+              {/* Errore creazione */}
+              {error && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
 
               {/* Submit */}
               <Button data-testid="create-avviso-submit" onClick={handleCreate}

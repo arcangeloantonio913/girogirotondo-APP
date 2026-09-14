@@ -31,6 +31,21 @@ def _apply_attachment(doc: dict) -> None:
     doc["attachment_name"] = name or "allegato"
 
 
+def _strip_attachment_for_list(avviso: dict) -> dict:
+    """PERF: la LISTA non deve trasportare l'allegato base64 (data: URL fino a ~12MB
+    CIASCUNO) — rendeva la lista avvisi lentissima. Espone solo `has_attachment` +
+    `attachment_name`; il file vero si scarica on-demand via GET /avvisi/{id}.
+    Mirror di documents.get_documents (has_file)."""
+    try:
+        au = avviso.get("attachment_url")
+        avviso["has_attachment"] = bool(au)
+        if au:
+            avviso["attachment_url"] = None
+    except Exception:
+        pass
+    return avviso
+
+
 def _avviso_visible_to(avviso: dict, role: str, user_id: str,
                         user_class_ids: list, user_child_ids: list,
                         user_sede_id: Optional[str]) -> bool:
@@ -93,13 +108,15 @@ async def get_avvisi(
     # Recupera tutti gli avvisi accessibili per sede, poi filtra per targeting
     if role == "admin":
         sede_id = await validate_admin_sede_access(current_user, x_sede_id)
-        # Admin vede tutti gli avvisi della sede attiva + quelli multi-sede che la includono
-        all_avvisi = await db.avvisi.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-        avvisi = [
-            a for a in all_avvisi
-            if (a.get("sede_id") == sede_id) or
-               (sede_id in (a.get("target_sedi") or []))
-        ]
+        # Admin vede tutti gli avvisi della sede attiva + quelli multi-sede che la includono.
+        # SECURITY/PERF: il filtro sede vive nella QUERY (come teacher/parent), non più in
+        # Python su un find({}) che caricava avvisi di TUTTE le sedi/tenant in memoria.
+        # NB: validate_admin_sede_access risolve SEMPRE una singola sede attiva, anche per il
+        # superadmin (che commuta sede via X-Sede-Id) → nessun path all-access da preservare qui.
+        avvisi = await db.avvisi.find(
+            {"$or": [{"sede_id": sede_id}, {"target_sedi": {"$in": [sede_id]}}]},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(500)
 
     elif role == "teacher":
         sede_id = get_teacher_sede_id(current_user)
@@ -146,7 +163,61 @@ async def get_avvisi(
     else:
         return []
 
-    return avvisi
+    # PERF: strip degli allegati base64 dalla lista (solo has_attachment + attachment_name).
+    return [_strip_attachment_for_list(a) for a in avvisi]
+
+
+# ---------------------------------------------------------------------------
+# GET /api/avvisi/{avviso_id}  — avviso singolo COMPLETO (con attachment_url)
+# ---------------------------------------------------------------------------
+
+@router.get("/{avviso_id}")
+async def get_avviso(
+    avviso_id: str,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    """Ritorna l'avviso completo INCLUSO attachment_url (usato per scaricare l'allegato
+    on-demand, dato che la lista lo strippa). Guard di visibilità speculare alla lista:
+    il caller può leggere SOLO un avviso che vedrebbe nella propria lista. 404 (non 403)
+    su diniego per non rivelare l'esistenza cross-tenant — come documents.get_document."""
+    db = get_db()
+    role = current_user.get("role")
+    user_id = current_user.get("id", "")
+
+    avviso = await db.avvisi.find_one({"id": avviso_id}, {"_id": 0})
+    if not avviso:
+        raise HTTPException(status_code=404, detail="Avviso non trovato")
+
+    visible = False
+    if role == "admin":
+        sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+        visible = (avviso.get("sede_id") == sede_id) or (sede_id in (avviso.get("target_sedi") or []))
+    elif role == "teacher":
+        sede_id = get_teacher_sede_id(current_user)
+        teacher_class_ids = list(current_user.get("class_ids") or [])
+        legacy = current_user.get("class_id")
+        if legacy and legacy not in teacher_class_ids:
+            teacher_class_ids.append(legacy)
+        visible = _avviso_visible_to(avviso, "teacher", user_id, teacher_class_ids, [], sede_id)
+    elif role == "parent":
+        child_ids = list(current_user.get("child_ids") or [])
+        legacy = current_user.get("child_id")
+        if legacy and legacy not in child_ids:
+            child_ids.append(legacy)
+        if child_ids:
+            students = await db.students.find(
+                {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1, "sede_id": 1}
+            ).to_list(100)
+            parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
+            sede_id = next((s.get("sede_id") for s in students if s.get("sede_id")), None)
+            visible = _avviso_visible_to(avviso, "parent", user_id, parent_class_ids, child_ids, sede_id)
+
+    if not visible:
+        # 404 uniforme cross-tenant (non riveliamo l'esistenza).
+        raise HTTPException(status_code=404, detail="Avviso non trovato")
+
+    return avviso
 
 
 # ---------------------------------------------------------------------------

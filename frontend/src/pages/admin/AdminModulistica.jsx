@@ -136,6 +136,7 @@ export default function AdminModulistica() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Eliminare questo documento? L\'azione è irreversibile.')) return;
     try {
       await api.delete(`/documents/${id}`);
       loadData();

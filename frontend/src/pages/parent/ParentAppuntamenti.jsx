@@ -36,7 +36,10 @@ export default function ParentAppuntamenti() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError]     = useState('');
   const [deleteId, setDeleteId]         = useState(null);
+  const [deleteLoading, setDeleteLoading]   = useState(false);
+  const [deleteError, setDeleteError]       = useState('');
 
   useEffect(() => { loadData(); }, []);
 
@@ -57,7 +60,9 @@ export default function ParentAppuntamenti() {
 
   const handleBook = async () => {
     if (!bookingDate || !bookingSlot || !bookingReason.trim()) return;
+    if (bookingLoading) return;               // guard anti doppio-invio
     setBookingLoading(true);
+    setBookingError('');
     try {
       await api.post('/appointments', {
         parent_id: user.id,
@@ -70,16 +75,26 @@ export default function ParentAppuntamenti() {
       setBookingSlot('');
       setBookingReason('');
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setBookingError(err.response?.data?.detail || 'Errore durante la prenotazione. Riprova.');
+    }
     finally { setBookingLoading(false); }
   };
 
   const handleDelete = async (id) => {
+    if (deleteLoading) return;                // guard anti doppio-invio
+    setDeleteLoading(true);
+    setDeleteError('');
     try {
       await api.delete(`/appointments/${id}`);
       setDeleteId(null);
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setDeleteError(err.response?.data?.detail || 'Errore durante la cancellazione. Riprova.');
+    }
+    finally { setDeleteLoading(false); }
   };
 
   const openBooking = () => {
@@ -87,12 +102,18 @@ export default function ParentAppuntamenti() {
     setBookingSlot('');
     setBookingReason('');
     setBookingSuccess(false);
+    setBookingError('');
     setBookingOpen(true);
   };
 
-  const pending   = appointments.filter(a => a.status === 'pending');
+  // In attesa = SOLO pending non ancora passati. Un pending con data < oggi non è più
+  // "in attesa" (la data è trascorsa) → finisce nello storico, non resta lì per sempre.
+  const pending   = appointments.filter(a => a.status === 'pending' && a.date >= today);
   const confirmed = appointments.filter(a => a.status === 'confirmed');
-  const past      = appointments.filter(a => a.status === 'cancelled' || (a.date < today && a.status === 'confirmed'));
+  const past      = appointments.filter(a =>
+    a.status === 'cancelled' ||
+    (a.date < today && (a.status === 'confirmed' || a.status === 'pending'))
+  );
 
   return (
     <AppLayout title="Le mie Prenotazioni" showBack>
@@ -211,6 +232,11 @@ export default function ParentAppuntamenti() {
                     className="rounded-xl mt-1" autoComplete="off" />
                 </div>
 
+                {bookingError && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 font-semibold"
+                    data-testid="booking-error">{bookingError}</p>
+                )}
+
                 <Button onClick={handleBook}
                   disabled={bookingLoading || !bookingDate || !bookingSlot || !bookingReason.trim()}
                   className="w-full rounded-2xl font-bold h-11"
@@ -223,20 +249,26 @@ export default function ParentAppuntamenti() {
         </Dialog>
 
         {/* Dialog conferma eliminazione */}
-        <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <Dialog open={!!deleteId} onOpenChange={() => { setDeleteId(null); setDeleteError(''); }}>
           <DialogContent className="rounded-2xl max-w-xs mx-auto">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-red-500">Cancella prenotazione?</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-1">
               <p className="text-sm text-gray-600">Questa azione è irreversibile.</p>
+              {deleteError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 font-semibold"
+                  data-testid="delete-error">{deleteError}</p>
+              )}
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setDeleteId(null)}
+                <Button variant="outline" onClick={() => { setDeleteId(null); setDeleteError(''); }}
+                  disabled={deleteLoading}
                   className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
                 <Button onClick={() => handleDelete(deleteId)}
+                  disabled={deleteLoading}
                   className="flex-1 rounded-xl h-10 text-sm font-bold text-white"
                   style={{ backgroundColor: '#EF4444' }}>
-                  Cancella
+                  {deleteLoading ? 'Attendere...' : 'Cancella'}
                 </Button>
               </div>
             </div>

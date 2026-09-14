@@ -1,5 +1,5 @@
 import { C } from '@/config/tenant';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Square } from 'lucide-react';
 
 // Comprime immagine via canvas — riduce il peso da 3-5MB a ~200-400KB
@@ -54,6 +55,8 @@ function compressImage(file, maxSize = 1200, quality = 0.75) {
 
 export default function TeacherMedia() {
   const { user } = useAuth();
+  const [classes, setClasses] = useState([]);
+  const [classId, setClassId] = useState('');
   const [students, setStudents] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [caption, setCaption] = useState('');
@@ -67,23 +70,36 @@ export default function TeacherMedia() {
   const [previewUrls, setPreviewUrls] = useState([]);
   const fileInputRef = useRef(null);
 
+  // Un maestro può avere più classi: mostriamo un selettore e filtriamo studenti/foto
+  // per la classe attiva (mirror di TeacherDiario) — così le foto non finiscono
+  // taggate alla classe sbagliata.
+  const teacherClassIds = useMemo(() => {
+    const ids = [...(user?.class_ids || [])];
+    if (user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  }, [user]);
+
   const loadStudents = () => {
-    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
-    if (!primaryClassId) return;
-    api.get('/students').then(r => setStudents(r.data)).catch(console.error);
+    api.get('/students').then(r => setStudents(r.data || [])).catch(console.error);
   };
 
   useEffect(() => {
-    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
-    if (!primaryClassId) return;
-    Promise.all([
-      api.get('/students'),
-      api.get(`/gallery?class_id=${primaryClassId}&limit=24&offset=0`),
-    ]).then(([sRes, gRes]) => {
-      setStudents(sRes.data);
-      setGallery(gRes.data);
-    });
+    if (!teacherClassIds.length) return;
+    Promise.all([api.get('/classes'), api.get('/students')]).then(([cRes, sRes]) => {
+      const myClasses = (cRes.data || []).filter(c => teacherClassIds.includes(c.id));
+      setClasses(myClasses);
+      setStudents(sRes.data || []);
+      if (myClasses.length > 0) setClassId(prev => prev || myClasses[0].id);
+    }).catch(console.error);
   }, [user]); // eslint-disable-line
+
+  // Ricarica la galleria della classe attiva quando cambia
+  useEffect(() => {
+    if (!classId) return;
+    api.get(`/gallery?class_id=${classId}&limit=24&offset=0`)
+      .then(gRes => setGallery(gRes.data || []))
+      .catch(console.error);
+  }, [classId]);
 
   // Ricarica studenti ogni volta che il modal si apre (fix: lista vuota dopo upload)
   useEffect(() => {
@@ -93,6 +109,12 @@ export default function TeacherMedia() {
     }
   }, [uploadModalOpen]); // eslint-disable-line
 
+  // Studenti della classe attiva — solo questi sono taggabili
+  const classStudents = useMemo(
+    () => students.filter(s => s.class_id === classId),
+    [students, classId]
+  );
+
   const toggleStudent = (id) => {
     setSelectedStudents(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
@@ -100,10 +122,10 @@ export default function TeacherMedia() {
   };
 
   const selectAll = () => {
-    if (selectedStudents.length === students.length) {
+    if (selectedStudents.length === classStudents.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(students.map(s => s.id));
+      setSelectedStudents(classStudents.map(s => s.id));
     }
   };
 
@@ -141,8 +163,7 @@ export default function TeacherMedia() {
     if (selectedStudents.length === 0 || selectedFiles.length === 0) return;
     // Caption automatica basata sulla data
     const autoCaption = caption || new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-    const primaryClassId = (user?.class_ids && user.class_ids[0]) || user?.class_id;
-    if (!primaryClassId) return;
+    if (!classId) return;
 
     setUploading(true);
     setUploadError('');
@@ -161,7 +182,7 @@ export default function TeacherMedia() {
         const dataURL = await compressImage(file, 1200, 0.75);
 
         const res = await api.post('/gallery/upload-b64', {
-          class_id:    primaryClassId,
+          class_id:    classId,
           student_ids: selectedStudents,
           media_type:  file.type.startsWith('video') ? 'video' : 'photo',
           caption:     autoCaption,
@@ -179,17 +200,23 @@ export default function TeacherMedia() {
     setUploading(false);
     if (newItems.length > 0) {
       setGallery(prev => [...newItems, ...prev]);
+    }
+    if (failed.length === 0) {
+      // Successo pieno: chiudi e mostra conferma
       resetModal();
       setUploadModalOpen(false);
       setUploaded(true);
       setTimeout(() => setUploaded(false), 4000);
-    }
-    if (failed.length > 0 && newItems.length === 0) {
-      setUploadError(`❌ Caricamento fallito. Controlla la connessione e riprova.`);
+    } else if (newItems.length === 0) {
+      // Fallimento totale
+      setUploadError('❌ Caricamento fallito. Controlla la connessione e riprova.');
+    } else {
+      // Fallimento parziale: alcuni caricati, altri no — resta aperto e mostra i falliti
+      setUploadError(`⚠️ ${newItems.length} caricati, ${failed.length} falliti (${failed.join(', ')}). Riprova i file falliti.`);
     }
   };
 
-  const allSelected = students.length > 0 && selectedStudents.length === students.length;
+  const allSelected = classStudents.length > 0 && selectedStudents.length === classStudents.length;
 
   return (
     <AppLayout title="Carica Media" showBack>
@@ -235,7 +262,7 @@ export default function TeacherMedia() {
             <div className="grid grid-cols-3 gap-1 p-2">
               {gallery.slice(0, 9).map((item) => (
                 <div key={item.id} className="aspect-square rounded-xl overflow-hidden relative group">
-                  <img src={item.media_url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
+                  <img src={item.thumbnail_url || item.media_url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
                     <p className="text-white text-[9px] font-medium truncate">{item.caption}</p>
                   </div>
@@ -260,6 +287,21 @@ export default function TeacherMedia() {
               <p className="sr-only" id="upload-dialog-desc">Seleziona file, tagga alunni e carica media</p>
             </DialogHeader>
             <div className="space-y-4 pt-2">
+              {/* Selettore classe — solo se il maestro gestisce più classi */}
+              {classes.length > 1 && (
+                <div>
+                  <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Classe</Label>
+                  <Select value={classId} onValueChange={v => { setClassId(v); setSelectedStudents([]); }}>
+                    <SelectTrigger className="rounded-xl mt-2 h-10 text-sm" data-testid="media-class-select">
+                      <SelectValue placeholder="Seleziona classe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* File Selection Area - triggers native OS file picker */}
               <button
                 data-testid="file-select-area"
@@ -318,13 +360,13 @@ export default function TeacherMedia() {
                       Seleziona Tutti
                     </span>
                     <span className="text-xs text-gray-400 ml-auto">
-                      {selectedStudents.length}/{students.length}
+                      {selectedStudents.length}/{classStudents.length}
                     </span>
                   </button>
 
                   {/* Individual students */}
                   <div className="max-h-48 overflow-y-auto">
-                    {students.map((s) => {
+                    {classStudents.map((s) => {
                       const isChecked = selectedStudents.includes(s.id);
                       return (
                         <button

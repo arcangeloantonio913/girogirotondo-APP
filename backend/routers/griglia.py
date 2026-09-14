@@ -9,6 +9,7 @@ import uuid
 from typing import Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+from pymongo import InsertOne, ReplaceOne
 
 from services.database import get_db
 from utils.expo_push import notify_parents_of_class
@@ -81,8 +82,20 @@ async def save_griglia(
     # ── Validazione ATOMICA dell'intero batch: NESSUNA scrittura/notifica finché OGNI id
     #    del batch non è validato (all-or-nothing, indipendente dall'ordine dell'array).
     ctx.assert_class(entry.class_id)                # la classe target dev'essere del caller (404)
-    for sid in entry.student_ids:
-        await ctx.assert_student(sid)               # ogni studente dev'essere nello scope (404)
+    # Membership check BATCHED: una sola query invece di un find_one per studente (N+1).
+    # Mantiene la stessa semantica di ctx.assert_student per lo staff — uno studente esiste
+    # ed è nello scope del caller SOLO se appare qui (class_id ∈ classi del caller). 404 su
+    # qualunque id mancante (all-or-nothing). all_access (superadmin fallback) salta il check.
+    if not ctx.all_access:
+        found = await db.students.find(
+            {"id": {"$in": entry.student_ids},
+             "class_id": {"$in": list(ctx.allowed_class_ids)}},
+            {"_id": 0, "id": 1},
+        ).to_list(1000)
+        valid_ids = {s["id"] for s in found}
+        for sid in entry.student_ids:
+            if sid not in valid_ids:
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
 
     # ── Solo ora che TUTTO il batch è valido: sede + scritture + notifiche.
     cls = await _resolve_class(db, entry.class_id)
@@ -96,10 +109,17 @@ async def save_griglia(
         if qty == "no": return False
         return bool(qty) or flag
 
+    # Documenti esistenti recuperati in UNA sola query ($in) invece di un find_one per studente.
+    existing_docs = await db.griglia.find(
+        {"student_id": {"$in": entry.student_ids},
+         "date": entry.date, "class_id": entry.class_id}
+    ).to_list(1000)
+    existing_by_sid = {d["student_id"]: d for d in existing_docs}
+
+    ops = []
+    docs_in_order = []
     for sid in entry.student_ids:
-        existing = await db.griglia.find_one(
-            {"student_id": sid, "date": entry.date, "class_id": entry.class_id}
-        )
+        existing = existing_by_sid.get(sid)
         doc = {
             "id": str(uuid.uuid4()) if not existing else existing.get("id", str(uuid.uuid4())),
             "class_id":    entry.class_id,
@@ -125,10 +145,17 @@ async def save_griglia(
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         if existing:
-            await db.griglia.replace_one({"_id": existing["_id"]}, doc)
+            ops.append(ReplaceOne({"_id": existing["_id"]}, doc))
         else:
-            await db.griglia.insert_one(doc)
+            ops.append(InsertOne(doc))
             any_new = True
+        docs_in_order.append(doc)
+
+    # Scritture in UNA sola round-trip (bulk_write) invece di una replace/insert per studente.
+    if ops:
+        await db.griglia.bulk_write(ops, ordered=False)
+
+    for doc in docs_in_order:
         doc.pop("_id", None)
         entries_created.append(doc)
 
@@ -161,18 +188,36 @@ async def save_griglia_bulk(
     ctx.assert_class(payload.class_id)
     if not _DATE_RE.match(payload.date):
         raise HTTPException(status_code=400, detail="Formato data non valido (YYYY-MM-DD)")
-    for e in payload.entries:
-        await ctx.assert_student(e.student_id)
+    # Membership check BATCHED (una query invece di un find_one per studente) — stessa
+    # semantica di ctx.assert_student per lo staff: 404 se un id non è nello scope del caller.
+    entry_sids = [e.student_id for e in payload.entries]
+    if not ctx.all_access:
+        found = await db.students.find(
+            {"id": {"$in": entry_sids},
+             "class_id": {"$in": list(ctx.allowed_class_ids)}},
+            {"_id": 0, "id": 1},
+        ).to_list(1000)
+        valid_ids = {s["id"] for s in found}
+        for sid in entry_sids:
+            if sid not in valid_ids:
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
 
     cls = await _resolve_class(db, payload.class_id)
     sede_id = cls.get("sede_id") if cls else None
 
+    # Documenti esistenti in UNA sola query ($in) invece di un find_one per studente.
+    existing_docs = await db.griglia.find(
+        {"student_id": {"$in": entry_sids},
+         "date": payload.date, "class_id": payload.class_id}
+    ).to_list(1000)
+    existing_by_sid = {d["student_id"]: d for d in existing_docs}
+
     entries_created = []
     any_new = False
+    ops = []
+    docs_in_order = []
     for e in payload.entries:
-        existing = await db.griglia.find_one(
-            {"student_id": e.student_id, "date": payload.date, "class_id": payload.class_id}
-        )
+        existing = existing_by_sid.get(e.student_id)
         doc = {
             "id": existing.get("id", str(uuid.uuid4())) if existing else str(uuid.uuid4()),
             "class_id":    payload.class_id,
@@ -195,10 +240,16 @@ async def save_griglia_bulk(
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         if existing:
-            await db.griglia.replace_one({"_id": existing["_id"]}, doc)
+            ops.append(ReplaceOne({"_id": existing["_id"]}, doc))
         else:
-            await db.griglia.insert_one(doc)
+            ops.append(InsertOne(doc))
             any_new = True
+        docs_in_order.append(doc)
+
+    if ops:
+        await db.griglia.bulk_write(ops, ordered=False)
+
+    for doc in docs_in_order:
         doc.pop("_id", None)
         entries_created.append(doc)
 

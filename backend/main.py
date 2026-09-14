@@ -65,7 +65,6 @@ from routers.push_tokens import router as push_tokens_router
 from routers.avvisi import router as avvisi_router
 from routers.sedi import router as sedi_router
 from routers.presenze import router as presenze_router
-from routers.intake import router as intake_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -124,7 +123,6 @@ app.include_router(push_tokens_router)
 app.include_router(avvisi_router)
 app.include_router(sedi_router)
 app.include_router(presenze_router)
-app.include_router(intake_router)
 
 
 # --- Security headers middleware ---

@@ -4,7 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Home, User, FileText, Calendar, Camera, Grid3X3, LogOut,
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
-  Megaphone, ChevronDown, Building2, BookMarked, ClipboardList, UserPlus,
+  Megaphone, ChevronDown, Building2, BookMarked, ClipboardList,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -54,7 +54,6 @@ function getNavItems(role) {
       { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
       { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },
       { path: '/admin/modulistica',   icon: FileText,       label: 'Modulistica' },
-      { path: '/admin/iscrizioni',    icon: UserPlus,       label: 'Iscrizioni' },
       { path: '/admin/profile',       icon: User,           label: 'Profilo' },
     ];
   }

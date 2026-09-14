@@ -31,17 +31,21 @@ def _refresh_url(doc: dict) -> dict:
 _DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _VALID_CATEGORIES = {c.value for c in DocumentCategory}   # fonte unica: l'enum
 
-# MIME whitelist per upload-b64: PDF, immagini comuni e documenti Office (.doc/.docx),
-# in linea con l'`accept` del web (.pdf,.doc,.docx,.png,.jpg,.jpeg). Tutto il resto
-# (text/html, image/svg+xml, script/eseguibili, ...) viene rifiutato con 400.
-_ALLOWED_DOC_MIME = {
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/msword",  # .doc
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+# MIME BLOCKLIST per upload-b64. NB: una whitelist rigida rifiutava upload legittimi
+# perché web e app inviano `application/octet-stream` quando il picker/OS non rileva il
+# MIME (es. molti PDF/immagini su iOS) → 400 e caricamento documenti rotto. Qui blocchiamo
+# SOLO i tipi realmente pericolosi in un data: URL persistito (stored-XSS se il browser li
+# renderizza) e gli eseguibili; tutto il resto (pdf/doc/docx/immagini/octet-stream) passa.
+_BLOCKED_DOC_MIME = {
+    "text/html",
+    "application/xhtml+xml",
+    "image/svg+xml",
+    "application/javascript",
+    "text/javascript",
+    "application/x-msdownload",
+    "application/x-sh",
+    "application/x-httpd-php",
+    "application/x-executable",
 }
 
 
@@ -218,9 +222,10 @@ async def upload_document_base64(
             detail="File troppo grande (max ~12MB base64). Usa un file più piccolo.",
         )
 
-    # Whitelist del MIME (file_type è controllato dal client): niente text/html,
-    # image/svg+xml, script o eseguibili nel data URL persistito.
-    if file_type not in _ALLOWED_DOC_MIME:
+    # Blocca solo i MIME pericolosi (file_type è controllato dal client): niente
+    # text/html, svg, script o eseguibili nel data URL persistito. Tutto il resto passa,
+    # incluso application/octet-stream (che web/app inviano quando il MIME non è noto).
+    if (file_type or "").strip().lower() in _BLOCKED_DOC_MIME:
         raise HTTPException(status_code=400, detail="Tipo di file non consentito")
 
     classe_id = payload.get("classe_id") or None

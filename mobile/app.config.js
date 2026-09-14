@@ -48,7 +48,9 @@ module.exports = () => {
         android: {
           ...base.android,
           package: 'it.dimensionebimbo.app',
-          versionCode: 5,              // build DB (Giro resta a 4, non toccato).
+          // NB: la config dinamica re-impone questo valore ad ogni build → va alzato A MANO
+          // quando il versionCode è già stato caricato su Play. Usati finora: 5, 6.
+          versionCode: 10,
           // permissions / intentFilters invariati (ereditati da base.android).
           adaptiveIcon: {
             ...base.android.adaptiveIcon,

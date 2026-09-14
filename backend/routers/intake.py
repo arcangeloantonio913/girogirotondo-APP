@@ -18,6 +18,7 @@ from middleware.auth import get_current_user
 from models.intake import (
     IntakeTokenCreate, IntakeSubmissionUpsert, IntakeSubmissionPatch,
 )
+from utils.storage_helper import upload_file as _real_storage_upload_file
 
 router = APIRouter(prefix="/api/intake", tags=["intake"])
 
@@ -174,3 +175,50 @@ async def upsert_submission(payload: IntakeSubmissionUpsert, token: dict = Depen
     await db.intake_submissions.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+
+# ── Upload scansione registro (modalità scan) ────────────────────────────────
+_ALLOWED_SCAN_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+
+
+async def storage_upload_file(data: bytes, destination_path: str, content_type: str,
+                              media_type: str = "document") -> str:
+    """Wrapper attorno a utils.storage_helper.upload_file: quella funzione ritorna
+    (url, storage_path), qui serve solo lo storage_path da persistere sulla submission.
+    Definito come funzione a sé (non semplice alias) così i test possono patchare
+    `routers.intake.storage_upload_file` con un valore di ritorno semplice (il path)."""
+    _, storage_path = await _real_storage_upload_file(data, destination_path, content_type,
+                                                       media_type=media_type)
+    return storage_path
+
+
+@router.post("/submissions/{submission_id}/scans", status_code=201)
+async def upload_scan(submission_id: str, token: dict = Depends(get_intake_token),
+                      file: UploadFile = File(...)):
+    if file.content_type not in _ALLOWED_SCAN_TYPES:
+        raise HTTPException(status_code=400, detail="Tipo file non ammesso: usa JPG, PNG o PDF")
+    db = get_db()
+    org = token["org_id"]
+    sub = await db.intake_submissions.find_one({"id": submission_id, "org_id": org})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission non trovata")
+
+    data = await file.read()
+    file_id = str(uuid.uuid4())
+    ext = (file.filename.rsplit(".", 1)[-1] if "." in file.filename else "bin")
+    dest = f"intake/{org}/{submission_id}/{file_id}.{ext}"
+    # media_type governa la compressione lato storage_helper: "document" = nessuna compressione
+    storage_path = await storage_upload_file(data, dest, file.content_type, media_type="document")
+
+    scan = {
+        "file_id": file_id,
+        "filename": file.filename,
+        "storage_path": storage_path,
+        "content_type": file.content_type,
+        "size": len(data),
+        "uploaded_at": _now_iso(),
+    }
+    await db.intake_submissions.update_one(
+        {"id": submission_id}, {"$push": {"scans": scan}, "$set": {"updated_at": _now_iso()}}
+    )
+    return {"ok": True, "scan": scan}

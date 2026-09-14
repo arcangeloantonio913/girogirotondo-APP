@@ -232,3 +232,41 @@ async def test_submission_rejects_staff_bad_sede(client, super2_headers):
         assert r.status_code == 400
     finally:
         await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_scan_upload_stores_reference(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        # crea submission scan vuota
+        r = await client.post(f"/api/intake/submissions?t={raw}",
+                              json={"mode": "scan", "status": "bozza", "children": []})
+        sid = r.json()["id"]
+        with patch("routers.intake.storage_upload_file", return_value="intake/db/scan1.jpg"):
+            files = {"file": ("registro.jpg", b"\xff\xd8\xff\xe0fakejpeg", "image/jpeg")}
+            up = await client.post(f"/api/intake/submissions/{sid}/scans?t={raw}", files=files)
+        assert up.status_code == 201
+        doc = await db.intake_submissions.find_one({"id": sid})
+        assert len(doc["scans"]) == 1
+        assert doc["scans"][0]["storage_path"] == "intake/db/scan1.jpg"
+        assert doc["scans"][0]["filename"] == "registro.jpg"
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_scan_upload_rejects_bad_type(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        r = await client.post(f"/api/intake/submissions?t={raw}",
+                              json={"mode": "scan", "status": "bozza", "children": []})
+        sid = r.json()["id"]
+        files = {"file": ("virus.exe", b"MZ", "application/octet-stream")}
+        up = await client.post(f"/api/intake/submissions/{sid}/scans?t={raw}", files=files)
+        assert up.status_code == 400
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})

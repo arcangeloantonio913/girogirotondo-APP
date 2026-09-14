@@ -102,3 +102,24 @@ async def revoke_token(token_id: str, current_user: dict = Depends(get_current_u
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Token non trovato")
     return {"ok": True, "id": token_id}
+
+
+# ── Config pubblica (branding-data + sedi) ───────────────────────────────────
+@router.get("/config")
+async def public_config(token: dict = Depends(get_intake_token)):
+    """Dati necessari alla pagina pubblica: org + sedi attive dell'org. Il branding
+    visivo è build-time (tenant.js); qui forniamo solo i DATI (org, sedi, sezioni note)."""
+    db = get_db()
+    org = token["org_id"]
+    sedi = await db.sedi.find(
+        {"org_id": org, "active": True}, {"_id": 0, "id": 1, "name": 1}
+    ).to_list(50)
+    # sezioni/classi già esistenti per sede (per il menù a tendina "scegli esistente")
+    sede_ids = [s["id"] for s in sedi]
+    classes = await db.classes.find(
+        {"sede_id": {"$in": sede_ids}}, {"_id": 0, "sede_id": 1, "name": 1}
+    ).to_list(500)
+    sezioni_by_sede = {}
+    for c in classes:
+        sezioni_by_sede.setdefault(c["sede_id"], []).append(c["name"])
+    return {"org_id": org, "sedi": sedi, "sezioni_by_sede": sezioni_by_sede}

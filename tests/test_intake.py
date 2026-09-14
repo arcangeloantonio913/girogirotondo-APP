@@ -84,3 +84,40 @@ async def test_list_and_revoke_token(client, super2_headers):
         assert doc["active"] is False
     finally:
         await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+async def _make_token(client, headers, label="T"):
+    r = await client.post("/api/intake/tokens", json={"label": label}, headers=headers)
+    return r.json()["token"], r.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_config_returns_org_and_sedi(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        r = await client.get(f"/api/intake/config?t={raw}")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["org_id"] == "dimensione-bimbo"
+        # sedi dell'org (dal seed: db-sede-1)
+        assert any(s["id"] == "db-sede-1" for s in body["sedi"])
+    finally:
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_config_rejects_missing_or_bad_token(client):
+    assert (await client.get("/api/intake/config")).status_code == 401
+    assert (await client.get("/api/intake/config?t=garbage")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_config_rejects_revoked_token(client, super2_headers):
+    db = get_db()
+    try:
+        raw, tid = await _make_token(client, super2_headers)
+        await client.delete(f"/api/intake/tokens/{tid}", headers=super2_headers)
+        assert (await client.get(f"/api/intake/config?t={raw}")).status_code == 401
+    finally:
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})

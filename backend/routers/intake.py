@@ -222,3 +222,52 @@ async def upload_scan(submission_id: str, token: dict = Depends(get_intake_token
         {"id": submission_id}, {"$push": {"scans": scan}, "$set": {"updated_at": _now_iso()}}
     )
     return {"ok": True, "scan": scan}
+
+
+# ── Admin: lista / dettaglio / patch ─────────────────────────────────────────
+@router.get("/submissions")
+async def list_submissions(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    org = _caller_org(current_user)
+    db = get_db()
+    rows = await db.intake_submissions.find(
+        {"org_id": org}, {"_id": 0}
+    ).sort([("created_at", -1)]).to_list(500)
+    return rows
+
+
+@router.get("/submissions/{submission_id}")
+async def get_submission(submission_id: str, current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    org = _caller_org(current_user)
+    db = get_db()
+    doc = await db.intake_submissions.find_one({"id": submission_id, "org_id": org}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Submission non trovata")
+    return doc
+
+
+@router.patch("/submissions/{submission_id}")
+async def patch_submission(submission_id: str, payload: IntakeSubmissionPatch,
+                           current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    org = _caller_org(current_user)
+    db = get_db()
+    updates = {}
+    if payload.children is not None:
+        updates["children"] = [c.model_dump(exclude_none=True) for c in payload.children]
+    if payload.staff is not None:
+        updates["staff"] = [s.model_dump() for s in payload.staff]
+    if payload.direttrici is not None:
+        updates["direttrici"] = [d.model_dump() for d in payload.direttrici]
+    if payload.status is not None:
+        updates["status"] = payload.status
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare")
+    updates["updated_at"] = _now_iso()
+    res = await db.intake_submissions.update_one(
+        {"id": submission_id, "org_id": org}, {"$set": updates}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Submission non trovata")
+    return await db.intake_submissions.find_one({"id": submission_id}, {"_id": 0})

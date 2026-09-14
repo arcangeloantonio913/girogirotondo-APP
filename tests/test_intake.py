@@ -270,3 +270,71 @@ async def test_scan_upload_rejects_bad_type(client, super2_headers):
     finally:
         await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
         await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_admin_list_and_detail_and_org_isolation(client, super2_headers, super_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        cr = await client.post(f"/api/intake/submissions?t={raw}",
+                               json={"mode": "form", "status": "inviata", "children": [_child()]})
+        sid = cr.json()["id"]
+        # super2 (org DB) vede la submission
+        lst = await client.get("/api/intake/submissions", headers=super2_headers)
+        assert lst.status_code == 200 and any(s["id"] == sid for s in lst.json())
+        det = await client.get(f"/api/intake/submissions/{sid}", headers=super2_headers)
+        assert det.status_code == 200 and det.json()["children"][0]["nome"] == "Alice"
+        # super (org1) NON vede le submission dell'org DB
+        lst1 = await client.get("/api/intake/submissions", headers=super_headers)
+        assert all(s["id"] != sid for s in lst1.json())
+        assert (await client.get(f"/api/intake/submissions/{sid}", headers=super_headers)).status_code == 404
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_admin_patch_corrects_children(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        cr = await client.post(f"/api/intake/submissions?t={raw}",
+                               json={"mode": "form", "status": "inviata", "children": [_child()]})
+        sid = cr.json()["id"]
+        p = await client.patch(f"/api/intake/submissions/{sid}", headers=super2_headers, json={
+            "children": [_child(nome="Alessia")], "status": "revisionata",
+        })
+        assert p.status_code == 200
+        doc = await db.intake_submissions.find_one({"id": sid})
+        assert doc["children"][0]["nome"] == "Alessia" and doc["status"] == "revisionata"
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_admin_patch_corrects_staff_and_direttrici(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        cr = await client.post(f"/api/intake/submissions?t={raw}", json={
+            "mode": "form", "status": "inviata", "children": [_child()],
+            "staff": [{"nome": "Valeria", "cognome": "Rossi", "email": "v@ex.it",
+                       "sede_id": "db-sede-1", "sezioni": ["Sez A"]}],
+            "direttrici": [{"nome": "Cetty", "cognome": "B", "email": "cetty@ex.it"}],
+        })
+        sid = cr.json()["id"]
+        p = await client.patch(f"/api/intake/submissions/{sid}", headers=super2_headers, json={
+            "staff": [{"nome": "Valeria", "cognome": "Rossi Corretto", "email": "v@ex.it",
+                       "sede_id": "db-sede-1", "sezioni": ["Sez A", "Sez B"]}],
+            "direttrici": [{"nome": "Cetty", "cognome": "Bianchi", "email": "cetty@ex.it"}],
+        })
+        assert p.status_code == 200
+        doc = await db.intake_submissions.find_one({"id": sid})
+        assert doc["staff"][0]["cognome"] == "Rossi Corretto"
+        assert doc["staff"][0]["sezioni"] == ["Sez A", "Sez B"]
+        assert doc["direttrici"][0]["cognome"] == "Bianchi"
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})

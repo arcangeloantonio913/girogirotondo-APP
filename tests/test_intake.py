@@ -139,3 +139,96 @@ def test_staff_rejects_bad_email():
     from models.intake import IntakeStaff
     with pytest.raises(Exception):
         IntakeStaff(nome="X", cognome="Y", email="nope", sede_id="db-sede-1", sezioni=[])
+
+
+def _child(**over):
+    base = dict(nome="Alice", cognome="Grasso", data_nascita="2021-05-30",
+                sede_id="db-sede-1", classe="Infanzia — Valeria",
+                genitore_nome="Simona", genitore_cognome="Ferracane",
+                genitore_email="mail@example.com")
+    base.update(over)
+    return base
+
+
+@pytest.mark.asyncio
+async def test_submission_create_draft_then_submit(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        # crea bozza
+        r = await client.post(f"/api/intake/submissions?t={raw}", json={
+            "mode": "form", "status": "bozza", "children": [_child()],
+        })
+        assert r.status_code == 201
+        sid = r.json()["id"]
+        assert r.json()["org_id"] == "dimensione-bimbo"
+        assert r.json()["status"] == "bozza"
+        # aggiorna la stessa bozza (submission_id) e invia
+        r2 = await client.post(f"/api/intake/submissions?t={raw}", json={
+            "mode": "form", "status": "inviata", "submission_id": sid,
+            "children": [_child(), _child(nome="Marco", genitore_email="due@example.com")],
+        })
+        assert r2.status_code == 201
+        assert r2.json()["id"] == sid   # stessa submission aggiornata
+        doc = await db.intake_submissions.find_one({"id": sid})
+        assert doc["status"] == "inviata" and len(doc["children"]) == 2
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_submission_rejects_invalid_child(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        r = await client.post(f"/api/intake/submissions?t={raw}", json={
+            "mode": "form", "status": "inviata",
+            "children": [_child(data_nascita="2040-01-01")],
+        })
+        assert r.status_code == 422
+    finally:
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_submission_requires_valid_token(client):
+    r = await client.post("/api/intake/submissions?t=bad", json={"mode": "form", "children": []})
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_submission_stores_three_sections(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        payload = {
+            "mode": "form", "status": "inviata",
+            "children": [_child()],
+            "staff": [{"nome": "Valeria", "cognome": "Rossi", "email": "v@ex.it",
+                       "sede_id": "db-sede-1", "sezioni": ["Infanzia — Valeria"]}],
+            "direttrici": [{"nome": "Cetty", "cognome": "B", "email": "cetty@ex.it"}],
+        }
+        r = await client.post(f"/api/intake/submissions?t={raw}", json=payload)
+        assert r.status_code == 201
+        doc = await db.intake_submissions.find_one({"id": r.json()["id"]})
+        assert len(doc["staff"]) == 1 and len(doc["direttrici"]) == 1
+        assert doc["staff"][0]["sezioni"] == ["Infanzia — Valeria"]
+    finally:
+        await db.intake_submissions.delete_many({"org_id": "dimensione-bimbo"})
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})
+
+
+@pytest.mark.asyncio
+async def test_submission_rejects_staff_bad_sede(client, super2_headers):
+    db = get_db()
+    try:
+        raw, _ = await _make_token(client, super2_headers)
+        r = await client.post(f"/api/intake/submissions?t={raw}", json={
+            "mode": "form", "status": "bozza", "children": [],
+            "staff": [{"nome": "X", "cognome": "Y", "email": "x@ex.it",
+                       "sede_id": "girogirotondo", "sezioni": []}],  # sede di ALTRA org
+        })
+        assert r.status_code == 400
+    finally:
+        await db.intake_tokens.delete_many({"org_id": "dimensione-bimbo"})

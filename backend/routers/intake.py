@@ -123,3 +123,54 @@ async def public_config(token: dict = Depends(get_intake_token)):
     for c in classes:
         sezioni_by_sede.setdefault(c["sede_id"], []).append(c["name"])
     return {"org_id": org, "sedi": sedi, "sezioni_by_sede": sezioni_by_sede}
+
+
+# ── Submission modalità form ─────────────────────────────────────────────────
+@router.post("/submissions", status_code=201)
+async def upsert_submission(payload: IntakeSubmissionUpsert, token: dict = Depends(get_intake_token)):
+    db = get_db()
+    org = token["org_id"]
+    # sedi valide dell'org: rifiuta children/staff che puntano fuori org
+    valid_sedi = {s["id"] for s in await db.sedi.find(
+        {"org_id": org, "active": True}, {"_id": 0, "id": 1}).to_list(50)}
+    for c in payload.children:
+        if c.sede_id not in valid_sedi:
+            raise HTTPException(status_code=400, detail=f"Sede '{c.sede_id}' non valida per questa scuola")
+    for s in payload.staff:
+        if s.sede_id not in valid_sedi:
+            raise HTTPException(status_code=400, detail=f"Sede '{s.sede_id}' non valida per questa scuola")
+
+    children = [c.model_dump() for c in payload.children]
+    staff = [s.model_dump() for s in payload.staff]
+    direttrici = [d.model_dump() for d in payload.direttrici]
+    now = _now_iso()
+
+    if payload.submission_id:
+        res = await db.intake_submissions.update_one(
+            {"id": payload.submission_id, "org_id": org},
+            {"$set": {"children": children, "staff": staff, "direttrici": direttrici,
+                      "status": payload.status, "mode": payload.mode, "updated_at": now,
+                      **({"submitted_at": now} if payload.status == "inviata" else {})}},
+        )
+        if res.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Bozza non trovata")
+        doc = await db.intake_submissions.find_one({"id": payload.submission_id}, {"_id": 0})
+        return doc
+
+    doc = {
+        "id": str(uuid.uuid4()),
+        "org_id": org,
+        "token_id": token["id"],
+        "mode": payload.mode,
+        "status": payload.status,
+        "children": children,
+        "staff": staff,
+        "direttrici": direttrici,
+        "scans": [],
+        "created_at": now,
+        "updated_at": now,
+        "submitted_at": now if payload.status == "inviata" else None,
+    }
+    await db.intake_submissions.insert_one(doc)
+    doc.pop("_id", None)
+    return doc

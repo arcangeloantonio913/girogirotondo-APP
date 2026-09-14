@@ -322,7 +322,7 @@ export default function AdminModulistica() {
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                                 style={{ backgroundColor: read ? C.accentGreen : '#CBD5E0' }}>
-                                {parent.name.charAt(0)}
+                                {(parent.name || '?').charAt(0)}
                               </div>
                               <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
                             </div>

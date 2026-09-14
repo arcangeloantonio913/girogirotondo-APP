@@ -507,7 +507,7 @@ export default function AdminUsers() {
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                         style={{ backgroundColor: getRoleColor(role) }}>
-                        {u.name.charAt(0)}
+                        {(u.name || '?').charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
@@ -570,7 +570,7 @@ export default function AdminUsers() {
                     className="flex items-center gap-3 flex-1 text-left min-w-0">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                       style={{ backgroundColor: C.primary }}>
-                      {s.name.charAt(0)}
+                      {(s.name || '?').charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{s.name} {s.cognome || ''}</p>

@@ -79,8 +79,12 @@ export default function TeacherGriglia() {
   useEffect(() => {
     if (!primaryClassId || !students.length) return;
     api.get(`/griglia?class_id=${primaryClassId}&date=${currentDate}`).then(res => {
-      setGrid(prev => {
-        const g = { ...prev };
+      setGrid(() => {
+        // Parti SEMPRE da default freschi per la data selezionata, poi sovrapponi le voci
+        // salvate. Prima si partiva da {...prev} (griglia del giorno precedente): gli alunni
+        // senza voce per il nuovo giorno mostravano — e RISALVAVANO — i dati di ieri.
+        const g = {};
+        students.forEach(s => { g[s.id] = defaultGrid(); });
         res.data.forEach(entry => {
           if (g[entry.student_id] !== undefined) {
             g[entry.student_id] = {

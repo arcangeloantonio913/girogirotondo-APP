@@ -114,7 +114,7 @@ async def get_presenze(
             raise HTTPException(status_code=400, detail="Formato anno non valido (YYYY)")
         query["date"] = {"$regex": f"^{anno}"}
 
-    records = await db.presenze.find(query, {"_id": 0}).to_list(10000)
+    records = await db.presenze.find(query, {"_id": 0}).to_list(80000)
     return records
 
 
@@ -140,7 +140,7 @@ async def get_classi_summary(
     #     lo scope va nel FILTRO della find, non in uno $match.
     q: dict = {"date": today}
     q.update(ctx.class_filter())
-    records = await db.presenze.find(q, {"_id": 0}).to_list(5000)
+    records = await db.presenze.find(q, {"_id": 0}).to_list(80000)
 
     summary: dict = {}
     for r in records:
@@ -202,7 +202,7 @@ async def get_riepilogo_assenze(
         ctx.assert_class(class_id)            # 404 se la classe non è del caller
         query["class_id"] = class_id
     query["date"] = {"$regex": f"^{periodo}"}
-    records = await db.presenze.find(query, {"_id": 0}).to_list(10000)
+    records = await db.presenze.find(query, {"_id": 0}).to_list(80000)
 
     # ── Aggregazione in Python per student_id.
     counts: dict = {}
@@ -223,7 +223,7 @@ async def get_riepilogo_assenze(
         stu_query["class_id"] = class_id
     students = await db.students.find(
         stu_query, {"_id": 0, "id": 1, "name": 1, "cognome": 1, "class_id": 1}
-    ).to_list(10000)
+    ).to_list(80000)
 
     # ── Nome classe (scope: solo le classi dei bambini già scopati).
     class_ids = list({s.get("class_id") for s in students if s.get("class_id")})
@@ -231,7 +231,7 @@ async def get_riepilogo_assenze(
     if class_ids:
         classes = await db.classes.find(
             {"id": {"$in": class_ids}}, {"_id": 0, "id": 1, "name": 1}
-        ).to_list(5000)
+        ).to_list(80000)
         class_map = {c["id"]: c.get("name") for c in classes}
 
     studenti = []

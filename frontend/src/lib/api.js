@@ -7,6 +7,9 @@ const API_BASE = `${BACKEND_URL}/api`;
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  // Nessun timeout prima: una richiesta appesa (rete che cade a metà) restava in
+  // sospeso per sempre e ogni spinner poteva bloccarsi. 60s è ampio anche per gli upload.
+  timeout: 60_000,
 });
 
 // ── Cache in-memory per le GET più frequenti ─────────────────────────────────
@@ -30,7 +33,10 @@ api.interceptors.request.use(async (config) => {
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const token = await currentUser.getIdToken(true);
+      // getIdToken() SENZA forceRefresh: prima forzava un round-trip a Firebase ad OGNI
+      // richiesta (6 refresh solo per aprire una dashboard) → latenza su tutta l'app.
+      // Senza force, l'SDK aggiorna il token solo quando sta per scadere.
+      const token = await currentUser.getIdToken();
       config.headers.Authorization = `Bearer ${token}`;
     } else {
       const jwtToken = localStorage.getItem('ggt_token');

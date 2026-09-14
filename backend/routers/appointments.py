@@ -4,7 +4,7 @@ import uuid
 import os
 from typing import Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 
 from services.database import get_db
 try:
@@ -45,6 +45,7 @@ async def get_appointments(
 @router.post("", status_code=201)
 async def create_appointment(
     payload: AppointmentCreate,
+    background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(get_tenant_context),
 ):
     db = get_db()
@@ -88,14 +89,17 @@ async def create_appointment(
     await db.appointments.insert_one(doc)
     doc.pop("_id", None)
 
-    # ── Notifiche email (non bloccanti) ───────────────────────────────────────
-    await send_appointment_email(
+    # ── Notifiche email in BackgroundTask: la prenotazione risponde SUBITO e non
+    #    aspetta l'invio email (che può impiegare fino a ~30s se il provider è lento).
+    background_tasks.add_task(
+        send_appointment_email,
         to_email=ADMIN_EMAIL, parent_name=parent_name, date=payload.date,
         time_slot=payload.time_slot, reason=payload.reason, status="pending",
         sede_id=sede_id, org_id=parent.get("org_id"),
     )
     if parent_email:
-        await send_appointment_email(
+        background_tasks.add_task(
+            send_appointment_email,
             to_email=parent_email, parent_name=parent_name, date=payload.date,
             time_slot=payload.time_slot, reason=payload.reason, status="pending",
             sede_id=sede_id, org_id=parent.get("org_id"),
@@ -120,6 +124,7 @@ async def create_appointment(
 async def update_appointment_status(
     apt_id: str,
     status: AppointmentStatus,
+    background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(get_tenant_context),
 ):
     if ctx.role not in ("admin", "teacher"):
@@ -138,7 +143,8 @@ async def update_appointment_status(
     if status in (AppointmentStatus.confirmed, AppointmentStatus.cancelled):
         parent = await db.users.find_one({"id": apt.get("parent_id")}, {"_id": 0})
         if parent and parent.get("email"):
-            await send_appointment_email(
+            background_tasks.add_task(
+                send_appointment_email,
                 to_email=parent["email"],
                 parent_name=parent.get("name", ""),
                 date=apt["date"],

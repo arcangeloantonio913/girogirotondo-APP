@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, Dimensions, StyleSheet, ActivityIndicator, Share, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Modal, Dimensions, StyleSheet, ActivityIndicator, Share, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as LegacyFS from 'expo-file-system/legacy';
@@ -62,10 +62,16 @@ export default function ParentGallery() {
         await Sharing.shareAsync(path, { mimeType: `image/${ext}` });
       } else {
         const path = new FileSystem.File(FileSystem.Paths.cache, 'foto.jpg').uri;
-        await LegacyFS.downloadAsync(url, path);
+        // Timeout: evita che il download remoto blocchi lo spinner all'infinito
+        await Promise.race([
+          LegacyFS.downloadAsync(url, path),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000)),
+        ]);
         await Sharing.shareAsync(path, { mimeType: 'image/jpeg' });
       }
-    } catch {} finally { setDownloading(false); }
+    } catch {
+      Alert.alert('Errore', 'Impossibile scaricare la foto');
+    } finally { setDownloading(false); }
   };
 
   const current = preview !== null ? items[preview] : null;

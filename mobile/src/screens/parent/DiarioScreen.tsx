@@ -5,7 +5,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
-import { todayLocal } from '../../lib/dates';
+import { todayLocal, formatItDate } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -89,7 +89,6 @@ export default function ParentDiario() {
           </View>
         }
         renderItem={({ item }) => {
-          const entryDate = new Date((item.date || item.created_at) + 'T12:00:00');
           const isToday = (item.date || '') === today;
           return (
             <View style={[s.card, isToday && s.cardToday]}>
@@ -97,7 +96,7 @@ export default function ParentDiario() {
               <View style={s.cardHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.cardDate, isToday && { color: C.babyBlue }]}>
-                    {isToday ? '📅 Oggi — ' : ''}{entryDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    {isToday ? '📅 Oggi — ' : ''}{formatItDate(item.date || item.created_at, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </Text>
                 </View>
                 {item.mood && (

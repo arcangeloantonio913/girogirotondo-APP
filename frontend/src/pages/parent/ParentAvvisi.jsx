@@ -7,14 +7,15 @@ import { Bell, Globe, BookOpen, Paperclip } from 'lucide-react';
 export default function ParentAvvisi() {
   const [avvisi, setAvvisi] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [error, setError] = useState('');
   const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     api.get('/avvisi').then(res => {
-      setAvvisi(res.data);
+      setAvvisi(res.data || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(err => { console.error(err); setLoadError(true); setLoading(false); });
   }, []);
 
   // Allegato scaricato on-demand: la lista non trasporta più attachment_url (PERF).
@@ -64,6 +65,11 @@ export default function ParentAvvisi() {
         {loading ? (
           <div className="bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100">
             <div className="w-8 h-8 rounded-full animate-pulse mx-auto" style={{ background: 'linear-gradient(135deg, #32CD32, #98FB98)' }} />
+          </div>
+        ) : loadError ? (
+          <div className="bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100" data-testid="avvisi-load-error">
+            <Bell className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+            <p className="text-sm text-gray-400 font-medium">Impossibile caricare, riprova</p>
           </div>
         ) : avvisi.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-8 text-center border border-gray-100">

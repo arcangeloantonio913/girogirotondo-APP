@@ -110,21 +110,26 @@ async def update_class(
     if payload.name is not None:
         updates["name"] = payload.name.strip()
     if payload.teacher_id is not None:
-        if payload.teacher_id == "":
-            updates["teacher_id"] = None   # rimuovi maestra
-        else:
-            # Verifica che la maestra esista e appartenga alla STESSA sede della classe:
-            # assegnare una maestra di un'altra sede le darebbe accesso cross-tenant ai
-            # bambini di questa classe.
+        # Valida PRIMA (così un errore non lascia la classe senza maestra ma con riferimenti già rimossi).
+        new_teacher_id = None
+        if payload.teacher_id != "":
+            # La maestra deve esistere e appartenere alla STESSA sede della classe:
+            # assegnare una maestra di un'altra sede le darebbe accesso cross-tenant ai bambini.
             teacher = await db.users.find_one({"id": payload.teacher_id, "role": "teacher"})
             if not teacher:
                 raise HTTPException(status_code=400, detail="Maestra non trovata")
             if teacher.get("sede_id") != cls.get("sede_id"):
                 raise HTTPException(status_code=400, detail="La maestra non appartiene alla sede della classe")
-            updates["teacher_id"] = payload.teacher_id
-            # Aggiorna anche class_ids sulla maestra
+            new_teacher_id = payload.teacher_id
+        # Revoca la classe a QUALSIASI maestra attuale (riassegnazione o rimozione): altrimenti
+        # la vecchia maestra manterrebbe class_ids → accesso residuo a foto/diario/griglia/presenze
+        # e PII dei bambini che non insegna più.
+        await db.users.update_many({"class_ids": class_id}, {"$pull": {"class_ids": class_id}})
+        await db.users.update_many({"class_id": class_id}, {"$set": {"class_id": None}})
+        updates["teacher_id"] = new_teacher_id
+        if new_teacher_id:
             await db.users.update_one(
-                {"id": payload.teacher_id},
+                {"id": new_teacher_id},
                 {"$addToSet": {"class_ids": class_id}, "$set": {"class_id": class_id}}
             )
 
@@ -155,5 +160,17 @@ async def delete_class(
     if cls.get("sede_id") != sede_id:
         raise HTTPException(status_code=403, detail="Classe non appartiene alla sede selezionata")
 
+    # Non eliminare una classe che ha ancora bambini: resterebbero orfani e invisibili
+    # nelle liste (che filtrano per class_id) e non più riassegnabili dalla UI.
+    student_count = await db.students.count_documents({"class_id": class_id})
+    if student_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ci sono ancora {student_count} bambini in questa classe. Spostali o rimuovili prima di eliminarla.",
+        )
+
+    # Pulisci i riferimenti pendenti alla classe sulle maestre.
+    await db.users.update_many({"class_ids": class_id}, {"$pull": {"class_ids": class_id}})
+    await db.users.update_many({"class_id": class_id}, {"$set": {"class_id": None}})
     await db.classes.delete_one({"id": class_id})
     return {"message": "Classe eliminata"}

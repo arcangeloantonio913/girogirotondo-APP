@@ -436,7 +436,7 @@ export default function AdminClasses() {
                     <div className="flex gap-1 flex-wrap">
                       {classStudents.slice(0, 4).map(s => (
                         <span key={s.id} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium text-[10px]">
-                          {s.name.split(' ')[0]}
+                          {(s.name || '').split(' ')[0]}
                         </span>
                       ))}
                       {classStudents.length > 4 && (

@@ -18,6 +18,8 @@ const TAB_ANNO    = 'anno';
 const MESE_NOMI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 export default function TeacherPresenze() {
   const { user } = useAuth();
@@ -54,7 +56,7 @@ export default function TeacherPresenze() {
 
   const getDate = (offset = 0) => {
     const d = new Date(); d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   };
   const currentDate = getDate(dateOffset);
   const dateDisplay = new Date(currentDate + 'T12:00:00').toLocaleDateString('it-IT', {

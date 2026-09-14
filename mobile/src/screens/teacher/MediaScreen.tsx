@@ -90,7 +90,8 @@ export default function TeacherMedia() {
         media_type: 'photo',
         caption: caption || new Date().toLocaleDateString('it-IT'),
       };
-      const res = await api.post('/gallery/upload-b64', payload);
+      // Timeout esteso: le foto degli iPhone possono essere pesanti e superare i 20s di default
+      const res = await api.post('/gallery/upload-b64', payload, { timeout: 90000 });
       setItems(prev => [res.data, ...prev]);
       setShowModal(false);
       setPickedImage(null);
@@ -98,8 +99,11 @@ export default function TeacherMedia() {
       setSelStudents([]);
       setAllStudents(true);
     } catch (e: any) {
-      const msg = e?.response?.data?.detail || e?.message || 'Errore sconosciuto';
-      if(__DEV__) console.log('[MEDIA] Upload error:', e?.response?.status, msg);
+      const isTimeout = e?.code === 'ECONNABORTED';
+      const msg = isTimeout
+        ? 'Upload troppo lento: la foto è pesante o la connessione è debole. Riprova con una connessione migliore.'
+        : (e?.response?.data?.detail || e?.message || 'Errore sconosciuto');
+      if(__DEV__) console.log('[MEDIA] Upload error:', e?.response?.status, e?.code, msg);
       Alert.alert('Errore upload', msg);
     }
     finally { setUploading(false); }

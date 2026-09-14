@@ -9,6 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckSquare, Save, ChevronLeft, ChevronRight, Info, Moon } from 'lucide-react';
 
+function pad(n) { return String(n).padStart(2, '0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
 // Ordine: Merenda PRIMA, poi gli altri pasti
 const MEAL_COLS = [
   { key: 'merenda', label: 'Merenda',  short: 'MER', color: '#FFB347' },
@@ -60,7 +64,7 @@ export default function TeacherGriglia() {
 
   const getDate = (offset) => {
     const d = new Date(); d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   };
   const currentDate  = getDate(dateOffset);
   const dateDisplay  = new Date(currentDate + 'T12:00:00').toLocaleDateString('it-IT', {

@@ -141,8 +141,10 @@ async def get_users_by_class(
         parents = await db.users.find(
             {"role": "parent", "child_ids": {"$in": student_ids}}, _proj
         ).to_list(500)
-    seen = {u["id"] for u in direct}
-    return direct + [p for p in parents if p["id"] not in seen]
+    # Usa .get("id"): un record importato senza campo `id` non deve far crashare (500)
+    # l'intero elenco della classe.
+    seen = {u.get("id") for u in direct if u.get("id")}
+    return direct + [p for p in parents if p.get("id") and p.get("id") not in seen]
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +330,15 @@ async def iscrizione_bambino(
 
     password_plain = payload.genitore_password or _generate_password()
 
+    # Valida l'email del genitore PRIMA di creare lo studente: se è di un account staff
+    # (non genitore) rifiuta subito — altrimenti resterebbe uno STUDENTE ORFANO in DB.
+    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+    if existing_parent and existing_parent.get("role") != "parent":
+        raise HTTPException(
+            status_code=400,
+            detail="Email già in uso da un account staff. Usare un'email diversa per il genitore."
+        )
+
     # 1. Crea il record studente
     student_id = str(uuid.uuid4())
     student = {
@@ -344,11 +355,10 @@ async def iscrizione_bambino(
     }
     await db.students.insert_one(student)
 
-    # 2a. Genitore già esistente? Aggiungi figlio all'account esistente (gemelli/fratelli)
-    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+    # 2a. Genitore già esistente (parent) → aggiungi figlio (gemelli/fratelli). Lo staff è
+    #     già stato rifiutato sopra, quindi qui existing_parent è sicuramente un genitore.
     sibling_mode = False  # True = aggiornato account esistente
-
-    if existing_parent and existing_parent.get("role") == "parent":
+    if existing_parent:
         sibling_mode = True
         await db.users.update_one(
             {"email": payload.genitore_email},
@@ -360,12 +370,6 @@ async def iscrizione_bambino(
         # Ricarica il parent aggiornato
         parent = await db.users.find_one(
             {"email": payload.genitore_email}, {"_id": 0, "password": 0, "admin_password": 0}
-        )
-    elif existing_parent:
-        # Email usata da un account non-parent (admin/teacher) — rifiuta
-        raise HTTPException(
-            status_code=400,
-            detail="Email già in uso da un account staff. Usare un'email diversa per il genitore."
         )
     else:
         # 2b. Nessun account esistente → crea account genitore nuovo

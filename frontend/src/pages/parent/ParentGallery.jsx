@@ -90,6 +90,29 @@ function Lightbox({ item, items, onClose }) {
     return () => window.removeEventListener('keydown', handler);
   }, [idx, items, onClose]);
 
+  // Download foto: <a download> non forza il salvataggio per URL cross-origin (Firebase
+  // Storage), quindi scarichiamo il file come blob e usiamo un object URL locale.
+  const handleDownload = useCallback(async (e) => {
+    e.stopPropagation();
+    if (!fullUrl) return;
+    try {
+      const resp = await fetch(fullUrl);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.caption || 'foto';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      // fallback: apri in nuova scheda se il download diretto fallisce
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [fullUrl, item.caption]);
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
@@ -110,9 +133,11 @@ function Lightbox({ item, items, onClose }) {
             <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         ) : item.media_type === 'video' ? (
-          <video src={fullUrl} controls autoPlay className="w-full rounded-2xl" />
+          <video src={fullUrl} controls autoPlay className="w-full rounded-2xl"
+            onError={() => { if (fullUrl !== item.thumbnail_url && item.thumbnail_url) setFullUrl(item.thumbnail_url); }} />
         ) : (
-          <img src={fullUrl || item.thumbnail_url} alt={item.caption} className="w-full rounded-2xl" />
+          <img src={fullUrl || item.thumbnail_url} alt={item.caption} className="w-full rounded-2xl"
+            onError={(e) => { if (item.thumbnail_url && e.currentTarget.src !== item.thumbnail_url) e.currentTarget.src = item.thumbnail_url; }} />
         )}
 
         <div className="flex items-center justify-between mt-3 px-1">
@@ -125,12 +150,11 @@ function Lightbox({ item, items, onClose }) {
           </div>
           {/* Download foto — usa il full-res recuperato on demand */}
           {item.media_type !== 'video' && fullUrl && (
-            <a href={fullUrl} download={item.caption || 'foto'}
-              onClick={e => e.stopPropagation()}
+            <button type="button" onClick={handleDownload}
               className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors ml-3 flex-shrink-0"
               title="Scarica foto">
               <Download className="w-4 h-4" />
-            </a>
+            </button>
           )}
         </div>
       </div>
@@ -177,20 +201,9 @@ export default function ParentGallery() {
 
   const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
 
-  // Download foto
-  const downloadPhoto = (item) => {
-    const a = document.createElement('a');
-    a.href = item.media_url;
-    a.download = `${item.caption || 'foto'}.jpg`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   // 1) Carica galleria personale (paginata)
   useEffect(() => {
-    if (!childId) return;
+    if (!childId) { setLoadingPersonal(false); return; }
     setClassItems([]); setClassId(null); setClassOffset(0);
     setPersonalItems([]); setPersonalOffset(0);
     setLoadingPersonal(true);

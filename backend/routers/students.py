@@ -244,8 +244,16 @@ async def delete_student(
     student = await db.students.find_one({"id": student_id})
     if not student:
         raise HTTPException(status_code=404, detail="Studente non trovato")
-    if student.get("sede_id") != sede_id:
-        raise HTTPException(status_code=403, detail="Studente non appartiene alla sede selezionata")
+    # SuperAdmin: all-access nella propria org (come gli altri router). Admin normale: la sede
+    # deve combaciare, con FALLBACK sulla classe per i record importati con sede_id nullo/anomalo
+    # (altrimenti sarebbero impossibili da eliminare anche per la direzione → cancellazione GDPR bloccata).
+    if not current_user.get("is_superadmin"):
+        ok = student.get("sede_id") == sede_id
+        if not ok and student.get("class_id"):
+            _c = await db.classes.find_one({"id": student["class_id"]}, {"_id": 0, "sede_id": 1})
+            ok = bool(_c) and _c.get("sede_id") == sede_id
+        if not ok:
+            raise HTTPException(status_code=403, detail="Studente non appartiene alla sede selezionata")
 
     await db.students.delete_one({"id": student_id})
 
@@ -262,6 +270,9 @@ async def delete_student(
         {"student_ids": student_id},
         {"$pull": {"student_ids": student_id}}
     )
+    # Presenze del bambino: vanno rimosse (erano lasciate indietro → dati del minore persistevano
+    # dopo l'eliminazione, gap GDPR).
+    await db.presenze.delete_many({"student_id": student_id})
 
     return {"message": "Studente eliminato"}
 

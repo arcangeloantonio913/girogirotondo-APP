@@ -144,21 +144,6 @@ export default function AdminAvvisi() {
     [classes, form.target_sedi]
   );
 
-  // Genitori delle classi target (o di tutte le classi nelle sedi)
-  const availableParents = useMemo(() => {
-    const targetClassIds = form.target_class_ids.length > 0
-      ? form.target_class_ids
-      : availableClasses.map(c => c.id);
-    return users.filter(u =>
-      u.role === 'parent' &&
-      (u.child_ids || []).some(cid => {
-        // il genitore è "disponibile" se uno dei suoi figli è in una delle classi target
-        const student = users; // workaround: dovremmo avere gli studenti
-        return true; // semplificato: mostra tutti i genitori delle sedi target
-      })
-    );
-  }, [users, form.target_class_ids, availableClasses]);
-
   // Genitori filtrati per classi target (con studenti)
   const [students, setStudents] = useState([]);
   useEffect(() => {

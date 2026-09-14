@@ -85,6 +85,7 @@ export default function AdminUsers() {
   };
 
   const handleSaveEdit = async () => {
+    if (!editUser?.id) { Alert.alert('Errore', 'ID mancante su questo record'); return; }
     setSaving(true);
     try {
       // 1) Dati anagrafici → PUT /users/{id} (UserUpdate non accetta email/password)
@@ -189,6 +190,7 @@ export default function AdminUsers() {
   };
 
   const handleDelete = (id: string) => {
+    if (!id) { Alert.alert('Errore', 'ID mancante su questo record'); return; }
     Alert.alert('Elimina utente', 'Questa azione è irreversibile.', [
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
@@ -199,6 +201,7 @@ export default function AdminUsers() {
   };
 
   const handleDeleteStudent = (id: string) => {
+    if (!id) { Alert.alert('Errore', 'ID mancante su questo record'); return; }
     Alert.alert('Elimina bambino', 'Questa azione è irreversibile.', [
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
@@ -238,7 +241,7 @@ export default function AdminUsers() {
 
       <SectionList
         sections={sections}
-        keyExtractor={(item) => (item.role ? 'u' : 'c') + item.id}
+        keyExtractor={(item, index) => (item.role ? 'u' : 'c') + (item.id ?? index)}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
         ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 40 }}>👥</Text><Text style={s.emptyText}>Nessun utente</Text></View>}
@@ -301,11 +304,16 @@ export default function AdminUsers() {
             <TouchableOpacity onPress={() => setModal(null)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
           <ScrollView>
-            <View style={[s.userInfoBox, { backgroundColor: ROLE_COLORS[editUser?.role || 'parent'].bg }]}>
-              <Text style={[s.userInfoRole, { color: ROLE_COLORS[editUser?.role || 'parent'].text }]}>
-                {editUser?.role} — {editUser?.email}
-              </Text>
-            </View>
+            {(() => {
+              const rc = ROLE_COLORS[editUser?.role] || ROLE_COLORS.parent;
+              return (
+                <View style={[s.userInfoBox, { backgroundColor: rc.bg }]}>
+                  <Text style={[s.userInfoRole, { color: rc.text }]}>
+                    {editUser?.role} — {editUser?.email}
+                  </Text>
+                </View>
+              );
+            })()}
             {[
               { key: 'name',     label: 'Nome',             ph: editUser?.name || '' },
               { key: 'cognome',  label: 'Cognome',          ph: editUser?.cognome || '' },

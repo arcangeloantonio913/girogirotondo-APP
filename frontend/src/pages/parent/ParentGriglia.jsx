@@ -51,20 +51,28 @@ export default function ParentGriglia() {
   const { user, activeChildId } = useAuth();
   const [griglia, setGriglia]   = useState(null);
   const [child, setChild]       = useState(null);
+  const [loadError, setLoadError] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
   // activeChildId nelle dipendenze → si aggiorna quando il genitore cambia figlio
   useEffect(() => {
     const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
     if (!childId) return;
-    // NON azzerare i dati — mostra quelli vecchi finché arrivano i nuovi (no flash)
-    Promise.all([
+    setLoadError(false);
+    // NON azzerare i dati — mostra quelli vecchi finché arrivano i nuovi (no flash).
+    // allSettled: griglia e anagrafica sono indipendenti — se una fallisce l'altra si
+    // popola comunque, niente pagina vuota.
+    Promise.allSettled([
       api.get(`/griglia?student_id=${childId}&date=${today}`),
       api.get(`/students/${childId}`),
     ]).then(([gRes, cRes]) => {
-      setGriglia(gRes.data?.[0] || null);
-      setChild(cRes.data);
-    }).catch(console.error);
+      if (gRes.status === 'fulfilled') setGriglia(gRes.value.data?.[0] || null);
+      if (cRes.status === 'fulfilled') setChild(cRes.value.data);
+      if (gRes.status === 'rejected' && cRes.status === 'rejected') {
+        console.error(gRes.reason, cRes.reason);
+        setLoadError(true);
+      }
+    });
   }, [user, activeChildId, today]); // ← activeChildId nelle deps
 
   const timelineItems = griglia ? [
@@ -101,7 +109,11 @@ export default function ParentGriglia() {
           </div>
         </div>
 
-        {!griglia ? <EmptyBear /> : (
+        {loadError ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md" data-testid="griglia-load-error">
+            <p className="text-sm text-gray-500 font-medium">Impossibile caricare, riprova</p>
+          </div>
+        ) : !griglia ? <EmptyBear /> : (
           <div className="space-y-0" data-testid="griglia-timeline">
             {timelineItems.map((item, idx) => (
               <div key={idx} className="flex items-start gap-4" data-testid={`timeline-item-${idx}`}>

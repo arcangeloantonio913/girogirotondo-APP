@@ -86,7 +86,7 @@ export default function TeacherDashboard() {
             {students.map((student) => (
               <div key={student.id} data-testid={`student-row-${student.id}`} className="px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: C.accentPink }}>
-                  {student.name.charAt(0)}
+                  {(student.name || '?').charAt(0)}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">{student.name}</p>

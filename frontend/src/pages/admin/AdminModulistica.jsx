@@ -63,23 +63,31 @@ export default function AdminModulistica() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => { loadData(); }, [sede]);
 
   const loadData = async () => {
-    const [dRes, rRes, uRes, cRes, sRes] = await Promise.all([
-      api.get('/documents'),
-      api.get('/read-receipts'),
-      api.get('/users'),
-      api.get('/classes'),
-      api.get('/students'),
-    ]);
-    setDocuments(dRes.data);
-    setReceipts(rRes.data);
-    setParents(uRes.data.filter(u => u.role === 'parent'));
-    setClasses(cRes.data);
-    setStudents(sRes.data);
+    setLoadError('');
+    try {
+      const [dRes, rRes, uRes, cRes, sRes] = await Promise.all([
+        api.get('/documents'),
+        api.get('/read-receipts'),
+        api.get('/users'),
+        api.get('/classes'),
+        api.get('/students'),
+      ]);
+      setDocuments(dRes.data || []);
+      setReceipts(rRes.data || []);
+      setParents((uRes.data || []).filter(u => u.role === 'parent'));
+      setClasses(cRes.data || []);
+      setStudents(sRes.data || []);
+    } catch (err) {
+      console.error(err);
+      setLoadError(err.response?.data?.detail || 'Impossibile caricare i documenti. Riprova.');
+    }
   };
 
   // Raggruppa genitori per classe
@@ -137,11 +145,13 @@ export default function AdminModulistica() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminare questo documento? L\'azione è irreversibile.')) return;
+    setDeleteError('');
     try {
       await api.delete(`/documents/${id}`);
       loadData();
     } catch (err) {
       console.error(err);
+      setDeleteError(err.response?.data?.detail || 'Errore durante l\'eliminazione del documento');
     }
   };
 
@@ -166,6 +176,9 @@ export default function AdminModulistica() {
             Nuovo Documento
           </Button>
         </div>
+
+        {loadError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="modulistica-load-error">{loadError}</p>}
+        {deleteError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="modulistica-delete-error">{deleteError}</p>}
 
         {/* Documents List */}
         {documents.map((doc) => {

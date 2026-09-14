@@ -11,19 +11,24 @@ export default function ParentModulistica() {
   const [documents, setDocuments] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [acknowledging, setAcknowledging] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
 
   useEffect(() => {
     const load = async () => {
+      setLoadError(false);
       try {
         const [docsRes, receiptsRes] = await Promise.allSettled([
           api.get('/documents'),
           api.get(`/read-receipts?parent_id=${user?.id}`),
         ]);
         const val = r => r.status === 'fulfilled' ? r.value.data : undefined;
+        if (docsRes.status === 'rejected') setLoadError(true);
         setDocuments(val(docsRes) || []);
         setReceipts(val(receiptsRes) || []);
       } catch (err) {
         console.error(err);
+        setLoadError(true);
       }
     };
     load();
@@ -36,6 +41,7 @@ export default function ParentModulistica() {
   // Scarica il file. PERF: la lista NON porta più il base64 (troppo pesante), quindi il
   // file vero si recupera on-demand con GET /documents/{id} solo al momento del download.
   const handleDownload = async (doc) => {
+    setDownloadError('');
     let fileUrl = doc.file_url;
     if (!fileUrl) {
       try {
@@ -44,11 +50,12 @@ export default function ParentModulistica() {
         fileUrl = res.data?.file_url;
       } catch (e) {
         console.error(e);
+        setDownloadError('Impossibile scaricare il documento. Riprova.');
       } finally {
         setDownloadingId(null);
       }
     }
-    if (!fileUrl) return;
+    if (!fileUrl) { setDownloadError('Impossibile scaricare il documento. Riprova.'); return; }
     if (fileUrl.startsWith('data:')) {
       // Base64 data URL → download diretto
       const a = document.createElement('a');
@@ -93,8 +100,18 @@ export default function ParentModulistica() {
           </p>
         </div>
 
+        {downloadError && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 font-semibold"
+            data-testid="download-error">{downloadError}</p>
+        )}
+
         {/* Documents */}
-        {documents.length === 0 ? (
+        {loadError ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md" data-testid="documents-load-error">
+            <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">Impossibile caricare, riprova</p>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun documento disponibile</p>

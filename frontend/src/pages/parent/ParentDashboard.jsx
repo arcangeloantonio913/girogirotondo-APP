@@ -53,6 +53,8 @@ export default function ParentDashboard() {
   const [bookingReason, setBookingReason] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError]     = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -117,6 +119,7 @@ export default function ParentDashboard() {
   const handleBooking = async () => {
     if (!bookingDate || !bookingSlot || !bookingReason) return;
     setBookingLoading(true);
+    setBookingError('');
     try {
       await api.post('/appointments', {
         parent_id: user.id,
@@ -124,12 +127,13 @@ export default function ParentDashboard() {
         time_slot: bookingSlot,
         reason: bookingReason,
       });
-      setBookingOpen(false);
+      setBookingSuccess(true);
       setBookingDate('');
       setBookingSlot('');
       setBookingReason('');
     } catch (err) {
       console.error(err);
+      setBookingError(err.response?.data?.detail || 'Errore durante la prenotazione. Riprova.');
     } finally {
       setBookingLoading(false);
     }
@@ -308,7 +312,7 @@ export default function ParentDashboard() {
       {/* Floating Action Button */}
       <button
         data-testid="book-appointment-fab"
-        onClick={() => setBookingOpen(true)}
+        onClick={() => { setBookingSuccess(false); setBookingError(''); setBookingOpen(true); }}
         className="fixed bottom-20 right-4 md:bottom-8 md:right-8 w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 active:scale-95 z-20"
         style={{ backgroundColor: C.babyBlue }}
       >
@@ -323,6 +327,21 @@ export default function ParentDashboard() {
               Prenota Segreteria
             </DialogTitle>
           </DialogHeader>
+          {bookingSuccess ? (
+            <div className="py-6 flex flex-col items-center gap-3 text-center" data-testid="booking-success">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${C.babyGreen}25` }}>
+                <Calendar className="w-7 h-7" style={{ color: C.babyGreen }} />
+              </div>
+              <p className="text-base font-bold text-gray-900">Prenotazione inviata!</p>
+              <p className="text-sm text-gray-500">
+                L'amministrazione confermerà l'appuntamento a breve.
+              </p>
+              <Button onClick={() => { setBookingOpen(false); setBookingSuccess(false); }}
+                className="w-full rounded-2xl h-10 mt-2" style={{ backgroundColor: C.babyBlue }}>
+                Chiudi
+              </Button>
+            </div>
+          ) : (
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">Data</Label>
@@ -383,6 +402,10 @@ export default function ParentDashboard() {
                 className="rounded-xl"
               />
             </div>
+            {bookingError && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 font-semibold"
+                data-testid="booking-error">{bookingError}</p>
+            )}
             <Button
               data-testid="booking-submit-button"
               onClick={handleBooking}
@@ -393,6 +416,7 @@ export default function ParentDashboard() {
               {bookingLoading ? 'Prenotazione...' : 'Conferma Prenotazione'}
             </Button>
           </div>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>

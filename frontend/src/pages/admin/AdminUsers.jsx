@@ -95,6 +95,7 @@ export default function AdminUsers() {
   // delete studente
   const [deleteStudentDialog, setDeleteStudentDialog] = useState({ open: false, student: null });
   const [deleteStudentLoading, setDeleteStudentLoading] = useState(false);
+  const [deleteStudentError, setDeleteStudentError] = useState('');
   const [credSuccess, setCredSuccess] = useState(false);
 
   useEffect(() => { loadData(); }, [sede]);
@@ -319,12 +320,16 @@ export default function AdminUsers() {
   const handleDeleteStudent = async () => {
     if (!deleteStudentDialog.student) return;
     setDeleteStudentLoading(true);
+    setDeleteStudentError('');
     try {
       const sid = deleteStudentDialog.student.id;
       await api.delete(`/students/${sid}`);
       setStudents(prev => prev.filter(s => s.id !== sid));
       setDeleteStudentDialog({ open: false, student: null });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setDeleteStudentError(err.response?.data?.detail || 'Errore durante l\'eliminazione');
+    }
     finally { setDeleteStudentLoading(false); }
   };
 
@@ -608,7 +613,7 @@ export default function AdminUsers() {
                     </button>
                     <button
                       data-testid={`delete-student-${s.id}`}
-                      onClick={() => setDeleteStudentDialog({ open: true, student: s })}
+                      onClick={() => { setDeleteStudentError(''); setDeleteStudentDialog({ open: true, student: s }); }}
                       title="Elimina bambino"
                       className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 className="w-4 h-4" />
@@ -1071,7 +1076,7 @@ export default function AdminUsers() {
       />
 
       {/* ── Dialog Elimina Studente ──────────────────────────────────────── */}
-      <Dialog open={deleteStudentDialog.open} onOpenChange={(open) => !open && setDeleteStudentDialog({ open: false, student: null })}>
+      <Dialog open={deleteStudentDialog.open} onOpenChange={(open) => { if (!open) { setDeleteStudentDialog({ open: false, student: null }); setDeleteStudentError(''); } }}>
         <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-student-dialog">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
@@ -1083,8 +1088,13 @@ export default function AdminUsers() {
               Elimina <strong>{deleteStudentDialog.student?.name} {deleteStudentDialog.student?.cognome}</strong>?
             </p>
             <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">⚠️ Azione irreversibile. Il bambino verrà rimosso da tutte le griglie e gallerie.</p>
+            {deleteStudentError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2" data-testid="delete-student-error">
+                {deleteStudentError}
+              </p>
+            )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDeleteStudentDialog({ open: false, student: null })}
+              <Button variant="outline" onClick={() => { setDeleteStudentDialog({ open: false, student: null }); setDeleteStudentError(''); }}
                 className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
               <Button onClick={handleDeleteStudent} disabled={deleteStudentLoading}
                 className="flex-1 rounded-xl h-10 text-sm font-bold text-white"

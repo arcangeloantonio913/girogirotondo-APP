@@ -381,7 +381,7 @@ export default function TeacherMedia() {
                             <Square className="w-5 h-5 text-gray-300 flex-shrink-0" />
                           )}
                           <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: isChecked ? C.accentGreen : '#D1D5DB' }}>
-                            {s.name.charAt(0)}
+                            {(s.name || '?').charAt(0)}
                           </div>
                           <span className={`text-sm font-medium ${isChecked ? 'text-gray-900' : 'text-gray-600'}`}>
                             {s.name} <span className="font-normal text-xs text-gray-400">{s.cognome || ''}</span>

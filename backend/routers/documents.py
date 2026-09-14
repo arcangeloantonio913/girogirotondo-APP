@@ -133,7 +133,18 @@ async def get_documents(
         query.update(_tenant_scope(ctx))
 
     docs = await db.documents.find(query, {"_id": 0}).to_list(100)
-    return [_refresh_url(d) for d in docs]
+    # PERF: la LISTA non deve trasportare i file base64 (data: URL fino a ~12MB CIASCUNO):
+    # rendevano la pagina Modulistica e il refresh post-upload lentissimi. Restituiamo solo
+    # metadati + flag `has_file`; il file vero si scarica on-demand via GET /documents/{id}.
+    out = []
+    for d in docs:
+        d = _refresh_url(d)
+        fu = d.get("file_url") or ""
+        d["has_file"] = bool(fu)
+        if fu.startswith("data:"):
+            d["file_url"] = None
+        out.append(d)
+    return out
 
 
 @router.get("/{doc_id}")

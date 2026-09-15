@@ -206,6 +206,17 @@ export function AuthProvider({ children }) {
     setSede(sedeId);
   };
 
+  // Garantisce l'header X-Sede-Id per gli admin (api.js lo legge da localStorage 'ggt_sede').
+  // I SuperAdmin (le direttrici) NON hanno una sede fissa: senza header, le operazioni
+  // per-sede (upload documenti, menu mensa, avvisi...) venivano salvate con sede NULLA e poi
+  // sparivano dalle liste (che filtrano per sede) → sembrava "non carica". Persistiamo la sede
+  // corrente (default: prima sede del tenant); il superadmin può comunque cambiarla dallo switcher.
+  useEffect(() => {
+    if (user?.role === 'admin' && !localStorage.getItem('ggt_sede') && sede) {
+      updateSede(sede);
+    }
+  }, [user, sede]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setActiveChildId = (childId) => {
     localStorage.setItem('ggt_active_child', childId || '');
     setActiveChildIdState(childId);

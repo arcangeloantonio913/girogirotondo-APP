@@ -42,7 +42,7 @@ if _SENTRY_DSN:
         send_default_pii=False,   # Nessun dato personale inviato a Sentry (GDPR)
     )
 
-from services.database import seed_database, get_client, ensure_superadmins
+from services.database import seed_database, get_client, ensure_superadmins, ensure_indexes
 from middleware.error_handler import add_error_handlers
 from middleware.rate_limiter import limiter
 from utils.firebase_client import init_firebase
@@ -165,6 +165,14 @@ async def startup():
         logger.info("[STARTUP] SuperAdmin garantiti OK")
     except Exception as exc:
         logger.error("[STARTUP] ensure_superadmins FALLITO: %s", exc)
+
+    # ensure_indexes viene eseguito SEMPRE, anche su DB già popolato in produzione
+    # (il seed si ferma se i dati esistono, quindi gli indici vanno creati a parte).
+    try:
+        await ensure_indexes()
+        logger.info("[STARTUP] Indici MongoDB garantiti OK")
+    except Exception as exc:
+        logger.warning("[STARTUP] ensure_indexes skipped: %s", exc)
 
     try:
         await seed_database()

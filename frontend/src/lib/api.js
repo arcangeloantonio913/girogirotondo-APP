@@ -17,8 +17,8 @@ const api = axios.create({
 const _cache = new Map();
 const CACHE_TTL_MS = 30_000; // 30 secondi
 
-// Solo dati che cambiano raramente — /students escluso (admin lo modifica spesso)
-const CACHEABLE_PATHS = ['/classes', '/sedi'];
+// Liste più pesanti/frequenti da mettere in cache 30s
+const CACHEABLE_PATHS = ['/users', '/students', '/classes', '/sedi'];
 
 function cacheKey(url, headers) {
   return `${headers['X-Sede-Id'] || ''}::${url}`;
@@ -79,15 +79,17 @@ api.interceptors.response.use(
       const key = cacheKey(url, res.config.headers || {});
       _cache.set(key, { data: res.data, ts: Date.now() });
     }
-    // Dopo una MUTAZIONE (POST/PUT/PATCH/DELETE) su un percorso cacheabile, invalida la cache:
-    // la GET successiva (es. loadData dopo aver creato/eliminato una classe) prende dati FRESCHI
-    // senza dover ricaricare la pagina. Prima la cache 30s restituiva la lista vecchia.
+    // Dopo una MUTAZIONE (POST/PUT/PATCH/DELETE) che tocca una risorsa cacheabile, svuota TUTTA
+    // la cache. Queste risorse sono accoppiate: POST /users/iscrizione crea uno studente,
+    // PATCH /classes/{id} riassegna una maestra (→ cambia gli utenti). Invalidare per prefisso
+    // lascerebbe liste stale collegate; azzerare tutto è più sicuro. Le mutazioni ad alta frequenza
+    // (griglia, presenze, documenti, mensa, avvisi, appuntamenti) NON toccano questi prefissi,
+    // quindi non svuotano la cache.
     else if (method && method !== 'get') {
-      for (const p of CACHEABLE_PATHS) {
-        if (url === p || url.startsWith(p + '/') || url.startsWith(p + '?')) {
-          for (const k of Array.from(_cache.keys())) { if (k.includes(p)) _cache.delete(k); }
-        }
-      }
+      const touchesCacheable = CACHEABLE_PATHS.some(
+        p => url === p || url.startsWith(p + '/') || url.startsWith(p + '?')
+      );
+      if (touchesCacheable) _cache.clear();
     }
     return res;
   },

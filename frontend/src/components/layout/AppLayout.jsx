@@ -188,7 +188,7 @@ function ChildSwitcher({ students, compact = false }) {
 }
 
 export default function AppLayout({ children, title, showBack }) {
-  const { user, logout, sede, sedeInfo } = useAuth();
+  const { user, logout, sede, sedeInfo, childIds } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -197,14 +197,15 @@ export default function AppLayout({ children, title, showBack }) {
   const roleColor = getRoleColor(user?.role);
   const [childrenList, setChildrenList] = useState([]);
 
-  // Carica figli del genitore (per ChildSwitcher)
+  // Carica figli del genitore (per ChildSwitcher) — solo per famiglie con più di un figlio.
+  // Con un solo figlio lo switcher è comunque nascosto: evitiamo la GET /students inutile.
   useEffect(() => {
-    if (user?.role === 'parent') {
+    if (user?.role === 'parent' && (childIds?.length || 0) > 1) {
       import('@/lib/api').then(({ default: api }) => {
         api.get('/students').then(r => setChildrenList(r.data || [])).catch(() => {});
       });
     }
-  }, [user]);
+  }, [user, childIds]);
 
   const handleLogout = () => {
     logout();

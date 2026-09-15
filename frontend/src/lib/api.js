@@ -72,10 +72,22 @@ let _isLoggingOut = false;
 
 api.interceptors.response.use(
   (res) => {
+    const method = res.config?.method;
+    const url = res.config?.url || '';
     // Salva in cache se è una GET cacheabile
-    if (res.config?.method === 'get' && !res.cached && isCacheable(res.config.url)) {
-      const key = cacheKey(res.config.url, res.config.headers || {});
+    if (method === 'get' && !res.cached && isCacheable(url)) {
+      const key = cacheKey(url, res.config.headers || {});
       _cache.set(key, { data: res.data, ts: Date.now() });
+    }
+    // Dopo una MUTAZIONE (POST/PUT/PATCH/DELETE) su un percorso cacheabile, invalida la cache:
+    // la GET successiva (es. loadData dopo aver creato/eliminato una classe) prende dati FRESCHI
+    // senza dover ricaricare la pagina. Prima la cache 30s restituiva la lista vecchia.
+    else if (method && method !== 'get') {
+      for (const p of CACHEABLE_PATHS) {
+        if (url === p || url.startsWith(p + '/') || url.startsWith(p + '?')) {
+          for (const k of Array.from(_cache.keys())) { if (k.includes(p)) _cache.delete(k); }
+        }
+      }
     }
     return res;
   },

@@ -101,7 +101,7 @@ app.add_middleware(
     # Copre anche i deploy Vercel per-commit (dimensionebimbowebapp-<hash>.vercel.app e
     # girogirotondo-*.vercel.app) oltre agli alias stabili in allow_origins.
     allow_origin_regex=r"https://(dimensionebimbowebapp|girogirotondo)[a-z0-9-]*\.vercel\.app",
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Sede-Id"],
 )
 

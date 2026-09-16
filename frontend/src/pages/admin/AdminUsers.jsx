@@ -80,7 +80,7 @@ export default function AdminUsers() {
   const [isc2Form, setIsc2Form] = useState({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
 
   // form modifica credenziali
-  const [credForm, setCredForm] = useState({ email: '', password: '' });
+  const [credForm, setCredForm] = useState({ email: '', name: '', cognome: '', password: '' });
   const [showCredPwd, setShowCredPwd] = useState(false);
   const [credLoading, setCredLoading] = useState(false);
   const [credError, setCredError] = useState('');
@@ -138,7 +138,7 @@ export default function AdminUsers() {
 
   // ── apertura dialog modifica credenziali ──────────────────────────────────
   const openCredDialog = (user) => {
-    setCredForm({ email: user.email, password: '' });
+    setCredForm({ email: user.email, name: user.name || '', cognome: user.cognome || '', password: '' });
     setCredError('');
     setCredSuccess(false);
     setShowCredPwd(false);
@@ -240,15 +240,30 @@ export default function AdminUsers() {
     setCredSuccess(false);
     setResendResult(null);
     try {
-      await api.put(`/users/${credDialog.user.id}/credentials`, {
-        email: credForm.email !== credDialog.user.email ? credForm.email : undefined,
-        password: credForm.password || undefined,
-      });
-      setCredSuccess(true);
-      // Aggiorna email nel pannello senza reload
-      if (credForm.email !== credDialog.user.email) {
-        setUsers(prev => prev.map(u => u.id === credDialog.user.id ? { ...u, email: credForm.email } : u));
+      // 1) Nome/Cognome (endpoint update_user) — solo se cambiati
+      const nameChanged = (credForm.name || '') !== (credDialog.user.name || '');
+      const cognomeChanged = (credForm.cognome || '') !== (credDialog.user.cognome || '');
+      if (nameChanged || cognomeChanged) {
+        await api.put(`/users/${credDialog.user.id}`, {
+          name: nameChanged ? (credForm.name || '') : undefined,
+          cognome: cognomeChanged ? (credForm.cognome || '') : undefined,
+        });
+        setUsers(prev => prev.map(u => u.id === credDialog.user.id
+          ? { ...u, name: credForm.name, cognome: credForm.cognome } : u));
       }
+      // 2) Email/password (endpoint credentials) — solo se cambiati (altrimenti il backend
+      //    risponderebbe "Nessun campo da aggiornare" quando cambio solo il nome)
+      const credChanged = !!credForm.password || credForm.email !== credDialog.user.email;
+      if (credChanged) {
+        await api.put(`/users/${credDialog.user.id}/credentials`, {
+          email: credForm.email !== credDialog.user.email ? credForm.email : undefined,
+          password: credForm.password || undefined,
+        });
+        if (credForm.email !== credDialog.user.email) {
+          setUsers(prev => prev.map(u => u.id === credDialog.user.id ? { ...u, email: credForm.email } : u));
+        }
+      }
+      setCredSuccess(true);
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante la modifica');
     } finally { setCredLoading(false); }
@@ -702,6 +717,23 @@ export default function AdminUsers() {
               </div>
             ) : (
               <div className="space-y-3 pt-2">
+                {/* Nome e Cognome — modificabili */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Nome</Label>
+                    <Input data-testid="cred-name-input" autoComplete="off"
+                      value={credForm.name}
+                      onChange={e => setCredForm({ ...credForm, name: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="Nome" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Cognome</Label>
+                    <Input data-testid="cred-cognome-input" autoComplete="off"
+                      value={credForm.cognome}
+                      onChange={e => setCredForm({ ...credForm, cognome: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="Cognome" />
+                  </div>
+                </div>
                 {/* Email attuale — sempre visibile */}
                 <div>
                   <Label className="text-xs font-medium text-gray-600">Email account</Label>
@@ -763,7 +795,7 @@ export default function AdminUsers() {
                 {/* Due pulsanti: Salva silenzioso / Salva + Reinvia email */}
                 <div className="flex gap-2">
                   <Button data-testid="save-cred-submit" onClick={handleSaveCred}
-                    disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email)}
+                    disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email && (credForm.name || '') === (credDialog.user?.name || '') && (credForm.cognome || '') === (credDialog.user?.cognome || ''))}
                     variant="outline"
                     className="flex-1 rounded-xl h-10 text-sm border-2" style={{ borderColor: C.primary, color: C.primary }}>
                     {credLoading ? 'Salvo...' : 'Salva'}

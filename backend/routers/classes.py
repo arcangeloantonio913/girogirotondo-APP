@@ -118,7 +118,11 @@ async def update_class(
             teacher = await db.users.find_one({"id": payload.teacher_id, "role": "teacher"})
             if not teacher:
                 raise HTTPException(status_code=400, detail="Maestra non trovata")
-            if teacher.get("sede_id") != cls.get("sede_id"):
+            # Admin normale: la maestra deve essere della stessa sede della classe (niente
+            # accesso cross-tenant). Il SuperAdmin (direzione) può assegnare qualsiasi maestra
+            # della propria org: i dati IMPORTATI di Dimensione Bimbo possono avere sede_id
+            # disallineati tra maestra e classe pur essendo la stessa sede reale.
+            if not current_user.get("is_superadmin") and teacher.get("sede_id") != cls.get("sede_id"):
                 raise HTTPException(status_code=400, detail="La maestra non appartiene alla sede della classe")
             new_teacher_id = payload.teacher_id
         # Revoca la classe a QUALSIASI maestra attuale (riassegnazione o rimozione): altrimenti

@@ -96,6 +96,13 @@ export default function AdminUsers() {
   const [deleteStudentLoading, setDeleteStudentLoading] = useState(false);
   const [credSuccess, setCredSuccess] = useState(false);
 
+  // assegnazione sede/sezione (dipendente → sede + classe)
+  const [assignDialog, setAssignDialog] = useState({ open: false, user: null });
+  const [assignClassIds, setAssignClassIds] = useState([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState('');
+  const [assignSuccess, setAssignSuccess] = useState(false);
+
   useEffect(() => { loadData(); }, [sede]);
 
   const loadData = async () => {
@@ -150,6 +157,42 @@ export default function AdminUsers() {
         ? prev.class_ids.filter(id => id !== classId)
         : [...prev.class_ids, classId],
     }));
+  };
+
+  // ── assegnazione dipendente → sede (attiva) + sezione/i ────────────────────
+  const openAssignDialog = (user) => {
+    const current = user.class_ids?.length ? user.class_ids : (user.class_id ? [user.class_id] : []);
+    // Mostra solo le classi appartenenti alla sede attiva (le uniche assegnabili qui)
+    const inSede = current.filter(id => classes.some(c => c.id === id));
+    setAssignClassIds(inSede);
+    setAssignError('');
+    setAssignSuccess(false);
+    setAssignDialog({ open: true, user });
+  };
+
+  const toggleAssignClass = (classId) => {
+    setAssignClassIds(prev =>
+      prev.includes(classId) ? prev.filter(id => id !== classId) : [...prev, classId]
+    );
+  };
+
+  const handleSaveAssign = async () => {
+    if (!assignDialog.user) return;
+    setAssignLoading(true);
+    setAssignError('');
+    try {
+      // Sposta il dipendente nella sede ATTIVA e gli assegna le sezioni scelte.
+      // Il backend valida che le classi appartengano alla sede di destinazione.
+      const res = await api.put(`/users/${assignDialog.user.id}`, {
+        sede_id: sede,
+        class_ids: assignClassIds,
+        class_id: assignClassIds[0] || '',  // compat legacy; "" azzera (null verrebbe ignorato dal backend)
+      });
+      setUsers(prev => prev.map(u => (u.id === res.data.id ? { ...u, ...res.data } : u)));
+      setAssignSuccess(true);
+    } catch (err) {
+      setAssignError(err.response?.data?.detail || 'Errore durante l\'assegnazione');
+    } finally { setAssignLoading(false); }
   };
 
   // ── submit staff ─────────────────────────────────────────────────────────
@@ -523,8 +566,34 @@ export default function AdminUsers() {
                             ))}
                           </div>
                         )}
+                        {/* Sezioni assegnate alla maestra */}
+                        {role === 'teacher' && (
+                          <div className="flex gap-1 mt-1 flex-wrap" data-testid={`teacher-classes-${u.id}`}>
+                            {(() => {
+                              const cids = u.class_ids?.length ? u.class_ids : (u.class_id ? [u.class_id] : []);
+                              if (!cids.length) {
+                                return <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-600">⚠️ Nessuna sezione</span>;
+                              }
+                              return cids.map(cid => (
+                                <span key={cid} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                                  style={{ backgroundColor: `${C.accentPink}18`, color: C.accentPink }}>
+                                  {getClassName(cid)}
+                                </span>
+                              ));
+                            })()}
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        {/* Assegna sede/sezione (maestre e admin non-superadmin) */}
+                        {!u.is_superadmin && role !== 'parent' && (
+                          <button data-testid={`assign-user-${u.id}`}
+                            onClick={() => openAssignDialog(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-pink-50 text-gray-300 hover:text-pink-500 transition-colors"
+                            title="Assegna sede e sezione">
+                            <BookOpen className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Modifica credenziali (non per superadmin) */}
                         {!u.is_superadmin && (
                           <button data-testid={`edit-cred-${u.id}`}
@@ -759,6 +828,76 @@ export default function AdminUsers() {
                 <p className="text-[10px] text-gray-400 text-center">
                   "Salva e Invia Email" aggiorna le credenziali e le invia all'utente
                 </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Dialog Assegna Sede/Sezione ──────────────────────────────────── */}
+        <Dialog open={assignDialog.open} onOpenChange={(open) => !open && setAssignDialog({ open: false, user: null })}>
+          <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="assign-user-dialog">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
+                <BookOpen className="w-5 h-5" style={{ color: C.accentPink }} />
+                Assegna — {assignDialog.user?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            {assignSuccess ? (
+              <div className="py-4 flex flex-col items-center gap-3">
+                <CheckCircle className="w-10 h-10" style={{ color: C.accentGreen }} />
+                <p className="text-sm font-bold text-gray-900 text-center">Assegnazione salvata!</p>
+                <p className="text-xs text-gray-500 text-center">
+                  Il dipendente vedrà i bambini della sezione al prossimo accesso (o riaprendo l'app).
+                </p>
+                <Button onClick={() => setAssignDialog({ open: false, user: null })}
+                  className="w-full rounded-2xl h-10" style={{ backgroundColor: C.accentGreen }}>Chiudi</Button>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                {/* Sede di destinazione = sede attiva */}
+                <div className="bg-blue-50 rounded-xl px-3 py-2.5">
+                  <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-0.5">Sede di destinazione</p>
+                  <p className="text-sm font-bold" style={{ color: sedeInfo?.color || C.primary }}>{sedeInfo?.label}</p>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Il dipendente verrà spostato in questa sede. Per un'altra sede, cambia la <strong>sede attiva</strong> dal menu in alto e riapri.
+                  </p>
+                </div>
+
+                {/* Sezioni della sede attiva */}
+                <div>
+                  <Label className="text-xs font-medium text-gray-600">Sezione/i</Label>
+                  {classes.length === 0 ? (
+                    <p className="text-xs text-gray-400 mt-1">Nessuna sezione in questa sede.</p>
+                  ) : (
+                    <div className="flex gap-1.5 flex-wrap mt-1.5" data-testid="assign-class-chips">
+                      {classes.map(c => {
+                        const active = assignClassIds.includes(c.id);
+                        return (
+                          <button key={c.id} type="button" onClick={() => toggleAssignClass(c.id)}
+                            data-testid={`assign-class-${c.id}`}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                            style={active
+                              ? { backgroundColor: C.accentPink, borderColor: 'transparent', color: '#fff' }
+                              : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1.5">
+                    Puoi selezionare più sezioni. Deseleziona tutto per lasciare il dipendente senza sezione.
+                  </p>
+                </div>
+
+                {assignError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{assignError}</p>}
+
+                <Button onClick={handleSaveAssign} disabled={assignLoading}
+                  className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentPink }}
+                  data-testid="assign-save-submit">
+                  {assignLoading ? 'Salvataggio...' : '✓ Salva assegnazione'}
+                </Button>
               </div>
             )}
           </DialogContent>

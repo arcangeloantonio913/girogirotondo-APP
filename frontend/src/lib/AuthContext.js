@@ -206,6 +206,19 @@ export function AuthProvider({ children }) {
     setSede(sedeId);
   };
 
+  // Sincronizza la sede ATTIVA con quella del profilo utente.
+  // Maestre e genitori (e admin non-superadmin) hanno una sede fissa: l'header
+  // deve mostrare la LORO sede, non il default SEDI[0] (che mostrava "Sede Centrale"
+  // a tutti). I superadmin mantengono lo switcher manuale (nessuna sede fissa).
+  useEffect(() => {
+    if (!user) return;
+    const pinned =
+      (user.role === 'teacher' || user.role === 'parent' || (user.role === 'admin' && !user.is_superadmin));
+    if (pinned && user.sede_id && user.sede_id !== sede) {
+      updateSede(user.sede_id);
+    }
+  }, [user?.role, user?.sede_id, user?.is_superadmin]); // eslint-disable-line
+
   const setActiveChildId = (childId) => {
     localStorage.setItem('ggt_active_child', childId || '');
     setActiveChildIdState(childId);

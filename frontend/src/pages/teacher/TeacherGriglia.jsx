@@ -12,7 +12,6 @@ const MEAL_COLS = [
   { key: 'merenda', label: 'Merenda',  short: 'MER', color: '#FFB347' },
   { key: 'pasta',   label: 'Pasta',    short: 'PAS', color: C.babyPink },
   { key: 'secondo', label: 'Secondo',  short: 'SEC', color: C.babyBlue },
-  { key: 'pane',    label: 'Pane',     short: 'PAN', color: '#FFD699' },
   { key: 'frutta',  label: 'Frutta',   short: 'FRU', color: C.babyGreen },
 ];
 

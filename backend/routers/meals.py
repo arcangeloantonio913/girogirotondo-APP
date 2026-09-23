@@ -136,23 +136,33 @@ async def create_meal(
 @router.delete("/api/meals/menu/{meal_id}", status_code=200)
 async def delete_meal(
     meal_id: str,
-    current_user: dict = Depends(get_current_user),
+    ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
-    """Elimina un menu — solo admin, verifica appartenenza alla sede."""
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Solo gli amministratori possono eliminare menu")
+    """Elimina un menu — admin o maestra, entro il proprio scope (sede + classe).
 
-    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+    Le maestre possono gestire il menù (creare e cancellare) della propria sede /
+    classe; restano fail-closed su sedi e classi non proprie.
+    """
+    if ctx.role not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
     db = get_db()
-
     meal = await db.meals.find_one({"id": meal_id})
     if not meal:
         raise HTTPException(status_code=404, detail="Menu non trovato")
-    # FAIL-CLOSED: un menu di altra sede — o SENZA sede (dato legacy) — non è eliminabile
-    # da un admin normale; solo il superadmin (all-access) può.
-    if not current_user.get("is_superadmin") and meal.get("sede_id") != sede_id:
-        raise HTTPException(status_code=404, detail="Menu non trovato")   # 404 cross-tenant (convenzione)
+
+    if ctx.role == "admin":
+        sede_id = await validate_admin_sede_access(ctx.user, x_sede_id)
+        # FAIL-CLOSED: un menu di altra sede — o SENZA sede (dato legacy) — non è
+        # eliminabile da un admin normale; solo il superadmin (all-access) può.
+        if not ctx.user.get("is_superadmin") and meal.get("sede_id") != sede_id:
+            raise HTTPException(status_code=404, detail="Menu non trovato")
+    else:  # teacher — deve essere della sua sede; se class-specific, una delle sue classi
+        if meal.get("sede_id") not in ctx.sede_ids:
+            raise HTTPException(status_code=404, detail="Menu non trovato")
+        if meal.get("class_id") and meal.get("class_id") not in ctx.allowed_class_ids:
+            raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
 
     await db.meals.delete_one({"id": meal_id})
     return {"message": "Menu eliminato"}

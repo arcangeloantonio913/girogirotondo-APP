@@ -69,7 +69,9 @@ async function saveUser(userData: User, setSede: (s: string) => void) {
     const seed = existing || 'girogirotondo';
     await SecureStore.setItemAsync('ggt_sede', seed);
     setSede(seed);
-  } else if (userData.role === 'admin' && userData.sede_id) {
+  } else if (userData.sede_id) {
+    // Admin non-superadmin, MAESTRE e GENITORI hanno una sede fissa dal profilo:
+    // header + X-Sede-Id devono riflettere la LORO sede, non il default.
     await SecureStore.setItemAsync('ggt_sede', userData.sede_id);
     setSede(userData.sede_id);
   }

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Grid3X3, Camera, Users, BookOpen, ChevronRight, ClipboardList } from 'lucide-react';
+import { Grid3X3, Camera, Users, BookOpen, ChevronRight, ClipboardList, UtensilsCrossed } from 'lucide-react';
 
 export default function TeacherDashboard() {
   const { user } = useAuth();
@@ -36,6 +36,7 @@ export default function TeacherDashboard() {
     { id: 'griglia',   icon: Grid3X3,      color: C.accentPink, bg: C.tintPink, title: 'Griglia Giornaliera',   subtitle: 'Gestisci le attività quotidiane', path: '/teacher/griglia' },
     { id: 'presenze',  icon: ClipboardList, color: C.primary, bg: C.tintBlue, title: 'Registro Presenze',     subtitle: 'Segna presenze e assenze',       path: '/teacher/presenze' },
     { id: 'media',     icon: Camera,        color: C.accentGreen, bg: C.tintGreen, title: 'Carica Media',          subtitle: 'Aggiungi foto e video',           path: '/teacher/media' },
+    { id: 'mensa',     icon: UtensilsCrossed, color: C.primary, bg: C.tintBlue, title: 'Menu della Mensa',      subtitle: 'Gestisci e modifica il menù',     path: '/teacher/mensa' },
   ];
 
   return (

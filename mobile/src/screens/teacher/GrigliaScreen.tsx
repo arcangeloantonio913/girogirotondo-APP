@@ -19,7 +19,6 @@ const MEALS = [
   {key:'merenda_mattina',label:'Merenda mattina',icon:'☕'},
   {key:'pasta',label:'Pasta',icon:'🍝'},
   {key:'secondo',label:'Secondo',icon:'🍗'},
-  {key:'pane',label:'Pane',icon:'🍞'},
   {key:'frutta',label:'Frutta',icon:'🍎'},
 ];
 

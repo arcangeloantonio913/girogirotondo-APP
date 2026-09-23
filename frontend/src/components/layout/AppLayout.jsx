@@ -38,6 +38,7 @@ function getNavItems(role) {
       { path: '/teacher/diario',    icon: BookMarked,    label: 'Diario' },
       { path: '/teacher/media',     icon: Camera,        label: 'Media' },
       // ── Solo sidebar ─────────────────────────────────────────────────────
+      { path: '/teacher/mensa',     icon: UtensilsCrossed, label: 'Menu' },
       { path: '/teacher/avvisi',    icon: Megaphone,     label: 'Avvisi' },
       { path: '/teacher/profile',   icon: User,          label: 'Profilo' },
     ];

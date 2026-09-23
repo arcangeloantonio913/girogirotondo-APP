@@ -1,4 +1,4 @@
-import { C } from '@/config/tenant';
+import { C, tenant } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -142,6 +142,7 @@ export default function ParentDashboard() {
   const grigliaActivities = griglia ? [
     { label: 'Pasta',   active: griglia.pasta,   color: C.babyPink },
     { label: 'Secondo', active: griglia.secondo, color: C.babyBlue },
+    ...(tenant.hidePaneGriglia ? [] : [{ label: 'Pane', active: griglia.pane, color: '#FFD699' }]),
     { label: 'Frutta',  active: griglia.frutta,  color: C.babyGreen },
   ] : [];
 

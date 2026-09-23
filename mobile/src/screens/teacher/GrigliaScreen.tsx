@@ -19,8 +19,9 @@ const MEALS = [
   {key:'merenda_mattina',label:'Merenda mattina',icon:'☕'},
   {key:'pasta',label:'Pasta',icon:'🍝'},
   {key:'secondo',label:'Secondo',icon:'🍗'},
+  {key:'pane',label:'Pane',icon:'🍞'},
   {key:'frutta',label:'Frutta',icon:'🍎'},
-];
+].filter(m => !(m.key === 'pane' && tenant.hidePaneGriglia));
 
 function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 

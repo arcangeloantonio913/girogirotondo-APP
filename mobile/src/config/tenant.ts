@@ -47,6 +47,9 @@ export type Tenant = {
   colors: TenantColors;
   logo: ImageSourcePropType | null;
   sedi: TenantSede[];
+  // true se questo tenant NON usa la colonna "Pane" nella griglia giornaliera
+  // (Dimensione Bimbo). Girogirotondo (assente/false) la mantiene.
+  hidePaneGriglia?: boolean;
   // true se il tenant ha un portale web dove atterra il link di reset password.
   // false per i tenant con sola landing (es. Dimensione Bimbo): "Password
   // dimenticata?" non naviga, mostra un alert (il reset si gestisce con la scuola).
@@ -90,6 +93,7 @@ const TENANTS: Record<string, Tenant> = {
     appName: 'Dimensione Bimbo',
     tagline: 'La tua scuola a portata di mano',
     footer: '© 2026 Dimensione Bimbo — Realizzato da Omnia',
+    hidePaneGriglia: true,
     colors: {
       bg: '#FFE3C2', white: '#FFFFFF', primary: '#FB6A00',
       babyBlue: '#FACC15', babyPink: '#FFC9A3', babyGreen: '#FCD9A0',

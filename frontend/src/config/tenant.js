@@ -71,6 +71,8 @@ const TENANTS = {
   'dimensione-bimbo': {
     appName: 'Dimensione Bimbo',
     tagline: 'La tua scuola a portata di mano',
+    // Griglia: Dimensione Bimbo NON usa la colonna "Pane" (Girogirotondo sì).
+    hidePaneGriglia: true,
     footer: '© 2026 Dimensione Bimbo soc.coop.soc. — P.IVA 04323410821 — Conforme GDPR e normative EU. Realizzato da Omnia',
     logo: DB_LOGO,
     favicon: DB_LOGO,

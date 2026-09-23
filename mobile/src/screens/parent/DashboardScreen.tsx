@@ -131,6 +131,7 @@ export default function ParentDashboard({ navigation }: any) {
   const grigliaItems = griglia ? [
     { label: 'Primo',   active: !!griglia.pasta,   color: C.babyPink },
     { label: 'Secondo', active: !!griglia.secondo,  color: C.babyBlue },
+    ...(tenant.hidePaneGriglia ? [] : [{ label: 'Pane', active: !!griglia.pane, color: '#FFD699' }]),
     { label: 'Frutta',  active: !!griglia.frutta,   color: C.babyGreen },
   ] : [];
 

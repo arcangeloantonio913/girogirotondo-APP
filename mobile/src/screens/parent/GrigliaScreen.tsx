@@ -26,10 +26,11 @@ const TIMELINE = [
   { key: 'merenda', label: 'Merenda',        icon: '☕', time: '09:30', type: 'meal' },
   { key: 'pasta',   label: 'Pasta / Primo',  icon: '🍝', time: '12:00', type: 'meal' },
   { key: 'secondo', label: 'Secondo',        icon: '🍗', time: '12:15', type: 'meal' },
+  { key: 'pane',    label: 'Pane',           icon: '🍞', time: '12:25', type: 'meal' },
   { key: 'frutta',  label: 'Frutta',         icon: '🍎', time: '12:35', type: 'meal' },
   { key: 'pupu',    label: 'Pupù',           icon: '💩', time: '',      type: 'bool' },
   { key: 'nanna',   label: 'Nanna / Riposo', icon: '😴', time: '13:00', type: 'bool' },
-];
+].filter(t => !(t.key === 'pane' && tenant.hidePaneGriglia));
 
 function addDays(d: string, n: number) {
   const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + n);

@@ -75,16 +75,22 @@ export default function AdminModulistica() {
     if (!file) { Alert.alert('Attenzione', 'Seleziona un file da caricare'); return; }
     setSaving(true);
     try {
+      // Timeout esteso: PDF/immagini pesanti possono superare i 20s di default
       const res = await api.post('/documents/upload-b64', {
         title,
         description: desc,
         file_b64: file.base64,
         file_type: file.mime,
         categoria: 'modulistica',
-      });
+      }, { timeout: 90000 });
       setDocs(prev => [res.data, ...prev]);
       setShowForm(false); setTitle(''); setDesc(''); setFile(null);
-    } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile caricare il documento'); }
+    } catch (e: any) {
+      const msg = e?.code === 'ECONNABORTED'
+        ? 'Caricamento troppo lento: il file è pesante o la connessione è debole. Riprova con una connessione migliore.'
+        : (e?.response?.data?.detail || 'Impossibile caricare il documento');
+      Alert.alert('Errore', msg);
+    }
     finally { setSaving(false); }
   };
 

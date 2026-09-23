@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export default function ParentProfile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, activeChildId } = useAuth();
   const [child, setChild] = useState(null);
 
   // Modifica email
@@ -18,11 +18,11 @@ export default function ParentProfile() {
   const [emailResult, setEmailResult] = useState(null);
 
   useEffect(() => {
-    const primaryChildId = (user?.child_ids && user.child_ids[0]) || user?.child_id;
+    const primaryChildId = activeChildId || (user?.child_ids && user.child_ids[0]) || user?.child_id;
     if (primaryChildId) {
       api.get(`/students/${primaryChildId}`).then(res => setChild(res.data));
     }
-  }, [user]);
+  }, [user, activeChildId]);
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim() || newEmail === user?.email) return;

@@ -4,7 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Home, User, FileText, Calendar, Camera, Grid3X3, LogOut,
   Menu, X, Bell, ChevronLeft, Users, BookOpen, UtensilsCrossed,
-  Megaphone, ChevronDown, Building2, BookMarked, ClipboardList, UserPlus,
+  Megaphone, ChevronDown, Building2, BookMarked, ClipboardList,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -55,7 +55,6 @@ function getNavItems(role) {
       { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
       { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },
       { path: '/admin/modulistica',   icon: FileText,       label: 'Modulistica' },
-      { path: '/admin/iscrizioni',    icon: UserPlus,       label: 'Iscrizioni' },
       { path: '/admin/profile',       icon: User,           label: 'Profilo' },
     ];
   }
@@ -190,7 +189,7 @@ function ChildSwitcher({ students, compact = false }) {
 }
 
 export default function AppLayout({ children, title, showBack }) {
-  const { user, logout, sede, sedeInfo } = useAuth();
+  const { user, logout, sede, sedeInfo, childIds } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -199,14 +198,15 @@ export default function AppLayout({ children, title, showBack }) {
   const roleColor = getRoleColor(user?.role);
   const [childrenList, setChildrenList] = useState([]);
 
-  // Carica figli del genitore (per ChildSwitcher)
+  // Carica figli del genitore (per ChildSwitcher) — solo per famiglie con più di un figlio.
+  // Con un solo figlio lo switcher è comunque nascosto: evitiamo la GET /students inutile.
   useEffect(() => {
-    if (user?.role === 'parent') {
+    if (user?.role === 'parent' && (childIds?.length || 0) > 1) {
       import('@/lib/api').then(({ default: api }) => {
         api.get('/students').then(r => setChildrenList(r.data || [])).catch(() => {});
       });
     }
-  }, [user]);
+  }, [user, childIds]);
 
   const handleLogout = () => {
     logout();

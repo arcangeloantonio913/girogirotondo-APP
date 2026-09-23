@@ -45,7 +45,7 @@ const EMPTY_ISCRIZIONE = {
 };
 
 export default function AdminUsers() {
-  const { sede, sedeInfo } = useAuth();
+  const { sede, sedeInfo, isSuperAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -58,6 +58,7 @@ export default function AdminUsers() {
   const [dialogType, setDialogType] = useState('staff');
   const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [credDialog, setCredDialog] = useState({ open: false, user: null });
 
   // form staff
@@ -79,7 +80,7 @@ export default function AdminUsers() {
   const [isc2Form, setIsc2Form] = useState({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
 
   // form modifica credenziali
-  const [credForm, setCredForm] = useState({ email: '', password: '' });
+  const [credForm, setCredForm] = useState({ email: '', name: '', cognome: '', password: '' });
   const [showCredPwd, setShowCredPwd] = useState(false);
   const [credLoading, setCredLoading] = useState(false);
   const [credError, setCredError] = useState('');
@@ -94,6 +95,7 @@ export default function AdminUsers() {
   // delete studente
   const [deleteStudentDialog, setDeleteStudentDialog] = useState({ open: false, student: null });
   const [deleteStudentLoading, setDeleteStudentLoading] = useState(false);
+  const [deleteStudentError, setDeleteStudentError] = useState('');
   const [credSuccess, setCredSuccess] = useState(false);
 
   // assegnazione sede/sezione (dipendente → sede + classe)
@@ -143,7 +145,7 @@ export default function AdminUsers() {
 
   // ── apertura dialog modifica credenziali ──────────────────────────────────
   const openCredDialog = (user) => {
-    setCredForm({ email: user.email, password: '' });
+    setCredForm({ email: user.email, name: user.name || '', cognome: user.cognome || '', password: '' });
     setCredError('');
     setCredSuccess(false);
     setShowCredPwd(false);
@@ -281,15 +283,30 @@ export default function AdminUsers() {
     setCredSuccess(false);
     setResendResult(null);
     try {
-      await api.put(`/users/${credDialog.user.id}/credentials`, {
-        email: credForm.email !== credDialog.user.email ? credForm.email : undefined,
-        password: credForm.password || undefined,
-      });
-      setCredSuccess(true);
-      // Aggiorna email nel pannello senza reload
-      if (credForm.email !== credDialog.user.email) {
-        setUsers(prev => prev.map(u => u.id === credDialog.user.id ? { ...u, email: credForm.email } : u));
+      // 1) Nome/Cognome (endpoint update_user) — solo se cambiati
+      const nameChanged = (credForm.name || '') !== (credDialog.user.name || '');
+      const cognomeChanged = (credForm.cognome || '') !== (credDialog.user.cognome || '');
+      if (nameChanged || cognomeChanged) {
+        await api.put(`/users/${credDialog.user.id}`, {
+          name: nameChanged ? (credForm.name || '') : undefined,
+          cognome: cognomeChanged ? (credForm.cognome || '') : undefined,
+        });
+        setUsers(prev => prev.map(u => u.id === credDialog.user.id
+          ? { ...u, name: credForm.name, cognome: credForm.cognome } : u));
       }
+      // 2) Email/password (endpoint credentials) — solo se cambiati (altrimenti il backend
+      //    risponderebbe "Nessun campo da aggiornare" quando cambio solo il nome)
+      const credChanged = !!credForm.password || credForm.email !== credDialog.user.email;
+      if (credChanged) {
+        await api.put(`/users/${credDialog.user.id}/credentials`, {
+          email: credForm.email !== credDialog.user.email ? credForm.email : undefined,
+          password: credForm.password || undefined,
+        });
+        if (credForm.email !== credDialog.user.email) {
+          setUsers(prev => prev.map(u => u.id === credDialog.user.id ? { ...u, email: credForm.email } : u));
+        }
+      }
+      setCredSuccess(true);
     } catch (err) {
       setCredError(err.response?.data?.detail || 'Errore durante la modifica');
     } finally { setCredLoading(false); }
@@ -316,6 +333,10 @@ export default function AdminUsers() {
   const handleBulkResendTeachers = async () => {
     const teachers = users.filter(u => u.role === 'teacher');
     if (!teachers.length) return;
+    if (!window.confirm(
+      `⚠️ ATTENZIONE: verrà generata una NUOVA password per TUTTE le ${teachers.length} maestre e inviata via email. ` +
+      `Le password attuali smetteranno di funzionare. Procedere?`
+    )) return;
     setBulkResendLoading(true);
     setBulkResendResults(null);
     const results = [];
@@ -341,12 +362,15 @@ export default function AdminUsers() {
   const handleDelete = async () => {
     if (!deleteDialog.user) return;
     setDeleteLoading(true);
+    setDeleteError('');
     try {
       const uid = deleteDialog.user.id;
       await api.delete(`/users/${uid}`);
       setUsers(prev => prev.filter(u => u.id !== uid));
       setDeleteDialog({ open: false, user: null });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      setDeleteError(err.response?.data?.detail || 'Errore durante l\'eliminazione');
+    }
     finally { setDeleteLoading(false); }
   };
 
@@ -354,12 +378,16 @@ export default function AdminUsers() {
   const handleDeleteStudent = async () => {
     if (!deleteStudentDialog.student) return;
     setDeleteStudentLoading(true);
+    setDeleteStudentError('');
     try {
       const sid = deleteStudentDialog.student.id;
       await api.delete(`/students/${sid}`);
       setStudents(prev => prev.filter(s => s.id !== sid));
       setDeleteStudentDialog({ open: false, student: null });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setDeleteStudentError(err.response?.data?.detail || 'Errore durante l\'eliminazione');
+    }
     finally { setDeleteStudentLoading(false); }
   };
 
@@ -550,7 +578,7 @@ export default function AdminUsers() {
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                         style={{ backgroundColor: getRoleColor(role) }}>
-                        {u.name.charAt(0)}
+                        {(u.name || '?').charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
@@ -594,8 +622,9 @@ export default function AdminUsers() {
                             <BookOpen className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Modifica credenziali (non per superadmin) */}
-                        {!u.is_superadmin && (
+                        {/* Modifica credenziali. Nascosta sugli account SuperAdmin agli
+                            admin normali; una direttrice (SuperAdmin) può gestirli. */}
+                        {(!u.is_superadmin || isSuperAdmin) && (
                           <button data-testid={`edit-cred-${u.id}`}
                             onClick={() => openCredDialog(u)}
                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-gray-300 hover:text-blue-500 transition-colors"
@@ -604,7 +633,7 @@ export default function AdminUsers() {
                           </button>
                         )}
                         <button data-testid={`delete-user-${u.id}`}
-                          onClick={() => setDeleteDialog({ open: true, user: u })}
+                          onClick={() => { setDeleteError(''); setDeleteDialog({ open: true, user: u }); }}
                           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -639,7 +668,7 @@ export default function AdminUsers() {
                     className="flex items-center gap-3 flex-1 text-left min-w-0">
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                       style={{ backgroundColor: C.primary }}>
-                      {s.name.charAt(0)}
+                      {(s.name || '?').charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{s.name} {s.cognome || ''}</p>
@@ -668,7 +697,7 @@ export default function AdminUsers() {
                     </button>
                     <button
                       data-testid={`delete-student-${s.id}`}
-                      onClick={() => setDeleteStudentDialog({ open: true, student: s })}
+                      onClick={() => { setDeleteStudentError(''); setDeleteStudentDialog({ open: true, student: s }); }}
                       title="Elimina bambino"
                       className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
                       <Trash2 className="w-4 h-4" />
@@ -684,7 +713,7 @@ export default function AdminUsers() {
         </div>
 
         {/* ── Dialog Elimina ───────────────────────────────────────────────── */}
-        <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, user: null })}>
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => { if (!open) { setDeleteDialog({ open: false, user: null }); setDeleteError(''); } }}>
           <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-user-dialog">
             <DialogHeader>
               <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
@@ -697,8 +726,13 @@ export default function AdminUsers() {
                 <br /><span className="text-xs text-gray-400">{deleteDialog.user?.email}</span>
               </p>
               <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">⚠️ Azione irreversibile.</p>
+              {deleteError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2" data-testid="delete-user-error">
+                  {deleteError}
+                </p>
+              )}
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setDeleteDialog({ open: false, user: null })}
+                <Button variant="outline" onClick={() => { setDeleteDialog({ open: false, user: null }); setDeleteError(''); }}
                   className="flex-1 rounded-xl h-10 text-sm" data-testid="cancel-delete-user">Annulla</Button>
                 <Button onClick={handleDelete} disabled={deleteLoading}
                   className="flex-1 rounded-xl h-10 text-sm font-bold text-white"
@@ -752,6 +786,23 @@ export default function AdminUsers() {
               </div>
             ) : (
               <div className="space-y-3 pt-2">
+                {/* Nome e Cognome — modificabili */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Nome</Label>
+                    <Input data-testid="cred-name-input" autoComplete="off"
+                      value={credForm.name}
+                      onChange={e => setCredForm({ ...credForm, name: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="Nome" />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-600">Cognome</Label>
+                    <Input data-testid="cred-cognome-input" autoComplete="off"
+                      value={credForm.cognome}
+                      onChange={e => setCredForm({ ...credForm, cognome: e.target.value })}
+                      className="rounded-xl mt-1" placeholder="Cognome" />
+                  </div>
+                </div>
                 {/* Email attuale — sempre visibile */}
                 <div>
                   <Label className="text-xs font-medium text-gray-600">Email account</Label>
@@ -813,7 +864,7 @@ export default function AdminUsers() {
                 {/* Due pulsanti: Salva silenzioso / Salva + Reinvia email */}
                 <div className="flex gap-2">
                   <Button data-testid="save-cred-submit" onClick={handleSaveCred}
-                    disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email)}
+                    disabled={credLoading || (!credForm.password && credForm.email === credDialog.user?.email && (credForm.name || '') === (credDialog.user?.name || '') && (credForm.cognome || '') === (credDialog.user?.cognome || ''))}
                     variant="outline"
                     className="flex-1 rounded-xl h-10 text-sm border-2" style={{ borderColor: C.primary, color: C.primary }}>
                     {credLoading ? 'Salvo...' : 'Salva'}
@@ -1196,7 +1247,7 @@ export default function AdminUsers() {
       />
 
       {/* ── Dialog Elimina Studente ──────────────────────────────────────── */}
-      <Dialog open={deleteStudentDialog.open} onOpenChange={(open) => !open && setDeleteStudentDialog({ open: false, student: null })}>
+      <Dialog open={deleteStudentDialog.open} onOpenChange={(open) => { if (!open) { setDeleteStudentDialog({ open: false, student: null }); setDeleteStudentError(''); } }}>
         <DialogContent className="rounded-2xl max-w-xs mx-auto" data-testid="delete-student-dialog">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito', color: '#EF4444' }}>
@@ -1208,8 +1259,13 @@ export default function AdminUsers() {
               Elimina <strong>{deleteStudentDialog.student?.name} {deleteStudentDialog.student?.cognome}</strong>?
             </p>
             <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">⚠️ Azione irreversibile. Il bambino verrà rimosso da tutte le griglie e gallerie.</p>
+            {deleteStudentError && (
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2" data-testid="delete-student-error">
+                {deleteStudentError}
+              </p>
+            )}
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setDeleteStudentDialog({ open: false, student: null })}
+              <Button variant="outline" onClick={() => { setDeleteStudentDialog({ open: false, student: null }); setDeleteStudentError(''); }}
                 className="flex-1 rounded-xl h-10 text-sm">Annulla</Button>
               <Button onClick={handleDeleteStudent} disabled={deleteStudentLoading}
                 className="flex-1 rounded-xl h-10 text-sm font-bold text-white"

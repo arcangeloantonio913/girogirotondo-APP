@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -183,18 +183,23 @@ export function AuthProvider({ children }) {
       });
       const fresh = res.data;
       localStorage.setItem('ggt_user', JSON.stringify(fresh));
-      setUser(fresh);
+      // Evita un re-render dell'intera app se il profilo non è cambiato (focus ripetuti).
+      setUser(prev => (JSON.stringify(fresh) === JSON.stringify(prev) ? prev : fresh));
     } catch { /* ignora errori di rete — usa i dati esistenti */ }
   };
 
   // Auto-refresh quando l'utente torna sulla tab/app (visibilitychange)
-  // → i genitori non devono più fare logout/login per vedere dati aggiornati
+  // → i genitori non devono più fare logout/login per vedere dati aggiornati.
+  // Throttle a 60s: prima ogni focus lanciava un refresh + svuotava tutta la cache API,
+  // vanificando la cache. Ora l'invalidazione avviene solo sulle mutazioni (vedi api.js).
+  const lastRefreshRef = useRef(0);
   useEffect(() => {
     const handle = () => {
       if (!document.hidden && user) {
+        const now = Date.now();
+        if (now - lastRefreshRef.current < 60_000) return;
+        lastRefreshRef.current = now;
         refreshUser();
-        // Invalida anche la cache API per dati freschi
-        import('./api').then(({ default: api }) => api.clearCache?.()).catch(() => {});
       }
     };
     document.addEventListener('visibilitychange', handle);
@@ -219,38 +224,56 @@ export function AuthProvider({ children }) {
     }
   }, [user?.role, user?.sede_id, user?.is_superadmin]); // eslint-disable-line
 
+  // Garantisce l'header X-Sede-Id per gli admin (api.js lo legge da localStorage 'ggt_sede').
+  // I SuperAdmin (le direttrici) NON hanno una sede fissa: senza header, le operazioni
+  // per-sede (upload documenti, menu mensa, avvisi...) venivano salvate con sede NULLA e poi
+  // sparivano dalle liste (che filtrano per sede) → sembrava "non carica". Persistiamo la sede
+  // corrente (default: prima sede del tenant); il superadmin può comunque cambiarla dallo switcher.
+  useEffect(() => {
+    if (user?.role === 'admin' && !localStorage.getItem('ggt_sede') && sede) {
+      updateSede(sede);
+    }
+  }, [user, sede]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setActiveChildId = (childId) => {
     localStorage.setItem('ggt_active_child', childId || '');
     setActiveChildIdState(childId);
   };
 
-  // Calcola il bambino attivo: usa quello salvato se valido, altrimenti il primo
-  const childIds = user?.child_ids?.length ? user.child_ids
-    : user?.child_id ? [user.child_id] : [];
-  const resolvedActiveChildId = childIds.includes(activeChildId)
-    ? activeChildId
-    : childIds[0] || null;
+  // Calcola il bambino attivo: usa quello salvato se valido, altrimenti il primo.
+  // Memoizzati per dare identità stabile al value del context (evita re-render inutili).
+  const childIds = useMemo(() => (
+    user?.child_ids?.length ? user.child_ids
+      : user?.child_id ? [user.child_id] : []
+  ), [user]);
+  const resolvedActiveChildId = useMemo(() => (
+    childIds.includes(activeChildId) ? activeChildId : childIds[0] || null
+  ), [childIds, activeChildId]);
 
-  const sedeInfo = SEDI.find((s) => s.id === sede) || SEDI[0];
+  const sedeInfo = useMemo(() => SEDI.find((s) => s.id === sede) || SEDI[0], [sede]);
 
   // SuperAdmin: può accedere a entrambe le sedi
   const isSuperAdmin = user?.is_superadmin === true;
 
+  // Memoizza il value per evitare che ogni render del provider faccia ri-renderizzare
+  // tutti i consumer di useAuth.
+  const value = useMemo(() => ({
+    user,
+    login,
+    logout,
+    loading,
+    sede,
+    sedeInfo,
+    updateSede,
+    isSuperAdmin,
+    activeChildId: resolvedActiveChildId,
+    setActiveChildId,
+    childIds,
+    refreshUser,
+  }), [user, loading, sede, sedeInfo, isSuperAdmin, resolvedActiveChildId, childIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      logout,
-      loading,
-      sede,
-      sedeInfo,
-      updateSede,
-      isSuperAdmin,
-      activeChildId: resolvedActiveChildId,
-      setActiveChildId,
-      childIds,
-      refreshUser,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

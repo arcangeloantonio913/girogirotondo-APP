@@ -13,23 +13,39 @@ import { FileText, Plus, Trash2, CheckCircle2, XCircle, Eye, Upload, File, X, Bo
 async function compressIfImage(file) {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
-    const img = new Image();
     const url = URL.createObjectURL(file);
-    img.onload = () => {
+    let settled = false;
+    // finish() risolve UNA sola volta e ripulisce. Serve un TIMEOUT di sicurezza:
+    // alcune immagini (es. HEIC delle foto/scansioni iPhone) non si decodificano nel
+    // browser e NON scatenano né onload né onerror → la Promise restava appesa per
+    // sempre e l'upload "girava all'infinito". Col timeout carichiamo l'originale.
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
-      const MAX = 1600;
-      let { width: w, height: h } = img;
-      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-      else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(
-        (blob) => resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })),
-        'image/jpeg', 0.85
-      );
+      resolve(result || file);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    const timer = setTimeout(() => finish(file), 6000);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const MAX = 1600;
+        let { width: w, height: h } = img;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => finish(blob ? new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+          'image/jpeg', 0.85
+        );
+      } catch {
+        finish(file);   // qualsiasi errore di canvas → carica l'originale
+      }
+    };
+    img.onerror = () => finish(file);
     img.src = url;
   });
 }
@@ -47,23 +63,31 @@ export default function AdminModulistica() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => { loadData(); }, [sede]);
 
   const loadData = async () => {
-    const [dRes, rRes, uRes, cRes, sRes] = await Promise.all([
-      api.get('/documents'),
-      api.get('/read-receipts'),
-      api.get('/users'),
-      api.get('/classes'),
-      api.get('/students'),
-    ]);
-    setDocuments(dRes.data);
-    setReceipts(rRes.data);
-    setParents(uRes.data.filter(u => u.role === 'parent'));
-    setClasses(cRes.data);
-    setStudents(sRes.data);
+    setLoadError('');
+    try {
+      const [dRes, rRes, uRes, cRes, sRes] = await Promise.all([
+        api.get('/documents'),
+        api.get('/read-receipts'),
+        api.get('/users'),
+        api.get('/classes'),
+        api.get('/students'),
+      ]);
+      setDocuments(dRes.data || []);
+      setReceipts(rRes.data || []);
+      setParents((uRes.data || []).filter(u => u.role === 'parent'));
+      setClasses(cRes.data || []);
+      setStudents(sRes.data || []);
+    } catch (err) {
+      console.error(err);
+      setLoadError(err.response?.data?.detail || 'Impossibile caricare i documenti. Riprova.');
+    }
   };
 
   // Raggruppa genitori per classe
@@ -120,11 +144,14 @@ export default function AdminModulistica() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Eliminare questo documento? L\'azione è irreversibile.')) return;
+    setDeleteError('');
     try {
       await api.delete(`/documents/${id}`);
       loadData();
     } catch (err) {
       console.error(err);
+      setDeleteError(err.response?.data?.detail || 'Errore durante l\'eliminazione del documento');
     }
   };
 
@@ -149,6 +176,9 @@ export default function AdminModulistica() {
             Nuovo Documento
           </Button>
         </div>
+
+        {loadError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="modulistica-load-error">{loadError}</p>}
+        {deleteError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="modulistica-delete-error">{deleteError}</p>}
 
         {/* Documents List */}
         {documents.map((doc) => {
@@ -306,7 +336,7 @@ export default function AdminModulistica() {
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                                 style={{ backgroundColor: read ? C.accentGreen : '#CBD5E0' }}>
-                                {parent.name.charAt(0)}
+                                {(parent.name || '?').charAt(0)}
                               </div>
                               <span className="text-sm text-gray-700 font-medium">{parent.name}</span>
                             </div>

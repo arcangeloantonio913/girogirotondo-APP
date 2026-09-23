@@ -42,7 +42,7 @@ if _SENTRY_DSN:
         send_default_pii=False,   # Nessun dato personale inviato a Sentry (GDPR)
     )
 
-from services.database import seed_database, get_client, ensure_superadmins
+from services.database import seed_database, get_client, ensure_superadmins, ensure_indexes
 from middleware.error_handler import add_error_handlers
 from middleware.rate_limiter import limiter
 from utils.firebase_client import init_firebase
@@ -65,7 +65,6 @@ from routers.push_tokens import router as push_tokens_router
 from routers.avvisi import router as avvisi_router
 from routers.sedi import router as sedi_router
 from routers.presenze import router as presenze_router
-from routers.intake import router as intake_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,7 +101,7 @@ app.add_middleware(
     # Copre anche i deploy Vercel per-commit (dimensionebimbowebapp-<hash>.vercel.app e
     # girogirotondo-*.vercel.app) oltre agli alias stabili in allow_origins.
     allow_origin_regex=r"https://(dimensionebimbowebapp|girogirotondo)[a-z0-9-]*\.vercel\.app",
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Sede-Id"],
 )
 
@@ -124,7 +123,6 @@ app.include_router(push_tokens_router)
 app.include_router(avvisi_router)
 app.include_router(sedi_router)
 app.include_router(presenze_router)
-app.include_router(intake_router)
 
 
 # --- Security headers middleware ---
@@ -167,6 +165,14 @@ async def startup():
         logger.info("[STARTUP] SuperAdmin garantiti OK")
     except Exception as exc:
         logger.error("[STARTUP] ensure_superadmins FALLITO: %s", exc)
+
+    # ensure_indexes viene eseguito SEMPRE, anche su DB già popolato in produzione
+    # (il seed si ferma se i dati esistono, quindi gli indici vanno creati a parte).
+    try:
+        await ensure_indexes()
+        logger.info("[STARTUP] Indici MongoDB garantiti OK")
+    except Exception as exc:
+        logger.warning("[STARTUP] ensure_indexes skipped: %s", exc)
 
     try:
         await seed_database()

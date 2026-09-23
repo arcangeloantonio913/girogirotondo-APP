@@ -62,6 +62,40 @@ async def test_soft_delete_user(client, admin_headers):
     assert r2.status_code in (200, 404)
 
 
+@pytest.mark.asyncio
+async def test_superadmin_can_delete_another_superadmin(client, super_headers):
+    """Una direttrice (SuperAdmin) può rimuovere un altro account admin/superadmin
+    della propria org — la direzione deve poter gestire gli account admin."""
+    db = get_db()
+    await db.users.insert_one({
+        "id": "extra-super", "role": "admin", "is_superadmin": True,
+        "sede_id": None, "org_id": "girogirotondo-group", "active": True,
+        "email": "extra-super@ggt.it",
+    })
+    try:
+        rd = await client.delete("/api/users/extra-super", headers=super_headers)
+        assert rd.status_code == 200
+        assert await db.users.find_one({"id": "extra-super"}) is None
+    finally:
+        await db.users.delete_one({"id": "extra-super"})
+
+
+@pytest.mark.asyncio
+async def test_superadmin_cannot_delete_self(client, super_headers):
+    """Nemmeno un SuperAdmin può eliminare il proprio account (evita lock-out)."""
+    rd = await client.delete("/api/users/super-test-id", headers=super_headers)
+    assert rd.status_code == 400
+    assert await get_db().users.find_one({"id": "super-test-id"}) is not None
+
+
+@pytest.mark.asyncio
+async def test_normal_admin_cannot_delete_superadmin(client, admin_headers):
+    """Un admin normale NON può eliminare un SuperAmministratore (403)."""
+    rd = await client.delete("/api/users/super-test-id", headers=admin_headers)
+    assert rd.status_code == 403
+    assert await get_db().users.find_one({"id": "super-test-id"}) is not None
+
+
 # ---------------------------------------------------------------------------
 # FASE 0 — Item 1: admin_password (plaintext) mai esposto né persistito
 # ---------------------------------------------------------------------------

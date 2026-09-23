@@ -9,6 +9,7 @@ import uuid
 from typing import Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
+from pymongo import InsertOne, ReplaceOne
 
 from services.database import get_db
 from models.presenze import PresenzaDay
@@ -40,20 +41,38 @@ async def save_presenze(
     # ── Validazione ATOMICA dell'intero batch: NESSUNA scrittura finché la classe e OGNI
     #    studente non sono validati (all-or-nothing, indipendente dall'ordine dell'array).
     ctx.assert_class(payload.class_id)                 # 404 se la classe non è del caller
-    for rec in payload.records:
-        await ctx.assert_student(rec.student_id)       # 404 se lo studente non è nello scope del caller
+    # Membership check BATCHED: una sola query ($in) invece di un find_one per studente (N+1).
+    # Stessa semantica di ctx.assert_student per lo staff — uno studente è nello scope del caller
+    # SOLO se esiste e la sua class_id è tra le classi del caller. 404 su qualunque id mancante
+    # (all-or-nothing). all_access (superadmin fallback) salta il check.
+    rec_sids = [rec.student_id for rec in payload.records]
+    if not ctx.all_access:
+        found = await db.students.find(
+            {"id": {"$in": rec_sids},
+             "class_id": {"$in": list(ctx.allowed_class_ids)}},
+            {"_id": 0, "id": 1},
+        ).to_list(1000)
+        valid_ids = {s["id"] for s in found}
+        for sid in rec_sids:
+            if sid not in valid_ids:
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
 
     # ── Solo ora che TUTTO il batch è valido: sede + scritture.
     cls = await _resolve_class(db, payload.class_id)
     sede_id = cls.get("sede_id") if cls else None      # audit/erasure GDPR (il filtro resta su class_id)
 
-    saved = []
+    # Documenti esistenti in UNA sola query ($in) invece di un find_one per studente.
+    existing_docs = await db.presenze.find({
+        "class_id":   payload.class_id,
+        "date":       payload.date,
+        "student_id": {"$in": rec_sids},
+    }).to_list(1000)
+    existing_by_sid = {d["student_id"]: d for d in existing_docs}
+
+    ops = []
+    saved_count = 0
     for rec in payload.records:
-        existing = await db.presenze.find_one({
-            "class_id":   payload.class_id,
-            "date":       payload.date,
-            "student_id": rec.student_id,
-        })
+        existing = existing_by_sid.get(rec.student_id)
         doc = {
             "id":         str(uuid.uuid4()) if not existing else existing.get("id", str(uuid.uuid4())),
             "class_id":   payload.class_id,
@@ -66,13 +85,16 @@ async def save_presenze(
             "saved_at":   datetime.now(timezone.utc).isoformat(),
         }
         if existing:
-            await db.presenze.replace_one({"_id": existing["_id"]}, doc)
+            ops.append(ReplaceOne({"_id": existing["_id"]}, doc))
         else:
-            await db.presenze.insert_one(doc)
-        doc.pop("_id", None)
-        saved.append(doc)
+            ops.append(InsertOne(doc))
+        saved_count += 1
 
-    return {"saved": len(saved), "date": payload.date, "class_id": payload.class_id}
+    # Scritture in UNA sola round-trip (bulk_write) invece di una replace/insert per studente.
+    if ops:
+        await db.presenze.bulk_write(ops, ordered=False)
+
+    return {"saved": saved_count, "date": payload.date, "class_id": payload.class_id}
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +136,7 @@ async def get_presenze(
             raise HTTPException(status_code=400, detail="Formato anno non valido (YYYY)")
         query["date"] = {"$regex": f"^{anno}"}
 
-    records = await db.presenze.find(query, {"_id": 0}).to_list(10000)
+    records = await db.presenze.find(query, {"_id": 0}).to_list(80000)
     return records
 
 
@@ -140,7 +162,7 @@ async def get_classi_summary(
     #     lo scope va nel FILTRO della find, non in uno $match.
     q: dict = {"date": today}
     q.update(ctx.class_filter())
-    records = await db.presenze.find(q, {"_id": 0}).to_list(5000)
+    records = await db.presenze.find(q, {"_id": 0}).to_list(80000)
 
     summary: dict = {}
     for r in records:
@@ -202,7 +224,7 @@ async def get_riepilogo_assenze(
         ctx.assert_class(class_id)            # 404 se la classe non è del caller
         query["class_id"] = class_id
     query["date"] = {"$regex": f"^{periodo}"}
-    records = await db.presenze.find(query, {"_id": 0}).to_list(10000)
+    records = await db.presenze.find(query, {"_id": 0}).to_list(80000)
 
     # ── Aggregazione in Python per student_id.
     counts: dict = {}
@@ -223,7 +245,7 @@ async def get_riepilogo_assenze(
         stu_query["class_id"] = class_id
     students = await db.students.find(
         stu_query, {"_id": 0, "id": 1, "name": 1, "cognome": 1, "class_id": 1}
-    ).to_list(10000)
+    ).to_list(80000)
 
     # ── Nome classe (scope: solo le classi dei bambini già scopati).
     class_ids = list({s.get("class_id") for s in students if s.get("class_id")})
@@ -231,7 +253,7 @@ async def get_riepilogo_assenze(
     if class_ids:
         classes = await db.classes.find(
             {"id": {"$in": class_ids}}, {"_id": 0, "id": 1, "name": 1}
-        ).to_list(5000)
+        ).to_list(80000)
         class_map = {c["id"]: c.get("name") for c in classes}
 
     studenti = []

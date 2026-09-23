@@ -9,7 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookMarked, CheckCircle, Users, Baby, ChevronDown, ChevronUp, Check } from 'lucide-react';
 
-const today = new Date().toISOString().split('T')[0];
+function pad(n) { return String(n).padStart(2, '0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+
+const today = localDateStr(new Date());
 
 export default function TeacherDiario() {
   const { user } = useAuth();
@@ -162,7 +166,7 @@ export default function TeacherDiario() {
                       {isSel && <Check className="w-3 h-3 flex-shrink-0" />}
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
                         style={{ backgroundColor: C.babyBlue }}>
-                        {s.name.charAt(0)}
+                        {(s.name || '?').charAt(0)}
                       </div>
                       {s.name} {s.cognome || ''}
                     </button>

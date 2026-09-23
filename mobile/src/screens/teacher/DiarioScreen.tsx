@@ -8,7 +8,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
-import { todayLocal } from '../../lib/dates';
+import { todayLocal, formatItDate } from '../../lib/dates';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const MOODS = ['😊','😢','😴','🤒','😤','🎉','😍','😮'];
@@ -109,7 +109,7 @@ export default function TeacherDiario() {
               <Text style={{ fontSize: 28 }}>{item.mood || '😊'}</Text>
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={s.cardDate}>
-                  {new Date((item.date || item.created_at) + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {formatItDate(item.date || item.created_at, { weekday: 'long', day: 'numeric', month: 'long' })}
                 </Text>
                 {item.activities?.length > 0 && (
                   <View style={s.tagsRow}>

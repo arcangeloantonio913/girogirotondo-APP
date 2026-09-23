@@ -17,14 +17,16 @@ const TENANTS = {
     short_name: 'Girogirotondo',
     appleTitle: 'Girogiro',
     description:
-      "Piattaforma digitale per genitori e maestre della scuola dell'infanzia Girogirotondo.",
+      "La piattaforma digitale della scuola dell'infanzia: comunicazioni, foto, presenze e menù della mensa — sempre a portata di mano per genitori e maestre.",
     title: "Girogirotondo - Scuola dell'Infanzia",
     ogTitle: 'Girogirotondo — Il Magico Mondo',
     theme_color: '#4169E1',
     background_color: '#FFFDD0',
     icon: '/logo-girogirotondo.png',
-    ogUrl: 'https://girogirotondowebapp.it',
-    ogImage: 'https://girogirotondowebapp.it/logo-girogirotondo.png',
+    // URL con www: il dominio senza www fa un 307 redirect e WhatsApp/Telegram NON seguono
+    // i redirect per og:image -> l'anteprima restava senza immagine. Con www risponde 200 diretto.
+    ogUrl: 'https://www.girogirotondowebapp.it',
+    ogImage: 'https://www.girogirotondowebapp.it/logo-girogirotondo.png',
   },
   'dimensione-bimbo': {
     name: 'Dimensione Bimbo - Gestione Asilo',

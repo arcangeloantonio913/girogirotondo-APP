@@ -19,3 +19,19 @@ export function localYMD(d: Date): string {
 export function todayLocal(): string {
   return localYMD(new Date());
 }
+
+/**
+ * Formatta una data in italiano gestendo sia le date pure YYYY-MM-DD sia i timestamp ISO completi.
+ *
+ * PERCHÉ: aggiungere sempre 'T12:00:00' a un timestamp ISO già completo (es. "2026-09-14T10:00:00Z")
+ * produce una stringa non valida → "Invalid Date". Qui il suffisso si aggiunge SOLO alle date pure
+ * (per evitare il giorno sbagliato a cavallo della mezzanotte); i timestamp completi si parsano così
+ * come sono. Valori vuoti o non parsabili restituiscono '' (mai "Invalid Date").
+ */
+export function formatItDate(raw?: string | null, opts?: Intl.DateTimeFormatOptions): string {
+  if (!raw) return '';
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00` : raw;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('it-IT', opts);
+}

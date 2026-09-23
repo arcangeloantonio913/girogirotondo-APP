@@ -8,19 +8,28 @@ import { BookOpen, Calendar } from 'lucide-react';
 export default function ParentDiario() {
   const { user, activeChildId } = useAuth();
   const [entries, setEntries] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;
     if (!childId) return;
+    setLoadError(false);
     // Filtra il diario per il figlio attivo
-    api.get(`/diary?student_id=${childId}`).then(res => setEntries(res.data)).catch(() => {});
+    api.get(`/diary?student_id=${childId}`)
+      .then(res => setEntries(res.data || []))
+      .catch(err => { console.error(err); setLoadError(true); });
   }, [user, activeChildId]); // ← activeChildId nelle deps per fratellini
 
   return (
     <AppLayout title="Diario di Bordo" showBack>
       <div className="max-w-lg mx-auto space-y-4" data-testid="parent-diario-page">
-        {entries.length === 0 ? (
+        {loadError ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md" data-testid="diario-load-error">
+            <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">Impossibile caricare, riprova</p>
+          </div>
+        ) : entries.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun aggiornamento disponibile</p>

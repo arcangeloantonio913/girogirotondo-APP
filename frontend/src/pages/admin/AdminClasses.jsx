@@ -33,6 +33,10 @@ export default function AdminClasses() {
   const [teacherValue, setTeacherValue]     = useState('');
   const [savingTeacher, setSavingTeacher]   = useState(false);
 
+  // Stato creazione + errori visibili
+  const [creating, setCreating] = useState(false);
+  const [error, setError]       = useState('');
+
   useEffect(() => { loadData(); }, [sede]);
 
   // Aggiorna detailClass quando classes cambia (dopo un update)
@@ -57,44 +61,62 @@ export default function AdminClasses() {
   };
 
   const handleCreate = async () => {
+    if (creating) return;   // guard anti doppio-tap → evita classi duplicate
+    setCreating(true);
+    setError('');
     try {
       await api.post('/classes', form);
       setDialogOpen(false);
       setForm({ name: '', teacher_id: '' });
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Errore durante la creazione della classe');
+    } finally { setCreating(false); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Eliminare questa classe? Gli alunni rimarranno nel sistema senza classe.')) return;
+    setError('');
     try {
       await api.delete(`/classes/${id}`);
       if (detailClass?.id === id) setDetailClass(null);
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Errore durante l\'eliminazione della classe');
+    }
   };
 
   // ── Salva nome classe ────────────────────────────────────────────────────────
   const handleSaveName = async () => {
     if (!nameValue.trim() || !detailClass) return;
+    setError('');
     try {
       await api.patch(`/classes/${detailClass.id}`, { name: nameValue.trim() });
       setEditingName(false);
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Errore durante la modifica del nome');
+    }
   };
 
   // ── Assegna / cambia / rimuovi maestra ───────────────────────────────────────
   const handleSaveTeacher = async (teacherId) => {
     if (!detailClass) return;
     setSavingTeacher(true);
+    setError('');
     try {
       await api.patch(`/classes/${detailClass.id}`, {
         teacher_id: teacherId ?? ''   // '' = rimuovi, stringa = assegna
       });
       setEditingTeacher(false);
       loadData();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Errore durante l\'assegnazione della maestra');
+    }
     finally { setSavingTeacher(false); }
   };
 
@@ -144,11 +166,16 @@ export default function AdminClasses() {
               {sedeInfo?.label}
             </span>
           </div>
-          <Button data-testid="add-class-button" onClick={() => setDialogOpen(true)}
+          <Button data-testid="add-class-button" onClick={() => { setError(''); setDialogOpen(true); }}
             className="rounded-2xl font-semibold h-9 text-sm" style={{ backgroundColor: C.accentPink }}>
             <Plus className="w-4 h-4 mr-1" />Nuova Classe
           </Button>
         </div>
+
+        {/* Errore visibile */}
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="classes-error">{error}</p>
+        )}
 
         {/* ── Barra di ricerca ─────────────────────────────────────────────── */}
         <div className="relative">
@@ -273,7 +300,7 @@ export default function AdminClasses() {
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                     style={{ backgroundColor: C.accentPink }}>
-                    {detailTeacher.name.charAt(0)}
+                    {(detailTeacher.name || '?').charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{detailTeacher.name}</p>
@@ -323,7 +350,7 @@ export default function AdminClasses() {
                         className="flex items-center gap-3 py-2 px-3 rounded-xl bg-gray-50 hover:bg-blue-50 transition-colors w-full text-left">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                           style={{ backgroundColor: C.primary }}>
-                          {s.name.charAt(0)}
+                          {(s.name || '?').charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900">{s.name} {s.cognome || ''}</p>
@@ -367,7 +394,7 @@ export default function AdminClasses() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                       style={{ backgroundColor: color }}>
-                      {cls.name.charAt(0)}
+                      {(cls.name || '?').charAt(0)}
                     </div>
                     <div>
                       <h3 className="text-base font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
@@ -409,7 +436,7 @@ export default function AdminClasses() {
                     <div className="flex gap-1 flex-wrap">
                       {classStudents.slice(0, 4).map(s => (
                         <span key={s.id} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium text-[10px]">
-                          {s.name.split(' ')[0]}
+                          {(s.name || '').split(' ')[0]}
                         </span>
                       ))}
                       {classStudents.length > 4 && (
@@ -470,10 +497,13 @@ export default function AdminClasses() {
                   </SelectContent>
                 </Select>
               </div>
+              {error && (
+                <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+              )}
               <Button data-testid="create-class-submit" onClick={handleCreate}
-                disabled={!form.name}
+                disabled={!form.name || creating}
                 className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentPink }}>
-                Crea Classe
+                {creating ? 'Creazione...' : 'Crea Classe'}
               </Button>
             </div>
           </DialogContent>

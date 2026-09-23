@@ -1,9 +1,11 @@
 import { C } from '@/config/tenant';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   CheckCircle2, XCircle, ChevronLeft, ChevronRight,
   Save, Users, BarChart2, Calendar, BookOpen,
@@ -16,17 +18,37 @@ const TAB_ANNO    = 'anno';
 const MESE_NOMI = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 export default function TeacherPresenze() {
   const { user } = useAuth();
 
-  const primaryClassId = (user?.class_ids?.[0]) || user?.class_id;
+  // Tutte le classi del docente (class_ids + eventuale class_id legacy).
+  const teacherClassIds = useMemo(() => {
+    const ids = [...(user?.class_ids || [])];
+    if (user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  }, [user]);
 
   const [tab, setTab]           = useState(TAB_OGGI);
+  const [classes, setClasses]   = useState([]);
+  const [classId, setClassId]   = useState('');   // classe attualmente selezionata
   const [students, setStudents] = useState([]);
-  const [className, setClassName] = useState('');
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // Studenti della SOLA classe selezionata: /students è multi-classe → va filtrata per non
+  // mescolare classi e per scrivere ogni presenza sotto la classe giusta.
+  const classStudents = useMemo(
+    () => students.filter(s => s.class_id === classId),
+    [students, classId]
+  );
+  const className = useMemo(
+    () => classes.find(c => c.id === classId)?.name || '',
+    [classes, classId]
+  );
 
   // ── Stato OGGI ────────────────────────────────────────────────────────────
   const [dateOffset, setDateOffset] = useState(0);
@@ -34,7 +56,7 @@ export default function TeacherPresenze() {
 
   const getDate = (offset = 0) => {
     const d = new Date(); d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   };
   const currentDate = getDate(dateOffset);
   const dateDisplay = new Date(currentDate + 'T12:00:00').toLocaleDateString('it-IT', {
@@ -48,28 +70,29 @@ export default function TeacherPresenze() {
   const [archData, setArchData] = useState([]);  // records raw
   const [archLoading, setArchLoading] = useState(false);
 
-  // ── Carica studenti e classe ──────────────────────────────────────────────
+  // ── Carica classi + studenti; auto-seleziona la prima classe (una classe → invariato) ──
   useEffect(() => {
-    if (!primaryClassId) return;
-    api.get('/students').then(r => setStudents(r.data));
-    api.get('/classes').then(r => {
-      const cls = r.data.find(c => c.id === primaryClassId);
-      if (cls) setClassName(cls.name);
-    });
+    if (!teacherClassIds.length) return;
+    Promise.all([api.get('/classes'), api.get('/students')]).then(([cRes, sRes]) => {
+      const myClasses = cRes.data.filter(c => teacherClassIds.includes(c.id));
+      setClasses(myClasses);
+      setStudents(sRes.data);
+      if (myClasses.length > 0) setClassId(prev => prev || myClasses[0].id);
+    }).catch(console.error);
   }, [user]); // eslint-disable-line
 
-  // ── Carica presenze del giorno ────────────────────────────────────────────
+  // ── Carica presenze del giorno per la classe selezionata ──────────────────
   useEffect(() => {
-    if (!primaryClassId || !students.length) return;
-    api.get(`/presenze?class_id=${primaryClassId}&date=${currentDate}`).then(r => {
+    if (!classId || !classStudents.length) return;
+    api.get(`/presenze?class_id=${classId}&date=${currentDate}`).then(r => {
       const p = {};
-      students.forEach(s => { p[s.id] = { presente: true, nota: '' }; });
+      classStudents.forEach(s => { p[s.id] = { presente: true, nota: '' }; });
       r.data.forEach(rec => {
         p[rec.student_id] = { presente: rec.presente, nota: rec.nota || '' };
       });
       setPresenze(p);
     });
-  }, [currentDate, students.length, primaryClassId]); // eslint-disable-line
+  }, [currentDate, classStudents.length, classId]); // eslint-disable-line
 
   // ── Toggle presenza ───────────────────────────────────────────────────────
   const toggle = (sid) => {
@@ -79,21 +102,25 @@ export default function TeacherPresenze() {
     }));
   };
 
-  // ── Seleziona tutti presenti / tutti assenti ──────────────────────────────
+  // ── Seleziona tutti presenti / tutti assenti (solo classe selezionata) ────
   const setAll = (presente) => {
-    const p = {};
-    students.forEach(s => { p[s.id] = { presente, nota: presenze[s.id]?.nota || '' }; });
-    setPresenze(p);
+    setPresenze(prev => {
+      const p = { ...prev };
+      classStudents.forEach(s => { p[s.id] = { presente, nota: prev[s.id]?.nota || '' }; });
+      return p;
+    });
   };
 
-  // ── Salva ─────────────────────────────────────────────────────────────────
+  // ── Salva (presenze della SOLA classe selezionata) ────────────────────────
   const handleSave = async () => {
+    if (!classId) return;
     setSaving(true);
+    setSaveError('');
     try {
       await api.post('/presenze', {
-        class_id: primaryClassId,
+        class_id: classId,
         date:     currentDate,
-        records:  students.map(s => ({
+        records:  classStudents.map(s => ({
           student_id: s.id,
           presente:   presenze[s.id]?.presente ?? true,
           nota:       presenze[s.id]?.nota || '',
@@ -101,22 +128,25 @@ export default function TeacherPresenze() {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setSaveError('Errore durante il salvataggio. Riprova.');
+    }
     finally { setSaving(false); }
   };
 
-  // ── Carica archivio ───────────────────────────────────────────────────────
+  // ── Carica archivio (classe selezionata) ──────────────────────────────────
   useEffect(() => {
-    if (tab === TAB_OGGI || !primaryClassId) return;
+    if (tab === TAB_OGGI || !classId) return;
     setArchLoading(true);
     const query = tab === TAB_MESE
       ? `mese=${archAnno}-${pad(archMese + 1)}`
       : `anno=${archAnno}`;
-    api.get(`/presenze?class_id=${primaryClassId}&${query}`)
+    api.get(`/presenze?class_id=${classId}&${query}`)
       .then(r => setArchData(r.data))
       .catch(console.error)
       .finally(() => setArchLoading(false));
-  }, [tab, archMese, archAnno, primaryClassId]); // eslint-disable-line
+  }, [tab, archMese, archAnno, classId]); // eslint-disable-line
 
   // Raggruppa records per data
   const byDate = archData.reduce((acc, r) => {
@@ -124,11 +154,11 @@ export default function TeacherPresenze() {
     return acc;
   }, {});
 
-  const presentiCount = students.filter(s => presenze[s.id]?.presente !== false).length;
-  const assentiCount  = students.length - presentiCount;
+  const presentiCount = classStudents.filter(s => presenze[s.id]?.presente !== false).length;
+  const assentiCount  = classStudents.length - presentiCount;
 
   // Nessuna classe assegnata → messaggio di errore
-  if (!primaryClassId) {
+  if (!teacherClassIds.length) {
     return (
       <AppLayout title="Registro Presenze" showBack>
         <div className="max-w-lg mx-auto">
@@ -159,9 +189,24 @@ export default function TeacherPresenze() {
             <p className="text-sm font-bold text-gray-900" style={{ fontFamily: 'Nunito' }}>
               {className || 'La mia classe'}
             </p>
-            <p className="text-xs text-gray-400">{students.length} alunni registrati</p>
+            <p className="text-xs text-gray-400">{classStudents.length} alunni registrati</p>
           </div>
         </div>
+
+        {/* Selettore classe (solo se il docente ha più classi) */}
+        {classes.length > 1 && (
+          <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <Label className="text-xs font-medium text-gray-600">Classe</Label>
+            <Select value={classId} onValueChange={setClassId}>
+              <SelectTrigger className="rounded-xl mt-1 h-9 text-sm" data-testid="presenze-class-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Tab selector */}
         <div className="flex gap-1 p-1 bg-white rounded-2xl shadow-md" data-testid="presenze-tabs">
@@ -209,7 +254,7 @@ export default function TeacherPresenze() {
                   <p className="text-[10px] font-semibold text-gray-500">Assenti</p>
                 </div>
                 <div className="flex-1 text-center py-2 rounded-xl bg-gray-50">
-                  <p className="text-lg font-bold text-gray-600">{students.length}</p>
+                  <p className="text-lg font-bold text-gray-600">{classStudents.length}</p>
                   <p className="text-[10px] font-semibold text-gray-500">Totale</p>
                 </div>
               </div>
@@ -231,7 +276,7 @@ export default function TeacherPresenze() {
 
             {/* Lista studenti */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 divide-y divide-gray-50" data-testid="presenze-list">
-              {students.map(s => {
+              {classStudents.map(s => {
                 const presente = presenze[s.id]?.presente !== false;
                 return (
                   <div key={s.id} className="flex items-center gap-3 px-4 py-3"
@@ -266,6 +311,12 @@ export default function TeacherPresenze() {
                 );
               })}
             </div>
+
+            {/* Errore di salvataggio */}
+            {saveError && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 text-center font-semibold"
+                data-testid="presenze-save-error">{saveError}</p>
+            )}
 
             {/* Salva */}
             <Button onClick={handleSave} disabled={saving}

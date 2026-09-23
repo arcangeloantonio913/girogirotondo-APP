@@ -28,6 +28,7 @@ function toGoogleCalendarUrl(apt) {
 export default function AdminAppointments() {
   const { sede } = useAuth();
   const [appointments, setAppointments] = useState([]);
+  const [statusError, setStatusError] = useState('');
   const [view, setView]         = useState('calendar'); // 'calendar' | 'list'
   const [selectedDay, setSelectedDay] = useState(null);
   const today = new Date();
@@ -38,10 +39,14 @@ export default function AdminAppointments() {
   }, [sede]);
 
   const handleStatusChange = async (id, status) => {
+    setStatusError('');
     try {
       await api.put(`/appointments/${id}/status?status=${status}`);
       setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      setStatusError(err.response?.data?.detail || 'Errore durante l\'aggiornamento dello stato. Riprova.');
+    }
   };
 
   // Raggruppa appuntamenti per giorno
@@ -94,6 +99,8 @@ export default function AdminAppointments() {
             <p className="text-[10px] text-gray-400 font-semibold">Confermati</p>
           </div>
         </div>
+
+        {statusError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="appointment-status-error">{statusError}</p>}
 
         {/* Toggle vista */}
         <div className="flex bg-white rounded-2xl shadow-md border border-gray-100 p-1">

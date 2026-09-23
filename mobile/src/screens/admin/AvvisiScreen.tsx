@@ -160,17 +160,22 @@ export default function AdminAvvisi() {
         payload.attachment_name = allegati[0].name;
         payload.attachment_mime = allegati[0].mime;
       }
+      // Timeout esteso: un allegato pesante può superare i 20s di default
+      const cfg = { timeout: 90000 };
       let res: any;
       if (editing) {
-        res = await api.put(`/avvisi/${editing.id}`, payload);
+        res = await api.put(`/avvisi/${editing.id}`, payload, cfg);
         setAvvisi(prev => prev.map(a => a.id === editing.id ? res.data : a));
       } else {
-        res = await api.post('/avvisi', payload);
+        res = await api.post('/avvisi', payload, cfg);
         setAvvisi(prev => [res.data, ...prev]);
       }
       setShowForm(false); resetForm();
     } catch (e: any) {
-      Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile salvare');
+      const msg = e?.code === 'ECONNABORTED'
+        ? 'Salvataggio troppo lento: l\'allegato è pesante o la connessione è debole. Riprova con una connessione migliore.'
+        : (e?.response?.data?.detail || 'Impossibile salvare');
+      Alert.alert('Errore', msg);
     } finally { setSaving(false); }
   };
 

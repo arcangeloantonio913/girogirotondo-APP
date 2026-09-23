@@ -243,6 +243,65 @@ async def ensure_demo_accounts():
             logger.info("[DEMO] Account creato: %s (%s)", u["email"], u["role"])
 
 
+async def ensure_indexes(db=None):
+    """
+    Crea gli indici MongoDB in modo UNCONDIZIONALE ad ogni avvio.
+
+    Va eseguito SEMPRE (anche su DB già popolato in produzione), a differenza del
+    seed che si ferma se i dati esistono. create_index è idempotente, quindi è
+    sicuro rilanciarlo: se l'indice esiste già è un no-op. Creazione in background
+    e ogni errore è isolato (try/except) per non bloccare lo startup.
+    """
+    if db is None:
+        db = get_db()
+
+    # (collection, keys, options) — keys: str o lista di tuple (field, direction)
+    index_specs = [
+        # users
+        ("users", "firebase_uid", {"sparse": True}),
+        ("users", "email", {"unique": True}),
+        ("users", "sede_id", {}),
+        # classes
+        ("classes", "sede_id", {}),
+        # students
+        ("students", "sede_id", {}),
+        ("students", "class_id", {}),
+        # avvisi
+        ("avvisi", "sede_id", {}),
+        # meals
+        ("meals", "sede_id", {}),
+        # documents
+        ("documents", "sede_id", {}),
+        ("documents", "classe_id", {}),
+        # push_tokens
+        ("push_tokens", "user_id", {}),
+        ("push_tokens", "token", {"unique": True}),
+        # calendar_events
+        ("calendar_events", "class_id", {}),
+        ("calendar_events", "data_inizio", {}),
+        ("calendar_events", "sede_id", {}),
+        # presenze (hot query fields)
+        ("presenze", [("class_id", 1), ("date", 1)], {}),
+        ("presenze", "student_id", {}),
+        # gallery
+        ("gallery", [("class_id", 1), ("created_at", -1)], {}),
+        ("gallery", "student_ids", {}),
+        # appointments
+        ("appointments", [("sede_id", 1), ("date", 1)], {}),
+        ("appointments", "parent_id", {}),
+        # read_receipts
+        ("read_receipts", [("document_id", 1), ("parent_id", 1)], {}),
+    ]
+
+    for coll_name, keys, options in index_specs:
+        try:
+            await db[coll_name].create_index(keys, background=True, **options)
+        except Exception as exc:  # noqa: BLE001 — un indice fallito non deve bloccare lo startup
+            logger.warning("[INDEXES] create_index fallito su %s %s: %s", coll_name, keys, exc)
+
+    logger.info("[INDEXES] ensure_indexes completato")
+
+
 async def seed_database():
     db = get_db()
 
@@ -806,20 +865,9 @@ async def seed_database():
     ])
 
     # ── 13. MONGODB INDEXES ───────────────────────────────────────────────────
-
-    await db.users.create_index("firebase_uid", sparse=True)
-    await db.users.create_index("email", unique=True)
-    await db.users.create_index("sede_id")
-    await db.classes.create_index("sede_id")
-    await db.students.create_index("sede_id")
-    await db.students.create_index("class_id")
-    await db.avvisi.create_index("sede_id")
-    await db.meals.create_index("sede_id")
-    await db.documents.create_index("sede_id")
-    await db.push_tokens.create_index("user_id")
-    await db.push_tokens.create_index("token", unique=True)
-    await db.calendar_events.create_index("class_id")
-    await db.calendar_events.create_index("data_inizio")
+    # Gli indici sono ora gestiti da ensure_indexes(), chiamata SEMPRE allo startup
+    # (anche su DB già popolato). Qui li creiamo comunque per il seed fresco.
+    await ensure_indexes(db)
 
     logger.info("Multi-tenant database seeded successfully! Sedi: Girogirotondo + Il Magico Mondo")
     logger.info("SuperAdmin: mariucciasc@gmail.com / Mariagrazia2026!")

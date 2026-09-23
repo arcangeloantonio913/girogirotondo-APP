@@ -1,11 +1,17 @@
 import { C } from '@/config/tenant';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckSquare, Save, ChevronLeft, ChevronRight, Info, Moon } from 'lucide-react';
+
+function pad(n) { return String(n).padStart(2, '0'); }
+// Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 // Ordine: Merenda PRIMA, poi gli altri pasti
 const MEAL_COLS = [
@@ -45,41 +51,63 @@ const defaultGrid = () => ({
 
 export default function TeacherGriglia() {
   const { user } = useAuth();
+  const [classes, setClasses]     = useState([]);
+  const [classId, setClassId]     = useState('');   // classe attualmente selezionata
   const [students, setStudents]   = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [grid, setGrid]           = useState({});
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [dateOffset, setDateOffset] = useState(0);
 
   const getDate = (offset) => {
     const d = new Date(); d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return localDateStr(d);
   };
   const currentDate  = getDate(dateOffset);
   const dateDisplay  = new Date(currentDate + 'T12:00:00').toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long'
   });
 
-  const primaryClassId = (user?.class_ids?.[0]) || user?.class_id;
+  // Tutte le classi del docente (class_ids + eventuale class_id legacy).
+  const teacherClassIds = useMemo(() => {
+    const ids = [...(user?.class_ids || [])];
+    if (user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  }, [user]);
 
-  // Carica studenti
+  // Studenti della SOLA classe selezionata: la lista /students è multi-classe, va filtrata
+  // per non mescolare classi diverse e per scrivere ogni riga sotto la classe giusta.
+  const classStudents = useMemo(
+    () => students.filter(s => s.class_id === classId),
+    [students, classId]
+  );
+
+  // Carica classi + studenti; auto-seleziona la prima classe (una sola classe → invariato).
   useEffect(() => {
-    if (!primaryClassId) return;
-    api.get('/students').then(res => {
-      setStudents(res.data);
+    if (!teacherClassIds.length) return;
+    Promise.all([api.get('/classes'), api.get('/students')]).then(([cRes, sRes]) => {
+      const myClasses = cRes.data.filter(c => teacherClassIds.includes(c.id));
+      setClasses(myClasses);
+      setStudents(sRes.data);
       const g = {};
-      res.data.forEach(s => { g[s.id] = defaultGrid(); });
+      sRes.data.forEach(s => { g[s.id] = defaultGrid(); });
       setGrid(g);
-    });
+      if (myClasses.length > 0) setClassId(prev => prev || myClasses[0].id);
+    }).catch(console.error);
   }, [user]); // eslint-disable-line
 
-  // Carica griglia per data selezionata
+  // Carica griglia per data + classe selezionata
   useEffect(() => {
-    if (!primaryClassId || !students.length) return;
-    api.get(`/griglia?class_id=${primaryClassId}&date=${currentDate}`).then(res => {
-      setGrid(prev => {
-        const g = { ...prev };
+    if (!classId || !students.length) return;
+    api.get(`/griglia?class_id=${classId}&date=${currentDate}`).then(res => {
+      setGrid(() => {
+        // Parti SEMPRE da default freschi per la data selezionata, poi sovrapponi le voci
+        // salvate. Prima si partiva da {...prev} (griglia del giorno precedente): gli alunni
+        // senza voce per il nuovo giorno mostravano — e RISALVAVANO — i dati di ieri.
+        const g = {};
+        students.forEach(s => { g[s.id] = defaultGrid(); });
         res.data.forEach(entry => {
           if (g[entry.student_id] !== undefined) {
             g[entry.student_id] = {
@@ -97,10 +125,10 @@ export default function TeacherGriglia() {
         return g;
       });
     });
-  }, [user, currentDate, students.length]); // eslint-disable-line
+  }, [user, currentDate, students.length, classId]); // eslint-disable-line
 
   const toggleSelectAll = () =>
-    setSelectedStudents(prev => prev.length === students.length ? [] : students.map(s => s.id));
+    setSelectedStudents(prev => prev.length === classStudents.length ? [] : classStudents.map(s => s.id));
   const toggleStudent = (id) =>
     setSelectedStudents(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
 
@@ -136,17 +164,40 @@ export default function TeacherGriglia() {
     });
   };
 
+  // Una riga è "sporca" (da salvare) se differisce dai default: evita di postare — e
+  // notificare — decine di righe vuote/intoccate. Confronto campo-per-campo (robusto
+  // all'ordine delle chiavi).
+  const isDirty = (g) => {
+    const d = defaultGrid();
+    return Object.keys(d).some(k => (g?.[k] ?? d[k]) !== d[k]);
+  };
+
   const handleSave = async () => {
+    if (!classId) return;
     setSaving(true);
-    try {
-      await Promise.all(students.map(s => {
-        const d = grid[s.id] || defaultGrid();
-        return api.post('/griglia', { class_id: primaryClassId, student_ids: [s.id], date: currentDate, ...d });
-      }));
+    setSaveError('');
+    // Salva SOLO i bambini della classe selezionata con dati effettivamente inseriti.
+    const toSave = classStudents.filter(s => isDirty(grid[s.id] || defaultGrid()));
+    if (toSave.length === 0) {
+      setSaving(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (e) { console.error(e); }
-    finally { setSaving(false); }
+      return;
+    }
+    // allSettled: una singola riga che fallisce NON annulla le altre; riportiamo i parziali.
+    const results = await Promise.allSettled(toSave.map(s => {
+      const d = grid[s.id] || defaultGrid();
+      return api.post('/griglia', { class_id: classId, student_ids: [s.id], date: currentDate, ...d });
+    }));
+    setSaving(false);
+    const failed = results.filter(r => r.status === 'rejected').length;
+    if (failed > 0) {
+      console.error('Griglia: salvataggi falliti', results.filter(r => r.status === 'rejected'));
+      setSaveError(`${failed} ${failed === 1 ? 'bambino non salvato' : 'bambini non salvati'} su ${toSave.length}. Riprova.`);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   };
 
   return (
@@ -172,13 +223,28 @@ export default function TeacherGriglia() {
           </div>
         </div>
 
+        {/* Selettore classe (solo se il docente ha più classi) */}
+        {classes.length > 1 && (
+          <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+            <Label className="text-xs font-medium text-gray-600">Classe</Label>
+            <Select value={classId} onValueChange={v => { setClassId(v); setSelectedStudents([]); }}>
+              <SelectTrigger className="rounded-xl mt-1 h-9 text-sm" data-testid="griglia-class-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Seleziona tutti */}
         <div className="flex items-center justify-between bg-white rounded-2xl shadow-md px-4 py-3 border border-gray-100">
-          <span className="text-sm font-semibold text-gray-700">{selectedStudents.length}/{students.length} selezionati</span>
+          <span className="text-sm font-semibold text-gray-700">{selectedStudents.length}/{classStudents.length} selezionati</span>
           <Button onClick={toggleSelectAll} variant="outline" size="sm"
             className="rounded-xl text-xs h-8 font-bold border-2"
-            style={{ borderColor: C.babyPink, color: selectedStudents.length === students.length ? 'white' : '#E8919A',
-              backgroundColor: selectedStudents.length === students.length ? C.babyPink : 'transparent' }}
+            style={{ borderColor: C.babyPink, color: selectedStudents.length === classStudents.length ? 'white' : '#E8919A',
+              backgroundColor: selectedStudents.length === classStudents.length ? C.babyPink : 'transparent' }}
             data-testid="select-all-button">
             <CheckSquare className="w-3.5 h-3.5 mr-1.5" />Seleziona Tutti
           </Button>
@@ -246,7 +312,7 @@ export default function TeacherGriglia() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student, idx) => {
+                {classStudents.map((student, idx) => {
                   const isSelected = selectedStudents.includes(student.id);
                   const sg = grid[student.id] || defaultGrid();
                   const rowBg = isSelected ? '#F4C2C210' : idx % 2 === 0 ? 'white' : '#FAFAFA';
@@ -337,6 +403,12 @@ export default function TeacherGriglia() {
             ))}
           </div>
         </div>
+
+        {/* Errore di salvataggio (parziale o totale) */}
+        {saveError && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 text-center font-semibold"
+            data-testid="save-error">{saveError}</p>
+        )}
 
         {/* Salva */}
         <Button onClick={handleSave} disabled={saving} data-testid="save-griglia-button"

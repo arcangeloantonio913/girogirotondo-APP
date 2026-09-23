@@ -1,5 +1,6 @@
 """Notifications router — FCM token registration and manual push send."""
 import uuid
+import asyncio
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Optional
@@ -149,7 +150,9 @@ async def send_notification(
 
     # I token salvati sono Expo (non FCM): si invia via Expo Push API, altrimenti la push
     # manuale non verrebbe mai consegnata.
-    sent = send_expo_push(tokens, payload.title, payload.body, payload.data)
+    # In un thread separato: send_expo_push è sincrona/bloccante (urllib, timeout 15s) e
+    # bloccherebbe l'INTERO event loop per la durata dell'invio a tutti i token.
+    sent = await asyncio.to_thread(send_expo_push, tokens, payload.title, payload.body, payload.data)
     return {"sent": sent, "total_tokens": len(tokens)}
 
 

@@ -7,6 +7,9 @@ const API_BASE = `${BACKEND_URL}/api`;
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  // Nessun timeout prima: una richiesta appesa (rete che cade a metà) restava in
+  // sospeso per sempre e ogni spinner poteva bloccarsi. 60s è ampio anche per gli upload.
+  timeout: 60_000,
 });
 
 // ── Cache in-memory per le GET più frequenti ─────────────────────────────────
@@ -14,8 +17,8 @@ const api = axios.create({
 const _cache = new Map();
 const CACHE_TTL_MS = 30_000; // 30 secondi
 
-// Solo dati che cambiano raramente — /students escluso (admin lo modifica spesso)
-const CACHEABLE_PATHS = ['/classes', '/sedi'];
+// Liste più pesanti/frequenti da mettere in cache 30s
+const CACHEABLE_PATHS = ['/users', '/students', '/classes', '/sedi'];
 
 function cacheKey(url, headers) {
   return `${headers['X-Sede-Id'] || ''}::${url}`;
@@ -30,7 +33,10 @@ api.interceptors.request.use(async (config) => {
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
-      const token = await currentUser.getIdToken(true);
+      // getIdToken() SENZA forceRefresh: prima forzava un round-trip a Firebase ad OGNI
+      // richiesta (6 refresh solo per aprire una dashboard) → latenza su tutta l'app.
+      // Senza force, l'SDK aggiorna il token solo quando sta per scadere.
+      const token = await currentUser.getIdToken();
       config.headers.Authorization = `Bearer ${token}`;
     } else {
       const jwtToken = localStorage.getItem('ggt_token');
@@ -66,10 +72,24 @@ let _isLoggingOut = false;
 
 api.interceptors.response.use(
   (res) => {
+    const method = res.config?.method;
+    const url = res.config?.url || '';
     // Salva in cache se è una GET cacheabile
-    if (res.config?.method === 'get' && !res.cached && isCacheable(res.config.url)) {
-      const key = cacheKey(res.config.url, res.config.headers || {});
+    if (method === 'get' && !res.cached && isCacheable(url)) {
+      const key = cacheKey(url, res.config.headers || {});
       _cache.set(key, { data: res.data, ts: Date.now() });
+    }
+    // Dopo una MUTAZIONE (POST/PUT/PATCH/DELETE) che tocca una risorsa cacheabile, svuota TUTTA
+    // la cache. Queste risorse sono accoppiate: POST /users/iscrizione crea uno studente,
+    // PATCH /classes/{id} riassegna una maestra (→ cambia gli utenti). Invalidare per prefisso
+    // lascerebbe liste stale collegate; azzerare tutto è più sicuro. Le mutazioni ad alta frequenza
+    // (griglia, presenze, documenti, mensa, avvisi, appuntamenti) NON toccano questi prefissi,
+    // quindi non svuotano la cache.
+    else if (method && method !== 'get') {
+      const touchesCacheable = CACHEABLE_PATHS.some(
+        p => url === p || url.startsWith(p + '/') || url.startsWith(p + '?')
+      );
+      if (touchesCacheable) _cache.clear();
     }
     return res;
   },

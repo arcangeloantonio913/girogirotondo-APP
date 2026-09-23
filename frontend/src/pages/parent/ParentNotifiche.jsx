@@ -18,16 +18,18 @@ export default function ParentNotifiche() {
   const [notifiche, setNotifiche] = useState([]);
   const [avvisi, setAvvisi]       = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const load = async () => {
+      setLoadError(false);
       try {
         const [aRes] = await Promise.all([
           api.get('/avvisi'),
         ]);
         // Gli avvisi sono le notifiche principali per i genitori
         setAvvisi(aRes.data || []);
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error(err); setLoadError(true); }
       finally { setLoading(false); }
     };
     load();
@@ -65,7 +67,14 @@ export default function ParentNotifiche() {
           </div>
         )}
 
-        {!loading && allItems.length === 0 && (
+        {!loading && loadError && (
+          <div className="bg-white rounded-2xl shadow-md p-10 text-center border border-gray-100" data-testid="notifiche-load-error">
+            <Bell className="w-12 h-12 mx-auto text-gray-200 mb-3" />
+            <p className="text-sm text-gray-400 font-medium">Impossibile caricare, riprova</p>
+          </div>
+        )}
+
+        {!loading && !loadError && allItems.length === 0 && (
           <div className="bg-white rounded-2xl shadow-md p-10 text-center border border-gray-100">
             <Bell className="w-12 h-12 mx-auto text-gray-200 mb-3" />
             <p className="text-sm text-gray-400 font-medium">Nessuna notifica ricevuta</p>

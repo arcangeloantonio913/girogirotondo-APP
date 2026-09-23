@@ -27,10 +27,15 @@ const PRESETS = [
   { label: 'Personalizzato', days: -1 },
 ];
 
+// Data locale in formato YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
+function toLocalDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+  return toLocalDateStr(d);
 }
 
 function formatRange(from, to) {
@@ -61,10 +66,11 @@ export default function AdminMensa() {
   const [loading, setLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
+  const [error, setError]           = useState('');
 
   const getDate = (offset = 0) => {
     const d = new Date(); d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return toLocalDateStr(d);
   };
   const today       = getDate();
   const currentDate = getDate(dateOffset);
@@ -81,7 +87,10 @@ export default function AdminMensa() {
     try {
       const r = await api.get(`/meals?date=${currentDate}`);
       setMeals(r.data);
-    } catch { }
+    } catch (e) {
+      console.error(e);
+      setError(e.response?.data?.detail || 'Errore durante il caricamento dei menu');
+    }
   };
 
   // Quando cambia il preset, aggiorna date_to
@@ -98,12 +107,14 @@ export default function AdminMensa() {
     const from = today;
     setForm({ ...EMPTY_FORM, date_from: from, date_to: from });
     setPreset(0);
+    setError('');
     setDialogOpen(true);
   };
 
   const handleCreate = async () => {
     if (!form.date_from || !form.primo) return;
     setLoading(true);
+    setError('');
     try {
       const payload = {
         ...form,
@@ -116,16 +127,24 @@ export default function AdminMensa() {
       setDialogOpen(false);
       setForm(EMPTY_FORM);
       loadData();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setError(e.response?.data?.detail || 'Errore durante la pubblicazione del menu');
+    }
     finally { setLoading(false); }
   };
 
   const handleDelete = async (mealId) => {
+    if (!window.confirm('Eliminare questo menu?')) return;
+    setError('');
     setDeletingId(mealId);
     try {
       await api.delete(`/meals/menu/${mealId}`);
       setMeals(prev => prev.filter(m => m.id !== mealId));
-    } catch { }
+    } catch (e) {
+      console.error(e);
+      setError(e.response?.data?.detail || 'Errore durante l\'eliminazione del menu');
+    }
     finally { setDeletingId(null); }
   };
 
@@ -165,6 +184,11 @@ export default function AdminMensa() {
             <Plus className="w-4 h-4 mr-1" />Aggiungi Menu
           </Button>
         </div>
+
+        {/* Errore visibile */}
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="mensa-error">{error}</p>
+        )}
 
         {/* Lista menu */}
         {meals.length === 0 ? (
@@ -305,6 +329,9 @@ export default function AdminMensa() {
                 </div>
               ))}
 
+              {error && (
+                <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+              )}
               <Button onClick={handleCreate}
                 disabled={loading || !form.primo || !form.secondo || !form.date_from}
                 className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.primary }}

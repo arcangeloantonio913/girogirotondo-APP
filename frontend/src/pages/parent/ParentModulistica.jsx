@@ -11,19 +11,24 @@ export default function ParentModulistica() {
   const [documents, setDocuments] = useState([]);
   const [receipts, setReceipts] = useState([]);
   const [acknowledging, setAcknowledging] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
 
   useEffect(() => {
     const load = async () => {
+      setLoadError(false);
       try {
         const [docsRes, receiptsRes] = await Promise.allSettled([
           api.get('/documents'),
           api.get(`/read-receipts?parent_id=${user?.id}`),
         ]);
         const val = r => r.status === 'fulfilled' ? r.value.data : undefined;
+        if (docsRes.status === 'rejected') setLoadError(true);
         setDocuments(val(docsRes) || []);
         setReceipts(val(receiptsRes) || []);
       } catch (err) {
         console.error(err);
+        setLoadError(true);
       }
     };
     load();
@@ -31,20 +36,37 @@ export default function ParentModulistica() {
 
   const isAcknowledged = (docId) => receipts.some(r => r.document_id === docId);
 
-  // Scarica il file: per data URL crea un link fittizio, per URL HTTP apre in nuova scheda
-  const handleDownload = (doc) => {
-    if (!doc.file_url) return;
-    if (doc.file_url.startsWith('data:')) {
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  // Scarica il file. PERF: la lista NON porta più il base64 (troppo pesante), quindi il
+  // file vero si recupera on-demand con GET /documents/{id} solo al momento del download.
+  const handleDownload = async (doc) => {
+    setDownloadError('');
+    let fileUrl = doc.file_url;
+    if (!fileUrl) {
+      try {
+        setDownloadingId(doc.id);
+        const res = await api.get(`/documents/${doc.id}`);
+        fileUrl = res.data?.file_url;
+      } catch (e) {
+        console.error(e);
+        setDownloadError('Impossibile scaricare il documento. Riprova.');
+      } finally {
+        setDownloadingId(null);
+      }
+    }
+    if (!fileUrl) { setDownloadError('Impossibile scaricare il documento. Riprova.'); return; }
+    if (fileUrl.startsWith('data:')) {
       // Base64 data URL → download diretto
       const a = document.createElement('a');
-      a.href = doc.file_url;
+      a.href = fileUrl;
       a.download = doc.title || 'documento';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     } else {
       // URL remoto (Firebase Storage, ecc.) → apri in nuova scheda
-      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+      window.open(fileUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -78,8 +100,18 @@ export default function ParentModulistica() {
           </p>
         </div>
 
+        {downloadError && (
+          <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2 font-semibold"
+            data-testid="download-error">{downloadError}</p>
+        )}
+
         {/* Documents */}
-        {documents.length === 0 ? (
+        {loadError ? (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md" data-testid="documents-load-error">
+            <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500">Impossibile caricare, riprova</p>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500">Nessun documento disponibile</p>
@@ -107,13 +139,15 @@ export default function ParentModulistica() {
                       </span>
                     )}
                   </div>
-                  {/* Pulsante download — solo se il documento ha un file allegato */}
-                  {doc.file_url && (
+                  {/* Pulsante download — se il documento ha un file (has_file: la lista non
+                      porta più il base64, quindi ci si basa sul flag; file_url per retro-compat) */}
+                  {(doc.has_file || doc.file_url) && (
                     <button
                       data-testid={`document-download-${doc.id}`}
                       onClick={() => handleDownload(doc)}
+                      disabled={downloadingId === doc.id}
                       title="Scarica documento"
-                      className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-blue-50 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-blue-50 transition-colors disabled:opacity-50"
                       style={{ color: C.primary }}>
                       <Download className="w-4.5 h-4.5" />
                     </button>

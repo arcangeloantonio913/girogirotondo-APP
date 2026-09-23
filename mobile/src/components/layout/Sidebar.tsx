@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
-  Dimensions, ScrollView, Pressable, Image,
+  Dimensions, ScrollView, Pressable, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
@@ -77,19 +77,18 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
 
   useEffect(() => {
     if (visible) {
+      // Reset esplicito della posizione: con useNativeDriver il valore JS di slideAnim può
+      // restare "stale" dopo un'apertura/chiusura precedente, lasciando il pannello fuori
+      // schermo → sembrava che il menù "non si aprisse". Ripartiamo SEMPRE da fuori-schermo
+      // e facciamo lo slide-in. La chiusura è gestita dal <Modal> (animationType="fade").
+      slideAnim.setValue(SIDEBAR_W);
+      fadeAnim.setValue(0);
       Animated.parallel([
         Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }),
         Animated.timing(fadeAnim,  { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: SIDEBAR_W, duration: 200, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 0, duration: 180, useNativeDriver: true }),
-      ]).start();
     }
   }, [visible]);
-
-  if (!visible && (slideAnim as any)._value >= SIDEBAR_W - 1) return null;
 
   const role = user?.role || 'parent';
   const color = ROLE_COLORS[role];
@@ -122,7 +121,8 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
   };
 
   return (
-    <View style={s.container} pointerEvents={visible ? 'auto' : 'none'}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={s.container}>
       <Animated.View style={[s.overlay, { opacity: fadeAnim }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
@@ -203,7 +203,8 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
           <Text style={s.footer}>© 2026 {tenant.appName} — GDPR compliant</Text>
         </ScrollView>
       </Animated.View>
-    </View>
+      </View>
+    </Modal>
   );
 }
 

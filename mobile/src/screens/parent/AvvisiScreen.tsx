@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import api from '../../lib/api';
 import { openFileUrl } from '../../lib/openFile';
+import { formatItDate } from '../../lib/dates';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
@@ -33,7 +34,7 @@ export default function ParentAvvisi() {
           <View style={s.card}>
             <View style={s.cardTop}>
               <View style={s.badge}><Text style={s.badgeText}>{item.type || 'Avviso'}</Text></View>
-              <Text style={s.date}>{new Date(item.created_at || item.date).toLocaleDateString('it-IT')}</Text>
+              <Text style={s.date}>{formatItDate(item.created_at || item.date)}</Text>
             </View>
             <Text style={s.cardTitle}>{item.titolo || item.title}</Text>
             {(item.testo || item.body) && <Text style={s.cardBody}>{item.testo || item.body}</Text>}

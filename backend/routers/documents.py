@@ -5,7 +5,7 @@ import logging
 from typing import Optional
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Header, BackgroundTasks
 
 from services.database import get_db
 from models.documents import DocumentCreate, DocumentCategory
@@ -17,6 +17,29 @@ from utils.expo_push import notify_role as notify_role_sede  # variante con scop
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["documents"])
+
+
+async def _notify_document_parents(classe_id, sede_id, doc_id, title):
+    """Push ai genitori per un nuovo documento. Eseguita come BackgroundTask DOPO la
+    risposta: prima era `await`-ata inline e la risposta di upload aspettava la
+    risoluzione dei destinatari (fino a ~tutta la sede) + la chiamata Expo → upload
+    lentissimo. Ora l'upload risponde subito e la notifica parte in background."""
+    db = get_db()
+    try:
+        if classe_id:
+            await notify_class(
+                db, classe_id, ["parent"],
+                title="Nuovo documento disponibile", body=title,
+                data={"type": "document", "doc_id": doc_id},
+            )
+        elif sede_id:
+            await notify_role_sede(
+                db, "parent", sede_id,
+                "Nuovo documento disponibile", title,
+                {"type": "document", "doc_id": doc_id},
+            )
+    except Exception:
+        logger.exception("[documents] push notifica fallita (non bloccante)")
 
 
 def _refresh_url(doc: dict) -> dict:
@@ -31,17 +54,21 @@ def _refresh_url(doc: dict) -> dict:
 _DATE_RE_DOCS = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _VALID_CATEGORIES = {c.value for c in DocumentCategory}   # fonte unica: l'enum
 
-# MIME whitelist per upload-b64: PDF, immagini comuni e documenti Office (.doc/.docx),
-# in linea con l'`accept` del web (.pdf,.doc,.docx,.png,.jpg,.jpeg). Tutto il resto
-# (text/html, image/svg+xml, script/eseguibili, ...) viene rifiutato con 400.
-_ALLOWED_DOC_MIME = {
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "application/msword",  # .doc
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+# MIME BLOCKLIST per upload-b64. NB: una whitelist rigida rifiutava upload legittimi
+# perché web e app inviano `application/octet-stream` quando il picker/OS non rileva il
+# MIME (es. molti PDF/immagini su iOS) → 400 e caricamento documenti rotto. Qui blocchiamo
+# SOLO i tipi realmente pericolosi in un data: URL persistito (stored-XSS se il browser li
+# renderizza) e gli eseguibili; tutto il resto (pdf/doc/docx/immagini/octet-stream) passa.
+_BLOCKED_DOC_MIME = {
+    "text/html",
+    "application/xhtml+xml",
+    "image/svg+xml",
+    "application/javascript",
+    "text/javascript",
+    "application/x-msdownload",
+    "application/x-sh",
+    "application/x-httpd-php",
+    "application/x-executable",
 }
 
 
@@ -106,7 +133,18 @@ async def get_documents(
         query.update(_tenant_scope(ctx))
 
     docs = await db.documents.find(query, {"_id": 0}).to_list(100)
-    return [_refresh_url(d) for d in docs]
+    # PERF: la LISTA non deve trasportare i file base64 (data: URL fino a ~12MB CIASCUNO):
+    # rendevano la pagina Modulistica e il refresh post-upload lentissimi. Restituiamo solo
+    # metadati + flag `has_file`; il file vero si scarica on-demand via GET /documents/{id}.
+    out = []
+    for d in docs:
+        d = _refresh_url(d)
+        fu = d.get("file_url") or ""
+        d["has_file"] = bool(fu)
+        if fu.startswith("data:"):
+            d["file_url"] = None
+        out.append(d)
+    return out
 
 
 @router.get("/{doc_id}")
@@ -125,6 +163,7 @@ async def get_document(doc_id: str, ctx: TenantContext = Depends(get_tenant_cont
 
 @router.post("/upload", status_code=201)
 async def upload_document_file(
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: str = Form(""),
     categoria: DocumentCategory = Form(DocumentCategory.altro),
@@ -166,21 +205,9 @@ async def upload_document_file(
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-notify: classe → genitori della classe; documento di sede (senza classe) →
-    # SOLO i genitori della stessa sede (mai globale multi-tenant, come upload-b64).
-    if classe_id:
-        await notify_class(
-            db, classe_id, ["parent"],
-            title="Nuovo documento disponibile",
-            body=title,
-            data={"type": "document", "doc_id": doc_id},
-        )
-    elif doc.get("sede_id"):
-        await notify_role_sede(
-            db, "parent", doc.get("sede_id"),
-            "Nuovo documento disponibile", title,
-            {"type": "document", "doc_id": doc_id},
-        )
+    # Auto-notify non bloccante (BackgroundTask, dopo la risposta): classe → genitori
+    # della classe; documento di sede → genitori della SEDE (mai globale multi-tenant).
+    background_tasks.add_task(_notify_document_parents, classe_id or None, doc.get("sede_id"), doc_id, title)
 
     return doc
 
@@ -192,6 +219,7 @@ async def upload_document_file(
 @router.post("/upload-b64", status_code=201)
 async def upload_document_base64(
     payload: dict,
+    background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(get_tenant_context),
     x_sede_id: Optional[str] = Header(None),
 ):
@@ -218,9 +246,10 @@ async def upload_document_base64(
             detail="File troppo grande (max ~12MB base64). Usa un file più piccolo.",
         )
 
-    # Whitelist del MIME (file_type è controllato dal client): niente text/html,
-    # image/svg+xml, script o eseguibili nel data URL persistito.
-    if file_type not in _ALLOWED_DOC_MIME:
+    # Blocca solo i MIME pericolosi (file_type è controllato dal client): niente
+    # text/html, svg, script o eseguibili nel data URL persistito. Tutto il resto passa,
+    # incluso application/octet-stream (che web/app inviano quando il MIME non è noto).
+    if (file_type or "").strip().lower() in _BLOCKED_DOC_MIME:
         raise HTTPException(status_code=400, detail="Tipo di file non consentito")
 
     classe_id = payload.get("classe_id") or None
@@ -248,23 +277,10 @@ async def upload_document_base64(
     await db.documents.insert_one(doc)
     doc.pop("_id", None)
 
-    # Notifica i genitori (non bloccante): classe → genitori della classe;
-    # documento di sede (senza classe) → genitori della SEDE (mai globale multi-tenant).
-    try:
-        if classe_id:
-            await notify_class(
-                db, classe_id, ["parent"],
-                title="Nuovo documento disponibile", body=title,
-                data={"type": "document", "doc_id": doc_id},
-            )
-        elif doc.get("sede_id"):
-            await notify_role_sede(
-                db, "parent", doc.get("sede_id"),
-                "Nuovo documento disponibile", title,
-                {"type": "document", "doc_id": doc_id},
-            )
-    except Exception:
-        pass
+    # Notifica i genitori DAVVERO non bloccante: schedulata come BackgroundTask, parte
+    # DOPO che la risposta è stata inviata → l'upload non aspetta la risoluzione dei
+    # destinatari né la chiamata Expo (era la causa della lentezza).
+    background_tasks.add_task(_notify_document_parents, classe_id, doc.get("sede_id"), doc_id, title)
     return doc
 
 

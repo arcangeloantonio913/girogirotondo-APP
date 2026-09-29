@@ -169,9 +169,17 @@ async def validate_admin_sede_access(current_user: dict, x_sede_id: Optional[str
         raise HTTPException(status_code=400, detail=f"Sede non valida: {requested_sede}")
 
     if not current_user.get("is_superadmin", False):
-        # Admin normale: può accedere solo alla propria sede
+        # Admin normale: può accedere solo alla propria sede.
         user_sede = current_user.get("sede_id")
-        if user_sede and user_sede != requested_sede:
+        # FAIL-CLOSED: un admin non-super SENZA sede propria non può accedere a nessuna sede
+        # (prima il guard veniva saltato → poteva leggere qualunque sede passata in X-Sede-Id,
+        # leak cross-sede su dati di minori). Deve avere una sede assegnata dalla direzione.
+        if not user_sede:
+            raise HTTPException(
+                status_code=403,
+                detail="Nessuna sede assegnata al tuo account: contatta la direzione.",
+            )
+        if user_sede != requested_sede:
             raise HTTPException(
                 status_code=403,
                 detail=f"Accesso negato: non hai i permessi per la sede '{requested_sede}'",

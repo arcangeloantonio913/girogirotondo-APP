@@ -408,7 +408,7 @@ export default function TeacherMedia() {
               <Button
                 data-testid="modal-upload-button"
                 onClick={handleUpload}
-                disabled={uploading || selectedStudents.length === 0 || selectedFiles.length === 0}
+                disabled={uploading || selectedFiles.length === 0}
                 className="w-full rounded-2xl font-bold h-11"
                 style={{ backgroundColor: C.accentGreen }}
               >

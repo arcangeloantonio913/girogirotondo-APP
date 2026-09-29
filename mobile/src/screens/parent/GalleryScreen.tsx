@@ -78,13 +78,16 @@ export default function ParentGallery() {
     setDownloading(true);
     try {
       if (url.startsWith('data:')) {
-        // base64 — share directly
-        const ext = url.includes('image/png') ? 'png' : 'jpg';
+        // base64 — share directly. Usa il MIME REALE del data URL (non solo png/jpg):
+        // le foto iPhone possono essere heic/webp → salvarle come .jpg le corrompe.
+        const mime = (url.match(/^data:([^;]+)/) || [, 'image/jpeg'])[1];
+        const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp'
+          : mime === 'image/heic' ? 'heic' : mime === 'image/gif' ? 'gif' : 'jpg';
         const path = new FileSystem.File(FileSystem.Paths.cache, `foto.${ext}`).uri;
         const base64 = url.split(',')[1];
         // writeAsStringAsync/downloadAsync sono nell'API legacy in SDK 54
         await LegacyFS.writeAsStringAsync(path, base64, { encoding: 'base64' });
-        await Sharing.shareAsync(path, { mimeType: `image/${ext}` });
+        await Sharing.shareAsync(path, { mimeType: mime });
       } else {
         const path = new FileSystem.File(FileSystem.Paths.cache, 'foto.jpg').uri;
         // Timeout: evita che il download remoto blocchi lo spinner all'infinito

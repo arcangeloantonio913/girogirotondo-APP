@@ -84,16 +84,17 @@ export default function AdminAvvisi() {
   }, [sede]);
 
   const loadData = async () => {
-    try {
-      const [aRes, cRes, uRes] = await Promise.all([
-        api.get('/avvisi'),
-        api.get('/classes'),
-        api.get('/users'),
-      ]);
-      setAvvisi(aRes.data);
-      setClasses(cRes.data);
-      setUsers(uRes.data);
-    } catch (err) { console.error(err); }
+    // allSettled: se una chiamata fallisce (es. /users con 403 per admin di sede) NON
+    // deve svuotare l'intera pagina avvisi. Ognuna aggiorna il suo stato indipendentemente.
+    const [aRes, cRes, uRes] = await Promise.allSettled([
+      api.get('/avvisi'),
+      api.get('/classes'),
+      api.get('/users'),
+    ]);
+    if (aRes.status === 'fulfilled') setAvvisi(aRes.value.data || []);
+    if (cRes.status === 'fulfilled') setClasses(cRes.value.data || []);
+    if (uRes.status === 'fulfilled') setUsers(uRes.value.data || []);
+    if (aRes.status === 'rejected') { console.error(aRes.reason); setError('Impossibile caricare gli avvisi. Riprova.'); }
   };
 
   const openDialog = () => {

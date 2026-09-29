@@ -35,7 +35,9 @@ export default function AdminAppointments() {
   const [calMonth, setCalMonth] = useState({ year: today.getFullYear(), month: today.getMonth() });
 
   useEffect(() => {
-    api.get('/appointments').then(res => setAppointments(res.data)).catch(() => {});
+    api.get('/appointments')
+      .then(res => setAppointments(res.data || []))
+      .catch((err) => { console.error(err); setStatusError('Impossibile caricare gli appuntamenti. Riprova.'); });
   }, [sede]);
 
   const handleStatusChange = async (id, status) => {

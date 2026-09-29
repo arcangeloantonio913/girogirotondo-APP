@@ -34,12 +34,16 @@ def _refresh_signed_url(item: dict) -> dict:
     """Replace storage_path with fresh signed URL if available."""
     if item.get("storage_path"):
         try:
-            item["media_url"] = get_signed_url(item["storage_path"])
+            u = get_signed_url(item["storage_path"])
+            if u:  # se Firebase non è inizializzato torna "" → NON azzerare l'url esistente
+                item["media_url"] = u
         except Exception:
             pass
     if item.get("thumbnail_path"):
         try:
-            item["thumbnail_url"] = get_signed_url(item["thumbnail_path"])
+            u = get_signed_url(item["thumbnail_path"])
+            if u:
+                item["thumbnail_url"] = u
         except Exception:
             pass
     return item

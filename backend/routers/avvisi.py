@@ -48,7 +48,8 @@ def _strip_attachment_for_list(avviso: dict) -> dict:
 
 def _avviso_visible_to(avviso: dict, role: str, user_id: str,
                         user_class_ids: list, user_child_ids: list,
-                        user_sede_id: Optional[str]) -> bool:
+                        user_sede_id: Optional[str],
+                        user_sede_ids: Optional[list] = None) -> bool:
     """
     Verifica se un avviso è visibile a un utente specifico.
     Applica le regole di targeting avanzato.
@@ -69,7 +70,11 @@ def _avviso_visible_to(avviso: dict, role: str, user_id: str,
     #    futuro senza pre-filtro riaprirebbe il buco. Difesa in profondità.
     if not a_sedi:
         return False
-    if user_sede_id and user_sede_id not in a_sedi:
+    # Un genitore può avere figli in PIÙ sedi dello stesso gruppo: si passa user_sede_ids
+    # (lista) e l'avviso è visibile se interseca una qualsiasi delle sue sedi. Admin/maestra
+    # continuano a passare il singolo user_sede_id (backward-compatible).
+    sedi_to_check = user_sede_ids if user_sede_ids else ([user_sede_id] if user_sede_id else [])
+    if sedi_to_check and not (set(a_sedi) & set(sedi_to_check)):
         return False
 
     # 3. Verifica classe
@@ -149,16 +154,19 @@ async def get_avvisi(
             {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1, "sede_id": 1}
         ).to_list(100)
         parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
-        sede_id = next((s.get("sede_id") for s in students if s.get("sede_id")), None)
+        # TUTTE le sedi dei figli (un genitore può avere figli in sedi diverse del gruppo):
+        # prima si usava solo la PRIMA sede → gli avvisi della seconda sede sparivano.
+        parent_sedi = list({s.get("sede_id") for s in students if s.get("sede_id")})
 
         all_avvisi = await db.avvisi.find(
-            {"$or": [{"sede_id": sede_id}, {"target_sedi": {"$in": [sede_id]}}]},
+            {"$or": [{"sede_id": {"$in": parent_sedi}}, {"target_sedi": {"$in": parent_sedi}}]},
             {"_id": 0}
         ).sort("created_at", -1).to_list(500)
 
         avvisi = [
             a for a in all_avvisi
-            if _avviso_visible_to(a, "parent", user_id, parent_class_ids, child_ids, sede_id)
+            if _avviso_visible_to(a, "parent", user_id, parent_class_ids, child_ids, None,
+                                  user_sede_ids=parent_sedi)
         ]
     else:
         return []
@@ -210,8 +218,9 @@ async def get_avviso(
                 {"id": {"$in": child_ids}}, {"_id": 0, "class_id": 1, "sede_id": 1}
             ).to_list(100)
             parent_class_ids = list({s["class_id"] for s in students if s.get("class_id")})
-            sede_id = next((s.get("sede_id") for s in students if s.get("sede_id")), None)
-            visible = _avviso_visible_to(avviso, "parent", user_id, parent_class_ids, child_ids, sede_id)
+            parent_sedi = list({s.get("sede_id") for s in students if s.get("sede_id")})
+            visible = _avviso_visible_to(avviso, "parent", user_id, parent_class_ids, child_ids, None,
+                                         user_sede_ids=parent_sedi)
 
     if not visible:
         # 404 uniforme cross-tenant (non riveliamo l'esistenza).

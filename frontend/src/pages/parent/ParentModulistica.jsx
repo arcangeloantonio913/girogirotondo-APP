@@ -72,6 +72,7 @@ export default function ParentModulistica() {
 
   const handleAcknowledge = async (docId) => {
     setAcknowledging(docId);
+    setDownloadError('');
     try {
       const res = await api.post('/read-receipts', {
         document_id: docId,
@@ -84,6 +85,7 @@ export default function ParentModulistica() {
       });
     } catch (err) {
       console.error(err);
+      setDownloadError('Impossibile registrare la presa visione. Controlla la connessione e riprova.');
     } finally {
       setAcknowledging(null);
     }

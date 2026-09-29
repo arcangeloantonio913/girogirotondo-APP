@@ -45,7 +45,9 @@ async def _notify_document_parents(classe_id, sede_id, doc_id, title):
 def _refresh_url(doc: dict) -> dict:
     if doc.get("storage_path"):
         try:
-            doc["file_url"] = get_signed_url(doc["storage_path"])
+            u = get_signed_url(doc["storage_path"])
+            if u:  # Firebase non inizializzato torna "" → NON azzerare il file_url esistente
+                doc["file_url"] = u
         except Exception:
             pass
     return doc

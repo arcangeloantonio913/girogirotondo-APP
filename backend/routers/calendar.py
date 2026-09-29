@@ -1,5 +1,6 @@
 """Calendar router — create/read/update/delete events + upcoming."""
 import uuid
+import logging
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
@@ -9,6 +10,8 @@ from models.calendar import CalendarEventCreate, CalendarEventUpdate
 from middleware.auth import get_tenant_context, TenantContext
 from utils.push_notifications import notify_class
 from utils.expo_push import notify_role as notify_role_sede  # variante scopata per sede
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -124,28 +127,33 @@ async def create_event(
     await db.calendar_events.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-notify affected users
-    if payload.classe_id:
-        await notify_class(
-            db, payload.classe_id, list(payload.visibile_a),
-            title="Nuovo evento in calendario",
-            body=payload.titolo,
-            data={"type": "calendar", "event_id": event_id},
-        )
-    else:
-        # Evento di SEDE (senza classe): notifica SOLO gli utenti della stessa sede.
-        # Prima si usava notify_role SENZA sede → la push arrivava a TUTTI i genitori/maestre
-        # di TUTTE le sedi e org (leak multi-tenant). Ora si scopa per doc["sede_id"].
-        event_sede = doc.get("sede_id")
-        if event_sede:
-            for role_target in payload.visibile_a:
-                role_val = role_target.value if hasattr(role_target, "value") else role_target
-                await notify_role_sede(
-                    db, role_val, event_sede,
-                    "Nuovo evento in calendario",
-                    payload.titolo,
-                    {"type": "calendar", "event_id": event_id},
-                )
+    # Auto-notify affected users — NON deve far fallire la creazione dell'evento (già salvato):
+    # un errore nella risoluzione destinatari/push tornava 500 → il client ritentava → eventi
+    # DUPLICATI in calendario. Ora la notifica è non bloccante, come negli altri router.
+    try:
+        if payload.classe_id:
+            await notify_class(
+                db, payload.classe_id, list(payload.visibile_a),
+                title="Nuovo evento in calendario",
+                body=payload.titolo,
+                data={"type": "calendar", "event_id": event_id},
+            )
+        else:
+            # Evento di SEDE (senza classe): notifica SOLO gli utenti della stessa sede.
+            # Prima si usava notify_role SENZA sede → la push arrivava a TUTTI i genitori/maestre
+            # di TUTTE le sedi e org (leak multi-tenant). Ora si scopa per doc["sede_id"].
+            event_sede = doc.get("sede_id")
+            if event_sede:
+                for role_target in payload.visibile_a:
+                    role_val = role_target.value if hasattr(role_target, "value") else role_target
+                    await notify_role_sede(
+                        db, role_val, event_sede,
+                        "Nuovo evento in calendario",
+                        payload.titolo,
+                        {"type": "calendar", "event_id": event_id},
+                    )
+    except Exception:
+        logger.warning("[CALENDAR] notify fallita dopo create_event (non bloccante)", exc_info=True)
 
     return doc
 

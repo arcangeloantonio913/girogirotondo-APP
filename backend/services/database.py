@@ -291,6 +291,30 @@ async def ensure_indexes(db=None):
         ("appointments", "parent_id", {}),
         # read_receipts
         ("read_receipts", [("document_id", 1), ("parent_id", 1)], {}),
+        ("read_receipts", "parent_id", {}),
+
+        # --- PERF: campo uuid `id` (usato ovunque in find_one({"id":...}) → oggi COLLSCAN) ---
+        ("users", "id", {}),
+        ("students", "id", {}),
+        ("classes", "id", {}),
+        ("gallery", "id", {}),
+        ("avvisi", "id", {}),
+        ("documents", "id", {}),
+        ("appointments", "id", {}),
+        ("calendar_events", "id", {}),
+        # --- PERF: scoping genitori/maestre ---
+        ("users", "child_ids", {}),
+        ("users", "class_ids", {}),
+        ("users", "role", {}),
+        # --- PERF: query giornaliere per classe+data (diario/griglia/menù) ---
+        ("diary", [("class_id", 1), ("date", 1)], {}),
+        ("diary", "student_ids", {}),
+        ("griglia", [("class_id", 1), ("date", 1)], {}),
+        ("griglia", "student_id", {}),
+        ("meals", [("class_id", 1), ("date", 1)], {}),
+        # --- PERF: liste avvisi (sort + targeting) ---
+        ("avvisi", "created_at", {}),
+        ("avvisi", "target_sedi", {}),
     ]
 
     for coll_name, keys, options in index_specs:

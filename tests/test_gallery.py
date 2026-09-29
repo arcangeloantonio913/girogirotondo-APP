@@ -126,3 +126,78 @@ async def test_superadmin_sees_both_schools(client, super_headers):
     assert r.status_code == 200
     ids = {m["id"] for m in r.json()}
     assert {"ggt-media-1", "mm-media-1"} <= ids
+
+
+# --- MIME fix (foto Android non visibili su iPhone) --------------------------
+
+# PNG 1x1 valido (magic bytes \x89PNG...)
+_PNG_1x1_B64 = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+                "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+
+
+def test_fix_data_url_mime_corrects_png_labeled_jpeg():
+    from routers.gallery import _fix_data_url_mime, _sniff_image_mime
+    import base64
+    assert _sniff_image_mime(base64.b64decode(_PNG_1x1_B64)) == "image/png"
+    # PNG erroneamente etichettato come jpeg (come fa l'app Android) → corretto
+    fixed = _fix_data_url_mime(f"data:image/jpeg;base64,{_PNG_1x1_B64}")
+    assert fixed.startswith("data:image/png;base64,")
+    # jpeg vero resta jpeg (nessuna modifica spuria)
+    jpeg = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff\xe0abcdefghijkl").decode()
+    assert _fix_data_url_mime(jpeg) == jpeg
+
+
+@pytest.mark.asyncio
+async def test_upload_b64_corrects_android_mime(client, teacher_headers):
+    """Una foto PNG etichettata jpeg (bug app Android) va salvata come image/png,
+    così iPhone la visualizza."""
+    r = await client.post(
+        "/api/gallery/upload-b64",
+        json={
+            "class_id": GGT_CLASS,
+            "student_ids": [GGT_STUDENT],
+            "media_type": "photo",
+            "caption": "test",
+            "media_url": f"data:image/jpeg;base64,{_PNG_1x1_B64}",
+        },
+        headers=teacher_headers,
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["media_url"].startswith("data:image/png;base64,")
+
+
+@pytest.mark.asyncio
+async def test_upload_b64_empty_student_ids_ok(client, teacher_headers):
+    """Upload senza selezionare bambini (foto di gruppo) deve riuscire, non bloccarsi."""
+    r = await client.post(
+        "/api/gallery/upload-b64",
+        json={
+            "class_id": GGT_CLASS,
+            "student_ids": [],
+            "media_type": "photo",
+            "caption": "gruppo",
+            "media_url": f"data:image/png;base64,{_PNG_1x1_B64}",
+        },
+        headers=teacher_headers,
+    )
+    assert r.status_code == 201, r.text
+
+
+@pytest.mark.asyncio
+async def test_list_serves_thumbnail_in_media_url_for_old_apps(client, teacher_headers):
+    """La lista deve mettere la THUMBNAIL in media_url (le app vecchie leggono quel campo)
+    e marcare has_full, così le foto non risultano vuote sul telefono."""
+    up = await client.post(
+        "/api/gallery/upload-b64",
+        json={"class_id": GGT_CLASS, "student_ids": [GGT_STUDENT], "media_type": "photo",
+              "caption": "x", "media_url": f"data:image/png;base64,{_PNG_1x1_B64}"},
+        headers=teacher_headers,
+    )
+    assert up.status_code == 201, up.text
+    r = await client.get(f"/api/gallery?class_id={GGT_CLASS}", headers=teacher_headers)
+    assert r.status_code == 200
+    withthumb = [m for m in r.json() if m.get("thumbnail_url")]
+    assert withthumb, "atteso almeno un media con thumbnail"
+    for m in withthumb:
+        assert m["media_url"] == m["thumbnail_url"]   # niente più media_url=None → foto visibile
+        assert m.get("has_full") is True              # i client aggiornati sanno di poter scaricare il full

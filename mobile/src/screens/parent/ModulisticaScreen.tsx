@@ -30,13 +30,15 @@ export default function ParentModulistica() {
   }, []);
 
   const handleDownload = async (doc: any) => {
-    const url = doc.file_url;
-    if (!url) {
-      Alert.alert('Documento', 'File non disponibile.');
-      return;
-    }
     setOpening(doc.id);
     try {
+      // La lista /documents strippa file_url (perf) → recupero il file pieno per id.
+      let url = doc.file_url;
+      if (!url && doc.id) {
+        const r = await api.get(`/documents/${doc.id}`);
+        url = r.data?.file_url;
+      }
+      if (!url) { Alert.alert('Documento', 'File non disponibile.'); return; }
       // I documenti sono salvati come data URL base64: Linking.openURL non li apre →
       // l'helper li decodifica su file e li condivide.
       await openFileUrl(url, doc.title);
@@ -87,7 +89,7 @@ export default function ParentModulistica() {
                 </View>
               </View>
               <View style={s.cardActions}>
-                {item.file_url && (
+                {(item.has_file || item.file_url) && (
                   <TouchableOpacity onPress={() => handleDownload(item)} style={s.downloadBtn}
                     disabled={opening === item.id}>
                     <Ionicons name="download-outline" size={16} color={C.babyBlue} />

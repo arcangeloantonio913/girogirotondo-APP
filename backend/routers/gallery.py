@@ -45,6 +45,54 @@ def _refresh_signed_url(item: dict) -> dict:
     return item
 
 
+def _sniff_image_mime(raw: bytes) -> Optional[str]:
+    """Riconosce il vero tipo immagine dai magic bytes. None se non riconosciuto."""
+    if len(raw) < 12:
+        return None
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if raw[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    # HEIC/HEIF: 'ftyp' a offset 4 + brand heic/heix/mif1/msf1
+    if raw[4:8] == b"ftyp" and raw[8:12] in (b"heic", b"heix", b"mif1", b"msf1", b"hevc"):
+        return "image/heic"
+    return None
+
+
+def _fix_data_url_mime(data_url: str) -> str:
+    """Corregge il MIME dichiarato in un data URL base64 se non combacia coi byte reali.
+
+    L'app mobile (build correnti) etichetta OGNI foto come `data:image/jpeg` anche quando
+    su Android i byte sono PNG/WebP: Android è tollerante e la mostra, iOS è rigoroso e la
+    rende illeggibile ("foto da Android non visibili su iPhone"). Qui sniffiamo il tipo vero
+    e riscriviamo il prefisso. Non solleva mai: in caso di dubbio lascia il data URL invariato.
+    """
+    try:
+        if not data_url or not data_url.startswith("data:"):
+            return data_url
+        header, _, b64 = data_url.partition(",")
+        if not b64 or ";base64" not in header:
+            return data_url
+        import base64 as _b64
+        prefix = b64[:64]
+        prefix = prefix[: len(prefix) - (len(prefix) % 4)]  # base64 valido = multiplo di 4
+        raw = _b64.b64decode(prefix)  # bastano i primi byte per i magic number
+        real = _sniff_image_mime(raw)
+        if not real:
+            return data_url
+        declared = header[5:].split(";", 1)[0].strip().lower()  # "image/jpeg"
+        if declared == real:
+            return data_url
+        logger.info("[GALLERY] MIME corretto: dichiarato %s -> reale %s", declared, real)
+        return f"data:{real};base64,{b64}"
+    except Exception:
+        return data_url
+
+
 def _thumbnail_from_data_url(data_url: str, max_px: int = 400, quality: int = 60) -> Optional[str]:
     """Generate a small JPEG thumbnail (base64 data URL) from a base64 image data URL.
 
@@ -87,7 +135,12 @@ def _slim_list_item(item: dict) -> dict:
     item = _refresh_signed_url(item)
     item["has_media"] = bool(item.get("media_url") or item.get("thumbnail_url"))
     if item.get("thumbnail_url"):
-        item["media_url"] = None
+        # Le build mobile GIÀ INSTALLATE leggono `media_url` (non `thumbnail_url`): se qui
+        # mettevamo None la foto risultava VUOTA sul telefono. Serviamo invece la THUMBNAIL
+        # (piccola → lista leggera uguale) così si vede ovunque; la foto PIENA resta dietro
+        # GET /gallery/{id} e i client aggiornati la scaricano a schermo quando has_full=True.
+        item["has_full"] = bool(item.get("media_url"))
+        item["media_url"] = item["thumbnail_url"]
     return item
 
 
@@ -244,13 +297,17 @@ async def upload_media_file(
     await db.gallery.insert_one(doc)
     doc.pop("_id", None)
 
-    # Auto-notify parents of this class
-    await notify_class(
-        db, class_id, ["parent"],
-        title="Nuova foto pubblicata!",
-        body=caption or "La maestra ha pubblicato una nuova foto.",
-        data={"type": "gallery", "media_id": media_id},
-    )
+    # Auto-notify parents of this class — NON deve mai far fallire un upload riuscito
+    # (una push che va in errore lasciava l'endpoint a 500 pur avendo salvato la foto).
+    try:
+        await notify_class(
+            db, class_id, ["parent"],
+            title="Nuova foto pubblicata!",
+            body=caption or "La maestra ha pubblicato una nuova foto.",
+            data={"type": "gallery", "media_id": media_id},
+        )
+    except Exception:
+        logger.warning("[GALLERY] notify_class fallita dopo upload (non bloccante)", exc_info=True)
 
     return doc
 
@@ -283,6 +340,10 @@ async def upload_media_base64(
 
     if not media_url or not class_id:
         raise HTTPException(status_code=400, detail="media_url e class_id obbligatori")
+
+    # Corregge il MIME se l'app ha etichettato male i byte (Android PNG/WebP marcati jpeg
+    # → invisibili su iPhone). Safety net per le build già installate negli store.
+    media_url = _fix_data_url_mime(media_url)
 
     # Caller must own the target class
     ctx.assert_class(class_id)
@@ -328,12 +389,16 @@ async def upload_media_base64(
     await db.gallery.insert_one(doc)
     doc.pop("_id", None)
 
-    await notify_class(
-        db, class_id, ["parent"],
-        title="Nuova foto pubblicata!",
-        body=caption or "La maestra ha pubblicato una nuova foto.",
-        data={"type": "gallery", "media_id": media_id},
-    )
+    # Push non bloccante: un errore di notifica non deve invalidare l'upload (che è già salvato).
+    try:
+        await notify_class(
+            db, class_id, ["parent"],
+            title="Nuova foto pubblicata!",
+            body=caption or "La maestra ha pubblicato una nuova foto.",
+            data={"type": "gallery", "media_id": media_id},
+        )
+    except Exception:
+        logger.warning("[GALLERY] notify_class fallita dopo upload-b64 (non bloccante)", exc_info=True)
     return doc
 
 
@@ -351,6 +416,9 @@ async def upload_media_url(
         raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
     doc = payload.model_dump()
+    # Corregge il MIME se i byte non combaciano con l'etichetta (foto Android non visibili su iPhone)
+    if isinstance(doc.get("media_url"), str):
+        doc["media_url"] = _fix_data_url_mime(doc["media_url"])
     # Guardia dimensione: se media_url è un data URL base64, non deve superare 12MB
     # (limite documento MongoDB 16MB) — altrimenti l'insert fallisce con 500. Stesso
     # limite di /upload-b64, così l'app che usa questo endpoint non genera errori opachi.

@@ -15,11 +15,17 @@ import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-/** Apre l'allegato di un avviso (salvato come data URL base64): Linking non apre i data: URL. */
-async function openAttachment(url?: string, name?: string) {
-  if (!url) return;
+/** Apre l'allegato di un avviso (salvato come data URL base64): Linking non apre i data: URL.
+ *  La lista /avvisi strippa attachment_url (perf) → se manca lo recuperiamo per id. */
+async function openAttachment(id?: string, url?: string, name?: string) {
   try {
-    await openFileUrl(url, name);
+    let u = url;
+    if (!u && id) {
+      const r = await api.get(`/avvisi/${id}`);
+      u = r.data?.attachment_url;
+    }
+    if (!u) { Alert.alert('Allegato non disponibile'); return; }
+    await openFileUrl(u, name);
   } catch {
     Alert.alert('Errore', 'Impossibile aprire l\'allegato.');
   }
@@ -127,10 +133,13 @@ export default function AdminAvvisi() {
       const asset = res.assets[0];
       const name = asset.uri.split('/').pop() || 'immagine.jpg';
       const base64 = await new FileSystem.File(asset.uri).base64();
+      // MIME REALE: su Android la foto può essere PNG/WebP; forzare image/jpeg la rende
+      // illeggibile su iPhone (iOS rigoroso sul match tipo↔byte).
+      const mime = asset.mimeType || 'image/jpeg';
       setAllegati(prev => [...prev, {
         name,
-        mime: 'image/jpeg',
-        base64: `data:image/jpeg;base64,${base64}`,
+        mime,
+        base64: `data:${mime};base64,${base64}`,
       }]);
     } catch (e: any) {
       Alert.alert('Errore', e?.message || 'Impossibile caricare l\'immagine');
@@ -222,7 +231,7 @@ export default function AdminAvvisi() {
                   <Text style={s.cardBody} numberOfLines={2}>{item.testo || item.body || item.message}</Text>}
                 {/* Allegato */}
                 {item.attachment_name && (
-                  <TouchableOpacity onPress={() => openAttachment(item.attachment_url, item.attachment_name)}
+                  <TouchableOpacity onPress={() => openAttachment(item.id, item.attachment_url, item.attachment_name)}
                     style={s.attachRow}>
                     <Text style={{ fontSize: 16 }}>{getFileIcon(item.attachment_name)}</Text>
                     <Text style={s.attachName} numberOfLines={1}>{item.attachment_name}</Text>

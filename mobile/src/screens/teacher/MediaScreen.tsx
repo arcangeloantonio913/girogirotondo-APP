@@ -28,7 +28,7 @@ export default function TeacherMedia() {
   const [selStudents, setSelStudents] = useState<string[]>([]);
   const [allStudents, setAllStudents] = useState(true);
   const [caption,     setCaption]     = useState('');
-  const [pickedImage, setPickedImage] = useState<{ uri: string; base64: string } | null>(null);
+  const [pickedImage, setPickedImage] = useState<{ uri: string; base64: string; mime: string } | null>(null);
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
@@ -54,9 +54,14 @@ export default function TeacherMedia() {
         quality: 0.4, // bassa qualità per upload veloce
       });
       if (result.canceled || !result.assets?.[0]) return;
-      const uri = result.assets[0].uri;
+      const asset = result.assets[0];
+      const uri = asset.uri;
       const base64 = await new FileSystem.File(uri).base64();
-      setPickedImage({ uri, base64 });
+      // MIME REALE dal picker. Su Android la foto scelta può essere PNG/WebP/HEIC:
+      // etichettarla a forza come image/jpeg la rende illeggibile su iPhone (iOS è
+      // rigoroso sul match tipo↔byte, Android è tollerante) → "foto non visualizzabili".
+      const mime = asset.mimeType || 'image/jpeg';
+      setPickedImage({ uri, base64, mime });
       setShowModal(true);
     } catch (e: any) {
       if(__DEV__) console.log('[MEDIA] pickImage error:', e?.message);
@@ -74,19 +79,16 @@ export default function TeacherMedia() {
     if (!classId) { Alert.alert('Nessuna classe assegnata'); return; }
     setUploading(true);
     try {
-      // student_ids: tutti o selezionati
-      const studentIds = allStudents
+      // student_ids: se non seleziona nessuno → foto a TUTTA la classe (caso comune:
+      // foto di gruppo). Niente più blocco "seleziona almeno un bambino".
+      const studentIds = (allStudents || selStudents.length === 0)
         ? students.map(s => s.id)
         : selStudents;
-
-      if (studentIds.length === 0) {
-        Alert.alert('Seleziona almeno un bambino'); setUploading(false); return;
-      }
 
       const payload = {
         class_id: classId,
         student_ids: studentIds,
-        media_url: `data:image/jpeg;base64,${pickedImage.base64}`,
+        media_url: `data:${pickedImage.mime || 'image/jpeg'};base64,${pickedImage.base64}`,
         media_type: 'photo',
         caption: caption || new Date().toLocaleDateString('it-IT'),
       };

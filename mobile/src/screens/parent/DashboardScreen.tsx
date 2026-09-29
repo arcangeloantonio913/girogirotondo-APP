@@ -239,7 +239,7 @@ export default function ParentDashboard({ navigation }: any) {
             ? <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
                 {gallery.slice(0, 6).map((item: any, i: number) => (
                   <TouchableOpacity key={i} onPress={() => navigation.navigate('Foto')} style={s.galleryThumb}>
-                    <Image source={{ uri: item.media_url || item.url }} style={s.galleryImg} />
+                    <Image source={{ uri: item.thumbnail_url || item.media_url || item.url }} style={s.galleryImg} />
                   </TouchableOpacity>
                 ))}
               </ScrollView>

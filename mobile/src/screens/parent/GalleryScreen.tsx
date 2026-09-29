@@ -24,6 +24,30 @@ export default function ParentGallery() {
   const [hasMore,     setHasMore]     = useState(true);
   const [preview,     setPreview]     = useState<number|null>(null); // index
   const [downloading, setDownloading] = useState(false);
+  // La LISTA /gallery azzera media_url quando esiste una thumbnail (perf): la foto piena
+  // va recuperata on-demand via GET /gallery/{id}. Qui la cachiamo per id.
+  const [fullMap, setFullMap] = useState<Record<string,string>>({});
+
+  const fetchFull = useCallback(async (item: any): Promise<string|null> => {
+    if (!item) return null;
+    // Senza has_full la foto è già intera in media_url (video/legacy).
+    if (!item.has_full) return item.media_url || item.thumbnail_url || item.url || null;
+    if (item.id && fullMap[item.id]) return fullMap[item.id];
+    if (!item.id) return item.media_url || item.thumbnail_url || null;
+    try {
+      const r = await api.get(`/gallery/${item.id}`);
+      const full = r.data?.media_url || null;
+      if (full) setFullMap(m => ({ ...m, [item.id]: full }));
+      return full || item.media_url || item.thumbnail_url || null;
+    } catch {
+      return item.media_url || item.thumbnail_url || null;
+    }
+  }, [fullMap]);
+
+  const openPreview = (index: number) => {
+    setPreview(index);
+    fetchFull(items[index]); // popola fullMap in background
+  };
 
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
@@ -48,7 +72,8 @@ export default function ParentGallery() {
   useEffect(() => { load(true); }, [tab, childId]);
 
   const handleDownload = async (item: any) => {
-    const url = item.media_url || item.url;
+    // media_url può essere null nella lista (perf): recupera la foto piena on-demand.
+    const url = item.media_url || (item.id && fullMap[item.id]) || await fetchFull(item) || item.thumbnail_url || item.url;
     if (!url) return;
     setDownloading(true);
     try {
@@ -99,8 +124,8 @@ export default function ParentGallery() {
             ListFooterComponent={loadingMore?<ActivityIndicator color={C.babyPink} style={{padding:10}}/>:null}
             ListEmptyComponent={<View style={s.empty}><Text style={{fontSize:48}}>📷</Text><Text style={s.emptyText}>Nessuna foto disponibile</Text></View>}
             renderItem={({item,index})=>(
-              <TouchableOpacity onPress={()=>setPreview(index)} style={s.thumb}>
-                <Image source={{uri:item.media_url||item.url}} style={s.thumbImg}/>
+              <TouchableOpacity onPress={()=>openPreview(index)} style={s.thumb}>
+                <Image source={{uri:item.thumbnail_url||item.media_url||item.url}} style={s.thumbImg}/>
                 {item.media_type==='video'&&(
                   <View style={s.playBtn}><Ionicons name="play" size={20} color={C.white}/></View>
                 )}
@@ -116,7 +141,7 @@ export default function ParentGallery() {
             <Ionicons name="close" size={28} color={C.white}/>
           </TouchableOpacity>
 
-          {current&&<Image source={{uri:current.media_url||current.url}} style={s.previewImg} resizeMode="contain"/>}
+          {current&&<Image source={{uri:(current.id&&fullMap[current.id])||current.media_url||current.thumbnail_url||current.url}} style={s.previewImg} resizeMode="contain"/>}
 
           {/* Caption */}
           {current?.caption&&(

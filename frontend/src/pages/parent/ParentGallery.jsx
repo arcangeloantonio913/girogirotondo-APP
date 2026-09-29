@@ -52,22 +52,22 @@ function PhotoGrid({ items, onSelect }) {
 function Lightbox({ item, items, onClose }) {
   const idx = items.findIndex(i => i.id === item.id);
 
-  // La lista /gallery ora restituisce media_url = null quando esiste una thumbnail
-  // (per alleggerire la risposta). Qui recuperiamo il full-res on demand.
-  const [fullUrl, setFullUrl] = useState(item.media_url || null);
+  // La lista /gallery serve la THUMBNAIL in media_url e marca has_full=true quando esiste
+  // una versione piena dietro GET /gallery/{id}. Recuperiamo il full-res on demand.
+  const [fullUrl, setFullUrl] = useState(item.has_full ? null : (item.media_url || null));
   const [loadingFull, setLoadingFull] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    if (item.media_url) { setFullUrl(item.media_url); return; }
+    if (!item.has_full) { setFullUrl(item.media_url || item.thumbnail_url || null); return; }
     setFullUrl(null);
     setLoadingFull(true);
     api.get(`/gallery/${item.id}`)
-      .then(res => { if (!cancelled) setFullUrl(res.data?.media_url || item.thumbnail_url || null); })
-      .catch(() => { if (!cancelled) setFullUrl(item.thumbnail_url || null); })
+      .then(res => { if (!cancelled) setFullUrl(res.data?.media_url || item.thumbnail_url || item.media_url || null); })
+      .catch(() => { if (!cancelled) setFullUrl(item.thumbnail_url || item.media_url || null); })
       .finally(() => { if (!cancelled) setLoadingFull(false); });
     return () => { cancelled = true; };
-  }, [item.id, item.media_url, item.thumbnail_url]);
+  }, [item.id, item.has_full, item.media_url, item.thumbnail_url]);
 
   const goPrev = useCallback((e) => {
     e.stopPropagation();

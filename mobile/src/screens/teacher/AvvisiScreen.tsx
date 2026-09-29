@@ -12,10 +12,17 @@ import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-async function openAttachment(url?: string, name?: string) {
-  if (!url) return;
-  try { await openFileUrl(url, name); }
-  catch { Alert.alert('Errore', 'Impossibile aprire l\'allegato.'); }
+async function openAttachment(id?: string, url?: string, name?: string) {
+  try {
+    let u = url;
+    // La lista /avvisi strippa attachment_url (perf) → recupero l'allegato pieno per id.
+    if (!u && id) {
+      const r = await api.get(`/avvisi/${id}`);
+      u = r.data?.attachment_url;
+    }
+    if (!u) { Alert.alert('Allegato non disponibile'); return; }
+    await openFileUrl(u, name);
+  } catch { Alert.alert('Errore', 'Impossibile aprire l\'allegato.'); }
 }
 
 export default function TeacherAvvisi() {
@@ -130,7 +137,7 @@ export default function TeacherAvvisi() {
                 </View>
                 {/* Allegato */}
                 {item.attachment_name && (
-                  <TouchableOpacity onPress={() => openAttachment(item.attachment_url, item.attachment_name)}
+                  <TouchableOpacity onPress={() => openAttachment(item.id, item.attachment_url, item.attachment_name)}
                     style={s.attachChip}>
                     <Ionicons name="attach-outline" size={14} color={C.accentPink} />
                     <Text style={s.attachChipText} numberOfLines={1}>{item.attachment_name}</Text>

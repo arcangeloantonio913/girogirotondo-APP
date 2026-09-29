@@ -160,10 +160,16 @@ export default function TeacherMedia() {
   };
 
   const handleUpload = async () => {
-    if (selectedStudents.length === 0 || selectedFiles.length === 0) return;
+    // Niente fallimento silenzioso: ogni blocco mostra un messaggio all'utente.
+    if (selectedFiles.length === 0) { setUploadError('Seleziona prima una o più foto.'); return; }
+    if (!classId) { setUploadError('Nessuna classe assegnata: contatta la direzione.'); return; }
+    // Se la maestra non seleziona bambini, la foto va a TUTTA la classe (caso più comune:
+    // foto di gruppo). Prima l'upload usciva in silenzio e "non succedeva niente".
+    const targetStudents = selectedStudents.length > 0
+      ? selectedStudents
+      : classStudents.map(s => s.id);
     // Caption automatica basata sulla data
     const autoCaption = caption || new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
-    if (!classId) return;
 
     setUploading(true);
     setUploadError('');
@@ -183,7 +189,7 @@ export default function TeacherMedia() {
 
         const res = await api.post('/gallery/upload-b64', {
           class_id:    classId,
-          student_ids: selectedStudents,
+          student_ids: targetStudents,
           media_type:  file.type.startsWith('video') ? 'video' : 'photo',
           caption:     autoCaption,
           media_url:   dataURL,

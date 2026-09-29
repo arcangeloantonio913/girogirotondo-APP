@@ -64,6 +64,10 @@ class UserUpdate(BaseModel):
     child_id: Optional[str] = None
     child_ids: Optional[List[str]] = None
     avatar_url: Optional[str] = None
+    # Funzioni DISABILITATE per un membro dello staff (blacklist di chiavi modulo, es.
+    # ["griglia","menu"]). Assente/None = tutte abilitate (nessuna regressione). Gestita
+    # solo dalla direzione (vedi _PRIVILEGED in update_user).
+    funzioni_disabilitate: Optional[List[str]] = None
 
 
 class SecondoGenitoreCreate(BaseModel):

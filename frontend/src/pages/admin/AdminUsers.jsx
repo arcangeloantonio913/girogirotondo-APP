@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Users, Plus, Trash2, Shield, GraduationCap, Heart, Baby,
   AlertTriangle, Eye, EyeOff, CheckCircle, Mail, RefreshCw,
-  Pencil, BookOpen, Key, UserPlus, XCircle,
+  Pencil, BookOpen, Key, UserPlus, XCircle, SlidersHorizontal,
 } from 'lucide-react';
 import StudentDetailDialog from '@/components/StudentDetailDialog';
 
@@ -35,6 +35,18 @@ function generatePassword(len = 10) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
+
+// Moduli/funzioni che la direzione può abilitare o disabilitare per un membro dello staff.
+// La chiave deve combaciare con quella usata dal gating nella dashboard/nav maestra.
+const STAFF_MODULES = [
+  { key: 'griglia',      label: 'Griglia giornaliera', emoji: '📋' },
+  { key: 'diario',       label: 'Diario',              emoji: '📖' },
+  { key: 'foto',         label: 'Galleria foto',       emoji: '🖼️' },
+  { key: 'avvisi',       label: 'Avvisi',              emoji: '🔔' },
+  { key: 'menu',         label: 'Menù / Mensa',        emoji: '🍴' },
+  { key: 'presenze',     label: 'Presenze',            emoji: '✅' },
+  { key: 'appuntamenti', label: 'Appuntamenti',        emoji: '📆' },
+];
 
 // Staff: password auto-generata + ruolo default maestra
 const makeEmptyStaff = () => ({ name: '', email: '', password: generatePassword(), role: 'teacher', class_ids: [] });
@@ -104,6 +116,12 @@ export default function AdminUsers() {
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState('');
   const [assignSuccess, setAssignSuccess] = useState(false);
+  // Gestione funzioni staff (abilita/disabilita moduli)
+  const [funzDialog, setFunzDialog] = useState({ open: false, user: null });
+  const [funzDisabled, setFunzDisabled] = useState([]);   // chiavi moduli DISABILITATI
+  const [funzLoading, setFunzLoading] = useState(false);
+  const [funzError, setFunzError] = useState('');
+  const [funzSuccess, setFunzSuccess] = useState(false);
 
   useEffect(() => { loadData(); }, [sede]);
 
@@ -133,6 +151,26 @@ export default function AdminUsers() {
   const openIscrizioneDialog = () => {
     const pwd = generatePassword();
     setIscForm({ ...EMPTY_ISCRIZIONE, genitore_password: pwd });
+    setAutogenPwd(true);
+    setIscError('');
+    setIscSuccess(null);
+    setShowIscPwd(false);
+    setShowSecondParent(false);
+    setIsc2Form({ genitore_email: '', genitore_nome: '', genitore_password: generatePassword() });
+    setDialogType('iscrizione');
+    setDialogOpen(true);
+  };
+
+  // Aggiungi un altro bambino a una FAMIGLIA esistente: apre l'iscrizione pre-compilando
+  // il genitore. Il backend deduplica il genitore per email ($addToSet child_ids) → il
+  // nuovo bimbo viene collegato allo stesso account, senza crearne un altro.
+  const openAddChildDialog = (parent) => {
+    setIscForm({
+      ...EMPTY_ISCRIZIONE,
+      genitore_password: generatePassword(),
+      genitore_email: parent.email || '',
+      genitore_nome: parent.name || '',
+    });
     setAutogenPwd(true);
     setIscError('');
     setIscSuccess(null);
@@ -195,6 +233,30 @@ export default function AdminUsers() {
     } catch (err) {
       setAssignError(err.response?.data?.detail || 'Errore durante l\'assegnazione');
     } finally { setAssignLoading(false); }
+  };
+
+  // ── gestione funzioni staff (abilita/disabilita moduli) ────────────────────
+  const openFunzDialog = (user) => {
+    setFunzDisabled(Array.isArray(user.funzioni_disabilitate) ? user.funzioni_disabilitate : []);
+    setFunzError('');
+    setFunzSuccess(false);
+    setFunzDialog({ open: true, user });
+  };
+  const toggleFunz = (key) => {
+    // toggle "abilitato": se presente nella blacklist lo tolgo (=abilito), altrimenti lo aggiungo (=disabilito)
+    setFunzDisabled(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
+  const handleSaveFunz = async () => {
+    if (!funzDialog.user) return;
+    setFunzLoading(true);
+    setFunzError('');
+    try {
+      const res = await api.put(`/users/${funzDialog.user.id}`, { funzioni_disabilitate: funzDisabled });
+      setUsers(prev => prev.map(u => (u.id === res.data.id ? { ...u, ...res.data } : u)));
+      setFunzSuccess(true);
+    } catch (err) {
+      setFunzError(err.response?.data?.detail || 'Errore durante il salvataggio delle funzioni');
+    } finally { setFunzLoading(false); }
   };
 
   // ── submit staff ─────────────────────────────────────────────────────────
@@ -613,6 +675,15 @@ export default function AdminUsers() {
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        {/* Aggiungi un altro bambino alla stessa famiglia (solo genitori) */}
+                        {u.role === 'parent' && (
+                          <button data-testid={`add-child-${u.id}`}
+                            onClick={() => openAddChildDialog(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-gray-300 hover:text-green-600 transition-colors"
+                            title="Aggiungi un altro bambino a questa famiglia">
+                            <Baby className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Assegna sede/sezione (maestre e admin non-superadmin) */}
                         {!u.is_superadmin && role !== 'parent' && (
                           <button data-testid={`assign-user-${u.id}`}
@@ -620,6 +691,15 @@ export default function AdminUsers() {
                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-pink-50 text-gray-300 hover:text-pink-500 transition-colors"
                             title="Assegna sede e sezione">
                             <BookOpen className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Gestione funzioni (solo maestre): la direzione abilita/disabilita i moduli */}
+                        {u.role === 'teacher' && (
+                          <button data-testid={`funz-user-${u.id}`}
+                            onClick={() => openFunzDialog(u)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-gray-300 hover:text-amber-500 transition-colors"
+                            title="Gestisci funzioni (griglia, foto, avvisi…)">
+                            <SlidersHorizontal className="w-4 h-4" />
                           </button>
                         )}
                         {/* Modifica credenziali. Nascosta sugli account SuperAdmin agli
@@ -948,6 +1028,65 @@ export default function AdminUsers() {
                   className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.accentPink }}
                   data-testid="assign-save-submit">
                   {assignLoading ? 'Salvataggio...' : '✓ Salva assegnazione'}
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Gestione funzioni staff — abilita/disabilita moduli per la maestra */}
+        <Dialog open={funzDialog.open} onOpenChange={(open) => !open && setFunzDialog({ open: false, user: null })}>
+          <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="funz-user-dialog">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2" style={{ fontFamily: 'Nunito' }}>
+                <SlidersHorizontal className="w-5 h-5" style={{ color: '#f59e0b' }} />
+                Funzioni — {funzDialog.user?.name}
+              </DialogTitle>
+            </DialogHeader>
+
+            {funzSuccess ? (
+              <div className="py-4 flex flex-col items-center gap-3">
+                <CheckCircle className="w-10 h-10" style={{ color: C.accentGreen }} />
+                <p className="text-sm font-bold text-gray-900 text-center">Funzioni aggiornate!</p>
+                <p className="text-xs text-gray-500 text-center">
+                  La maestra vedrà i cambiamenti al prossimo accesso (o riaprendo l'app).
+                </p>
+                <Button onClick={() => setFunzDialog({ open: false, user: null })}
+                  className="w-full rounded-2xl h-10" style={{ backgroundColor: C.accentGreen }}>Chiudi</Button>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs text-gray-500 mb-1">
+                  Tocca per <strong>abilitare</strong> o <strong>disabilitare</strong> una funzione per questa maestra.
+                </p>
+                {STAFF_MODULES.map(m => {
+                  const enabled = !funzDisabled.includes(m.key);
+                  return (
+                    <button key={m.key} type="button" onClick={() => toggleFunz(m.key)}
+                      data-testid={`funz-toggle-${m.key}`}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all"
+                      style={enabled
+                        ? { borderColor: `${C.accentGreen}55`, backgroundColor: `${C.accentGreen}0d` }
+                        : { borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' }}>
+                      <span className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                        <span>{m.emoji}</span> {m.label}
+                      </span>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                        style={enabled
+                          ? { color: C.accentGreen, backgroundColor: `${C.accentGreen}1f` }
+                          : { color: '#9CA3AF', backgroundColor: '#F3F4F6' }}>
+                        {enabled ? 'Attiva' : 'Disattiva'}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {funzError && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{funzError}</p>}
+
+                <Button onClick={handleSaveFunz} disabled={funzLoading}
+                  className="w-full rounded-2xl font-bold h-11 mt-1" style={{ backgroundColor: '#f59e0b' }}
+                  data-testid="funz-save-submit">
+                  {funzLoading ? 'Salvataggio...' : '✓ Salva funzioni'}
                 </Button>
               </div>
             )}

@@ -39,6 +39,12 @@ export default function TeacherDashboard() {
     { id: 'mensa',     icon: UtensilsCrossed, color: C.primary, bg: C.tintBlue, title: 'Menu della Mensa',      subtitle: 'Gestisci e modifica il menù',     path: '/teacher/mensa' },
   ];
 
+  // La direzione può disabilitare funzioni a una maestra (user.funzioni_disabilitate).
+  // Mappa le chiavi-modulo alle card di questa dashboard (media=foto, mensa=menu).
+  const _disabledFn = user?.funzioni_disabilitate || [];
+  const _CARD_KEY = { media: 'foto', mensa: 'menu' };
+  const visibleCards = cards.filter(c => !_disabledFn.includes(_CARD_KEY[c.id] || c.id));
+
   return (
     <AppLayout>
       <div data-testid="teacher-dashboard">
@@ -58,7 +64,7 @@ export default function TeacherDashboard() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6" data-testid="teacher-action-cards">
-          {cards.map(card => (
+          {visibleCards.map(card => (
             <button
               key={card.id}
               data-testid={`teacher-card-${card.id}`}

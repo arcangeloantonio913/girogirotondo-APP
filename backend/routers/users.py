@@ -264,7 +264,7 @@ async def update_user(
     # Anti privilege-escalation: un utente non-admin (self-service) NON può modificare
     # sede/classi/figli — altrimenti si auto-concederebbe accesso ad altri tenant/bambini.
     if not is_admin:
-        _PRIVILEGED = {"sede_id", "class_id", "class_ids", "child_id", "child_ids"}
+        _PRIVILEGED = {"sede_id", "class_id", "class_ids", "child_id", "child_ids", "funzioni_disabilitate"}
         updates = {k: v for k, v in updates.items() if k not in _PRIVILEGED}
     else:
         # Admin: verifica che il target appartenga alla propria sede (isolamento

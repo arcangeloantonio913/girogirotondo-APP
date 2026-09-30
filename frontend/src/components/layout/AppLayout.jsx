@@ -51,6 +51,7 @@ function getNavItems(role) {
       { path: '/admin/users',         icon: Users,          label: 'Utenti' },
       { path: '/admin/classes',       icon: BookOpen,       label: 'Classi' },
       { path: '/admin/avvisi',        icon: Megaphone,      label: 'Avvisi' },
+      { path: '/admin/gallery',       icon: Camera,         label: 'Foto' },
       // ── Solo sidebar ──────────────────────────────────────────────────────
       { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
       { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },

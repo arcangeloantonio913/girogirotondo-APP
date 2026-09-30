@@ -31,6 +31,7 @@ const TeacherAvvisi       = lazy(() => import("@/pages/teacher/TeacherAvvisi"));
 const TeacherDiario       = lazy(() => import("@/pages/teacher/TeacherDiario"));
 const TeacherPresenze     = lazy(() => import("@/pages/teacher/TeacherPresenze"));
 const AdminPresenze       = lazy(() => import("@/pages/admin/AdminPresenze"));
+const AdminGallery        = lazy(() => import("@/pages/admin/AdminGallery"));
 const ParentAvvisi        = lazy(() => import("@/pages/parent/ParentAvvisi"));
 const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
 const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
@@ -154,6 +155,7 @@ function AppRoutes() {
         <Route path="/admin/mensa"          element={<ProtectedRoute allowedRoles={['admin']}><AdminMensa /></ProtectedRoute>} />
         <Route path="/admin/profile"    element={<ProtectedRoute allowedRoles={['admin']}><AdminProfile /></ProtectedRoute>} />
         <Route path="/admin/presenze"   element={<ProtectedRoute allowedRoles={['admin']}><AdminPresenze /></ProtectedRoute>} />
+        <Route path="/admin/gallery"    element={<ProtectedRoute allowedRoles={['admin']}><AdminGallery /></ProtectedRoute>} />
 
         {/* Pagina pubblica — nessuna autenticazione richiesta */}
         <Route path="/privacy" element={<PrivacyPolicy />} />

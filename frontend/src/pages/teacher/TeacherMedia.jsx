@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Square } from 'lucide-react';
+import { Camera, Upload, Image, Check, Plus, X, FileImage, Film, CheckSquare, Square, Trash2 } from 'lucide-react';
 
 // Comprime immagine via canvas — riduce il peso da 3-5MB a ~200-400KB
 function compressImage(file, maxSize = 1200, quality = 0.75) {
@@ -68,7 +68,24 @@ export default function TeacherMedia() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
+  const [confirmDelId, setConfirmDelId] = useState(null);   // foto in attesa di conferma eliminazione
+  const [deletingPhotoId, setDeletingPhotoId] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Eliminazione foto lato maestra — il backend consente la delete al ruolo teacher
+  // (DELETE /api/gallery/{id}, scoping per classe). Conferma esplicita: foto di minori.
+  const handleDeletePhoto = async (id) => {
+    setDeletingPhotoId(id);
+    try {
+      await api.delete(`/gallery/${id}`);
+      setGallery(prev => prev.filter(i => i.id !== id));
+      setConfirmDelId(null);
+    } catch (err) {
+      setUploadError(err.response?.data?.detail || 'Impossibile eliminare la foto. Riprova.');
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
 
   // Un maestro può avere più classi: mostriamo un selettore e filtriamo studenti/foto
   // per la classe attiva (mirror di TeacherDiario) — così le foto non finiscono
@@ -266,12 +283,34 @@ export default function TeacherMedia() {
           </div>
           {gallery.length > 0 ? (
             <div className="grid grid-cols-3 gap-1 p-2">
-              {gallery.slice(0, 9).map((item) => (
-                <div key={item.id} className="aspect-square rounded-xl overflow-hidden relative group">
+              {gallery.slice(0, 12).map((item) => (
+                <div key={item.id} className="aspect-square rounded-xl overflow-hidden relative group" data-testid={`teacher-photo-${item.id}`}>
                   <img src={item.thumbnail_url || item.media_url} alt={item.caption} className="w-full h-full object-cover" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
-                    <p className="text-white text-[9px] font-medium truncate">{item.caption}</p>
-                  </div>
+                  {confirmDelId === item.id ? (
+                    <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center gap-1.5 p-1">
+                      <p className="text-white text-[10px] font-bold text-center">Eliminare?</p>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => handleDeletePhoto(item.id)} disabled={deletingPhotoId === item.id}
+                          data-testid={`teacher-photo-confirm-${item.id}`}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: '#ef4444' }}>
+                          {deletingPhotoId === item.id ? '…' : 'Sì'}
+                        </button>
+                        <button onClick={() => setConfirmDelId(null)}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold text-gray-700 bg-white">No</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1.5">
+                        <p className="text-white text-[9px] font-medium truncate">{item.caption}</p>
+                      </div>
+                      <button onClick={() => setConfirmDelId(item.id)} data-testid={`teacher-photo-delete-${item.id}`}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-lg bg-black/50 hover:bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                        title="Elimina foto">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -349,7 +388,8 @@ export default function TeacherMedia() {
 
               {/* Student Checklist - vertical list with checkboxes */}
               <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tagga Alunni</Label>
+                <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Chi riceve la foto</Label>
+                <p className="text-[11px] text-gray-400 mt-0.5 mb-2">Seleziona i bambini: la foto sarà visibile solo ai loro genitori. Se non selezioni nessuno, va a tutta la classe.</p>
                 <div className="mt-2 border border-gray-100 rounded-xl overflow-hidden" data-testid="student-checklist">
                   {/* Select All button */}
                   <button
@@ -398,6 +438,18 @@ export default function TeacherMedia() {
                   </div>
                 </div>
               </div>
+
+              {/* Riepilogo destinatari — rende esplicito a chi arriverà la foto */}
+              {selectedFiles.length > 0 && (
+                <div className="text-xs rounded-xl px-3 py-2 flex items-center gap-2" style={{ backgroundColor: `${C.accentGreen}12`, color: '#374151' }} data-testid="recipients-summary">
+                  <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: C.accentGreen }} />
+                  <span>
+                    {selectedStudents.length === 0 || selectedStudents.length === classStudents.length
+                      ? `Verrà inviata a tutta la classe (${classStudents.length} bambini)`
+                      : `Verrà inviata ai genitori di ${selectedStudents.length} ${selectedStudents.length === 1 ? 'bambino' : 'bambini'}`}
+                  </span>
+                </div>
+              )}
 
               {/* Upload Error */}
               {uploadError && (

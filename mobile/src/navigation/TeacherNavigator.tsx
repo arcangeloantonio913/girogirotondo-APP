@@ -8,6 +8,7 @@ import TeacherPresenze  from '../screens/teacher/PresenzeScreen';
 import TeacherGriglia   from '../screens/teacher/GrigliaScreen';
 import TeacherDiario    from '../screens/teacher/DiarioScreen';
 import TeacherMedia     from '../screens/teacher/MediaScreen';
+import TeacherMensa     from '../screens/teacher/MensaScreen';
 import TeacherAvvisi    from '../screens/teacher/AvvisiScreen';
 import TeacherProfile   from '../screens/teacher/ProfileScreen';
 import NotificheScreen  from '../screens/shared/NotificheScreen';
@@ -51,6 +52,7 @@ export default function TeacherNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown:false }}>
       <Stack.Screen name="TeacherTabs" component={TeacherTabs}/>
+      <Stack.Screen name="Mensa"       component={TeacherMensa}/>
       <Stack.Screen name="Avvisi"      component={TeacherAvvisi}/>
       <Stack.Screen name="Profilo"     component={TeacherProfile}/>
       <Stack.Screen name="Notifiche"   component={NotificheScreen}/>

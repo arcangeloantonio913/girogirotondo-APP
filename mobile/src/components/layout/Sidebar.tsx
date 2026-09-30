@@ -35,6 +35,7 @@ const NAV: Record<string, { icon: string; label: string; screen: string; isTab: 
     { icon: 'grid-outline',      label: 'Griglia Pasti',     screen: 'Griglia',  isTab: true  },
     { icon: 'book-outline',      label: 'Diario di Bordo',   screen: 'Diario',   isTab: true  },
     { icon: 'camera-outline',    label: 'Carica Media',      screen: 'Media',    isTab: true  },
+    { icon: 'restaurant-outline', label: 'Menu Mensa',       screen: 'Mensa',    isTab: false },
     { icon: 'notifications-outline', label: 'Avvisi & Notifiche', screen: 'Notifiche', isTab: false },
     { icon: 'person-outline',    label: 'Il mio Profilo',    screen: 'Profilo',  isTab: false },
   ],

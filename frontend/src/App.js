@@ -37,6 +37,7 @@ const PrivacyPolicy       = lazy(() => import("@/pages/PrivacyPolicy"));
 const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
 const ParentNotifiche     = lazy(() => import("@/pages/parent/ParentNotifiche"));
 const ParentAppuntamenti  = lazy(() => import("@/pages/parent/ParentAppuntamenti"));
+const ParentPresenze      = lazy(() => import("@/pages/parent/ParentPresenze"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -134,6 +135,7 @@ function AppRoutes() {
         <Route path="/parent/avvisi"        element={<ProtectedRoute allowedRoles={['parent']}><ParentAvvisi /></ProtectedRoute>} />
         <Route path="/parent/notifiche"    element={<ProtectedRoute allowedRoles={['parent']}><ParentNotifiche /></ProtectedRoute>} />
         <Route path="/parent/appuntamenti" element={<ProtectedRoute allowedRoles={['parent']}><ParentAppuntamenti /></ProtectedRoute>} />
+        <Route path="/parent/presenze"      element={<ProtectedRoute allowedRoles={['parent']}><ParentPresenze /></ProtectedRoute>} />
 
         {/* Teacher */}
         <Route path="/teacher"          element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />

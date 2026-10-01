@@ -24,6 +24,7 @@ const NAV: Record<string, { icon: string; label: string; screen: string; isTab: 
     { icon: 'grid-outline',          label: 'Griglia Pasti',   screen: 'Griglia',       isTab: true  },
     { icon: 'restaurant-outline',    label: 'Menu Mensa',      screen: 'Dieta',         isTab: true  },
     { icon: 'book-outline',          label: 'Diario di Bordo', screen: 'Diario',        isTab: true  },
+    { icon: 'clipboard-outline',     label: 'Presenze',        screen: 'Presenze',      isTab: false },
     { icon: 'notifications-outline', label: 'Avvisi & Notifiche', screen: 'Notifiche',  isTab: false },
     { icon: 'calendar-outline',      label: 'Prenotazioni',    screen: 'Appuntamenti',  isTab: false },
     { icon: 'document-text-outline', label: 'Modulistica',     screen: 'Modulistica',   isTab: false },

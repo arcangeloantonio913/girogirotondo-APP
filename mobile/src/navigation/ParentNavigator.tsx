@@ -12,6 +12,7 @@ import ParentAvvisi       from '../screens/parent/AvvisiScreen';
 import ParentAppuntamenti from '../screens/parent/AppuntamentiScreen';
 import ParentProfile      from '../screens/parent/ProfileScreen';
 import ParentModulistica  from '../screens/parent/ModulisticaScreen';
+import ParentPresenze     from '../screens/parent/PresenzeScreen';
 import NotificheScreen    from '../screens/shared/NotificheScreen';
 
 const Tab   = createBottomTabNavigator();
@@ -54,6 +55,7 @@ export default function ParentNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ParentTabs"    component={ParentTabs}/>
+      <Stack.Screen name="Presenze"      component={ParentPresenze}/>
       <Stack.Screen name="Avvisi"        component={ParentAvvisi}/>
       <Stack.Screen name="Appuntamenti"  component={ParentAppuntamenti}/>
       <Stack.Screen name="Profilo"       component={ParentProfile}/>

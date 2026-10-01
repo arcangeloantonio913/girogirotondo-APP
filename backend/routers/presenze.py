@@ -103,24 +103,37 @@ async def save_presenze(
 
 @router.get("")
 async def get_presenze(
-    class_id:  Optional[str] = None,
-    date:      Optional[str] = None,   # YYYY-MM-DD  → giorno esatto
-    mese:      Optional[str] = None,   # YYYY-MM     → tutto il mese
-    anno:      Optional[str] = None,   # YYYY        → tutto l'anno
+    class_id:   Optional[str] = None,
+    student_id: Optional[str] = None,  # per i GENITORI: presenze del proprio figlio
+    date:       Optional[str] = None,   # YYYY-MM-DD  → giorno esatto
+    mese:       Optional[str] = None,   # YYYY-MM     → tutto il mese
+    anno:       Optional[str] = None,   # YYYY        → tutto l'anno
     ctx: TenantContext = Depends(get_tenant_context),
 ):
-    if ctx.role not in ("admin", "teacher"):
-        raise HTTPException(status_code=403, detail="Permesso negato")
     db = get_db()
-
-    # base SEMPRE le classi del caller (mai {} per non-super; superadmin -> {})
-    if not ctx.all_access and not ctx.allowed_class_ids:
-        return []
     query: dict = {}
-    query.update(ctx.class_filter())          # .find(): scope iniettato nel FILTRO
-    if class_id:
-        ctx.assert_class(class_id)            # 404 se la classe non è del caller
-        query["class_id"] = class_id
+
+    if ctx.role == "parent":
+        # Il genitore vede SOLO le presenze dei propri figli (scoping fail-closed).
+        allowed = ctx.allowed_student_ids
+        if not allowed:
+            return []
+        if student_id:
+            if student_id not in allowed:
+                raise HTTPException(status_code=404, detail="Non trovato")  # anti-probing
+            query["student_id"] = student_id
+        else:
+            query["student_id"] = {"$in": list(allowed)}
+    elif ctx.role in ("admin", "teacher"):
+        # base SEMPRE le classi del caller (mai {} per non-super; superadmin -> {})
+        if not ctx.all_access and not ctx.allowed_class_ids:
+            return []
+        query.update(ctx.class_filter())          # .find(): scope iniettato nel FILTRO
+        if class_id:
+            ctx.assert_class(class_id)            # 404 se la classe non è del caller
+            query["class_id"] = class_id
+    else:
+        raise HTTPException(status_code=403, detail="Permesso negato")
 
     # Filtro temporale (vincolo aggiuntivo)
     if date:

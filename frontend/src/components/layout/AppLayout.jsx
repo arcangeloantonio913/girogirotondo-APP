@@ -23,6 +23,7 @@ function getNavItems(role) {
       { path: '/parent/alimentazione',icon: UtensilsCrossed,label: 'Dieta' },
       { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
       // ── Solo sidebar ────────────────────────────────────────────────────
+      { path: '/parent/presenze',     icon: ClipboardList,  label: 'Presenze' },
       { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
       { path: '/parent/appuntamenti', icon: Calendar,       label: 'Prenotazioni' },
       { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },

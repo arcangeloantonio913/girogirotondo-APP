@@ -32,6 +32,11 @@ const TIMELINE = [
   { key: 'nanna',   label: 'Nanna / Riposo', icon: '😴', time: '13:00', type: 'bool' },
 ].filter(t => !(t.key === 'pane' && tenant.hidePaneGriglia));
 
+// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali)
+const MENU_FIELD: Record<string,string> = {
+  merenda: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', pane: 'contorno', frutta: 'frutta',
+};
+
 function addDays(d: string, n: number) {
   const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + n);
   return dt.toISOString().split('T')[0];
@@ -41,6 +46,7 @@ export default function ParentGriglia() {
   const { activeChildId, user } = useAuth();
   const [date,   setDate]   = useState(todayLocal());
   const [griglia,setGriglia]= useState<any>(null);
+  const [menu,   setMenu]   = useState<any>(null);
   const [loading,setLoading]= useState(true);
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
@@ -54,6 +60,14 @@ export default function ParentGriglia() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [childId, date]);
+
+  // Menu del giorno → etichette coerenti (piatti reali)
+  useEffect(() => {
+    api.get(`/meals?date=${date}`).then(r => setMenu((r.data || [])[0] || null)).catch(() => setMenu(null));
+  }, [date]);
+  const timeline = TIMELINE.map(t => (
+    t.type === 'meal' && menu && menu[MENU_FIELD[t.key]] ? { ...t, label: menu[MENU_FIELD[t.key]] } : t
+  ));
 
   return (
     <ScreenLayout title="Griglia Giornaliera" showBack color={C.babyPink} loading={loading}>
@@ -82,7 +96,7 @@ export default function ParentGriglia() {
           <>
             {/* Timeline pasti */}
             <Text style={s.sectionLabel}>Pasti del giorno</Text>
-            {TIMELINE.filter(t => t.type === 'meal').map((item, i) => {
+            {timeline.filter(t => t.type === 'meal').map((item, i) => {
               // Il backend salva la quantità in `<pasto>_qty` (l'attivo booleano è su `<pasto>`)
               const val = griglia[item.key + '_qty'];
               const info = val ? QTY_MAP[val] : null;

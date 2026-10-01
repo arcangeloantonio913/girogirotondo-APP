@@ -23,6 +23,11 @@ const MEALS = [
   {key:'frutta',label:'Frutta',icon:'🍎'},
 ].filter(m => !(m.key === 'pane' && tenant.hidePaneGriglia));
 
+// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali)
+const MENU_FIELD: Record<string,string> = {
+  merenda_mattina: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', pane: 'contorno', frutta: 'frutta',
+};
+
 function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 
 export default function TeacherGriglia() {
@@ -36,11 +41,18 @@ export default function TeacherGriglia() {
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
+  const [menu, setMenu]         = useState<any>(null);
 
   useEffect(()=>{
     if(!classId){setLoading(false);return;}
     api.get(`/students?class_id=${classId}`).then(r=>setStudents(r.data||[])).catch(()=>{}).finally(()=>setLoading(false));
   },[classId]);
+
+  // Menu del giorno → etichette coerenti (piatti reali)
+  useEffect(()=>{
+    api.get(`/meals?date=${date}`).then(r=>setMenu((r.data||[])[0]||null)).catch(()=>setMenu(null));
+  },[date]);
+  const meals = MEALS.map(m => ({ ...m, label: (menu && menu[MENU_FIELD[m.key]]) || m.label }));
 
   useEffect(()=>{
     if(!classId)return;
@@ -146,7 +158,7 @@ export default function TeacherGriglia() {
           <Text style={s.bulkLabel}>{selected.size} selezionati — Imposta:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginTop:6}}>
             <View style={{flexDirection:'row',gap:6}}>
-              {MEALS.map(m=>(
+              {meals.map(m=>(
                 <View key={m.key} style={{flexDirection:'row',gap:4,alignItems:'center'}}>
                   <Text style={{fontSize:14}}>{m.icon}</Text>
                   {QTY.map(q=>{

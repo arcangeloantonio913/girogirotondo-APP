@@ -51,6 +51,7 @@ export default function ParentGriglia() {
   const { user, activeChildId } = useAuth();
   const [griglia, setGriglia]   = useState(null);
   const [child, setChild]       = useState(null);
+  const [menu, setMenu]         = useState(null);
   const [loadError, setLoadError] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
@@ -65,9 +66,11 @@ export default function ParentGriglia() {
     Promise.allSettled([
       api.get(`/griglia?student_id=${childId}&date=${today}`),
       api.get(`/students/${childId}`),
-    ]).then(([gRes, cRes]) => {
+      api.get(`/meals?date=${today}`),   // menu del giorno → etichette coerenti
+    ]).then(([gRes, cRes, mRes]) => {
       if (gRes.status === 'fulfilled') setGriglia(gRes.value.data?.[0] || null);
       if (cRes.status === 'fulfilled') setChild(cRes.value.data);
+      if (mRes && mRes.status === 'fulfilled') setMenu((mRes.value.data || [])[0] || null);
       if (gRes.status === 'rejected' && cRes.status === 'rejected') {
         console.error(gRes.reason, cRes.reason);
         setLoadError(true);
@@ -76,11 +79,11 @@ export default function ParentGriglia() {
   }, [user, activeChildId, today]); // ← activeChildId nelle deps
 
   const timelineItems = griglia ? [
-    { time: '9:30',  label: 'Merenda',  active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
-    { time: '12:00', label: 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: C.babyPink, isPasto: true },
-    { time: '12:10', label: 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: C.babyBlue, isPasto: true },
-    ...(tenant.hidePaneGriglia ? [] : [{ time: '12:20', label: 'Pane', active: griglia.pane, qty: griglia.pane_qty, color: '#FFD699', isPasto: true }]),
-    { time: '12:30', label: 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: C.babyGreen, isPasto: true },
+    { time: '9:30',  label: (menu && menu.merenda_mattina) || 'Merenda',  active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
+    { time: '12:00', label: (menu && menu.primo) || 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: C.babyPink, isPasto: true },
+    { time: '12:10', label: (menu && menu.secondo) || 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: C.babyBlue, isPasto: true },
+    ...(tenant.hidePaneGriglia ? [] : [{ time: '12:20', label: (menu && menu.contorno) || 'Pane', active: griglia.pane, qty: griglia.pane_qty, color: '#FFD699', isPasto: true }]),
+    { time: '12:30', label: (menu && menu.frutta) || 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: C.babyGreen, isPasto: true },
     { time: '',      label: 'Pupù',     active: griglia.pupu,    qty: null,                color: '#D4B8E0', isPasto: false },
     { time: '',      label: 'Nanna',    active: griglia.nanna,   qty: null,                color: '#93C5FD', isPasto: false },
   ] : [];

@@ -22,6 +22,16 @@ const MEAL_COLS = [
   { key: 'frutta',  label: 'Frutta',   short: 'FRU', color: C.babyGreen },
 ].filter(col => !(col.key === 'pane' && tenant.hidePaneGriglia));
 
+// Mappa categoria griglia → campo del MENU del giorno, così la griglia mostra i
+// PIATTI REALI (es. "Pasta al pomodoro") invece delle etichette generiche → coerenza.
+const MENU_FIELD = {
+  merenda: 'merenda_mattina',
+  pasta:   'primo',
+  secondo: 'secondo',
+  pane:    'contorno',
+  frutta:  'frutta',
+};
+
 // Colonne boolean (toggle)
 const BOOL_COLS = [
   { key: 'pupu',  label: 'Pupù',  short: 'PPU', color: '#D4B8E0' },
@@ -100,6 +110,16 @@ export default function TeacherGriglia() {
   }, [user]); // eslint-disable-line
 
   // Carica griglia per data + classe selezionata
+  // Menu del giorno → etichette coerenti della griglia (piatti reali)
+  const [menu, setMenu] = useState(null);
+  useEffect(() => {
+    api.get(`/meals?date=${currentDate}`).then(r => setMenu((r.data || [])[0] || null)).catch(() => setMenu(null));
+  }, [currentDate, classId]);
+  const mealCols = MEAL_COLS.map(col => {
+    const dish = menu && menu[MENU_FIELD[col.key]];
+    return dish ? { ...col, label: dish } : col;
+  });
+
   useEffect(() => {
     if (!classId || !students.length) return;
     api.get(`/griglia?class_id=${classId}&date=${currentDate}`).then(res => {
@@ -256,7 +276,7 @@ export default function TeacherGriglia() {
           <div className="bg-white rounded-2xl shadow-md p-3 border border-gray-100" data-testid="bulk-actions">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Azione rapida per i selezionati</p>
             <div className="space-y-1.5">
-              {MEAL_COLS.map(col => (
+              {mealCols.map(col => (
                 <div key={col.key} className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-bold text-gray-500 w-14">{col.label}</span>
                   {QUANTITA_OPTIONS.map(o => (
@@ -288,7 +308,7 @@ export default function TeacherGriglia() {
                   {/* Nome + Cognome */}
                   <th className="sticky left-0 z-10 px-3 py-2.5 text-left text-xs font-bold text-gray-700 w-44"
                     style={{ fontFamily: 'Nunito', backgroundColor: '#FFF5EE' }}>Bambino</th>
-                  {MEAL_COLS.map(col => (
+                  {mealCols.map(col => (
                     <th key={col.key} className="px-1.5 py-2.5 text-center text-[10px] font-bold text-gray-600"
                       style={{ minWidth: '90px', fontFamily: 'Nunito' }}>
                       <div className="w-8 h-8 rounded-lg mx-auto flex items-center justify-center mb-0.5"

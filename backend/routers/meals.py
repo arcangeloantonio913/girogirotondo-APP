@@ -166,3 +166,48 @@ async def delete_meal(
 
     await db.meals.delete_one({"id": meal_id})
     return {"message": "Menu eliminato"}
+
+
+@router.put("/api/meals/menu/{meal_id}", status_code=200)
+async def update_meal(
+    meal_id: str,
+    payload: MealCreate,
+    ctx: TenantContext = Depends(get_tenant_context),
+    x_sede_id: Optional[str] = Header(None),
+):
+    """Modifica i piatti di un menu — admin o maestra, entro il proprio scope (sede + classe).
+
+    Aggiorna SOLO i campi piatto (+ date/classe); sede_id resta quella originale (nessun
+    cross-sede). Stesso fail-closed della delete.
+    """
+    if ctx.role not in ("admin", "teacher"):
+        raise HTTPException(status_code=403, detail="Permesso negato")
+
+    db = get_db()
+    meal = await db.meals.find_one({"id": meal_id})
+    if not meal:
+        raise HTTPException(status_code=404, detail="Menu non trovato")
+
+    if ctx.role == "admin":
+        sede_id = await validate_admin_sede_access(ctx.user, x_sede_id)
+        if not ctx.user.get("is_superadmin") and meal.get("sede_id") != sede_id:
+            raise HTTPException(status_code=404, detail="Menu non trovato")
+    else:  # teacher
+        if meal.get("sede_id") not in ctx.sede_ids:
+            raise HTTPException(status_code=404, detail="Menu non trovato")
+        if meal.get("class_id") and meal.get("class_id") not in ctx.allowed_class_ids:
+            raise HTTPException(status_code=403, detail="Accesso negato: classe non assegnata")
+
+    upd = payload.model_dump()
+    # La classe di destinazione, se cambiata, dev'essere comunque del caller
+    if upd.get("class_id"):
+        ctx.assert_class(upd["class_id"])
+    # Non si tocca la sede del documento (resta quella originale, no cross-sede)
+    upd.pop("sede_id", None)
+    if upd.get("date_from") and upd.get("date_to") and not upd.get("date"):
+        upd["date"] = None  # range mode
+    upd["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.meals.update_one({"id": meal_id}, {"$set": upd})
+    doc = await db.meals.find_one({"id": meal_id}, {"_id": 0})
+    return doc

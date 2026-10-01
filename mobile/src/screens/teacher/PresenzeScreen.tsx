@@ -13,14 +13,29 @@ function addDays(n:number){const d=new Date();d.setDate(d.getDate()+n);return lo
 
 export default function TeacherPresenze() {
   const { user } = useAuth();
-  const classId = user?.class_ids?.[0] || user?.class_id;
+  // Una maestra può avere PIÙ classi: niente più class_ids[0] fisso → selettore.
+  const classIds = React.useMemo(()=>{
+    const ids=[...(user?.class_ids||[])];
+    if(user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  },[user]);
+  const [classId, setClassId] = useState<string|undefined>(classIds[0]);
+  useEffect(()=>{ setClassId(prev=>(prev && classIds.includes(prev))?prev:classIds[0]); },[classIds]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [tab, setTab]         = useState<'oggi'|'mese'|'anno'>('oggi');
   const [date, setDate]       = useState(todayLocal());
   const [students, setStudents] = useState<any[]>([]);
   const [presenze, setPresenze] = useState<Record<string,{presente:boolean;nota:string}>>({});
   const [archivio, setArchivio] = useState<any[]>([]);
   const [saving, setSaving]   = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Nomi classi per il selettore (solo quelle della maestra)
+  useEffect(()=>{
+    if(!classIds.length){setLoading(false);return;}
+    api.get('/classes').then(r=>setClasses((r.data||[]).filter((c:any)=>classIds.includes(c.id)))).catch(()=>{});
+  },[classIds]);
 
   useEffect(()=>{
     if(!classId){setLoading(false);return;}
@@ -31,7 +46,10 @@ export default function TeacherPresenze() {
     if(!classId||!students.length)return;
     if(tab==='oggi'){
       api.get(`/presenze?class_id=${classId}&date=${date}`).then(r=>{
+        // DEFAULT = PRESENTE (come web/backend): inizializzo tutti presenti, poi
+        // sovrascrivo con i record salvati. Prima i mancanti diventavano "assente".
         const map:Record<string,{presente:boolean;nota:string}>={};
+        students.forEach(st=>{map[st.id]={presente:true,nota:''};});
         (r.data||[]).forEach((p:any)=>{map[p.student_id]={presente:p.presente,nota:p.nota||''};});
         setPresenze(map);
       }).catch(()=>{});
@@ -54,7 +72,7 @@ export default function TeacherPresenze() {
     }
   },[date,classId,tab,students]);
 
-  const toggle=(id:string)=>setPresenze(prev=>({...prev,[id]:{presente:!prev[id]?.presente,nota:prev[id]?.nota||''}}));
+  const toggle=(id:string)=>setPresenze(prev=>({...prev,[id]:{presente:!(prev[id]?.presente ?? true),nota:prev[id]?.nota||''}}));
   const setNota=(id:string,nota:string)=>setPresenze(prev=>({...prev,[id]:{...prev[id],nota}}));
   const setAll=(presente:boolean)=>{
     const map:Record<string,{presente:boolean;nota:string}>={};
@@ -63,21 +81,26 @@ export default function TeacherPresenze() {
   };
 
   const handleSave=async()=>{
+    if(!classId||!students.length){Alert.alert('Attenzione','Seleziona una classe con bambini prima di salvare.');return;}
     setSaving(true);
     try{
-      // Un solo registro giornaliero: {class_id, date, records:[...]} — come richiesto dal backend
       const records=students.map(st=>({
         student_id:st.id,
-        presente:!!presenze[st.id]?.presente,
+        presente:presenze[st.id]?.presente ?? true,   // default PRESENTE
         nota:presenze[st.id]?.nota||'',
       }));
       await api.post('/presenze',{class_id:classId,date,records});
-      Alert.alert('Salvato','Presenze aggiornate ✅');
-    }catch(e:any){Alert.alert('Errore',e?.response?.data?.detail||'Impossibile salvare');}
+      setSavedOk(true); setTimeout(()=>setSavedOk(false),2500);
+    }catch(e:any){
+      // Il detail di un 422 FastAPI è un ARRAY → prima l'alert restava vuoto ("non fa nulla")
+      const d=e?.response?.data?.detail;
+      const msg=Array.isArray(d)?(d[0]?.msg||'Dati non validi'):(typeof d==='string'?d:'Impossibile salvare. Riprova.');
+      Alert.alert('Errore',msg);
+    }
     finally{setSaving(false);}
   };
 
-  const presentCount=students.filter(s=>presenze[s.id]?.presente).length;
+  const presentCount=students.filter(s=>presenze[s.id]?.presente ?? true).length;
 
   return (
     <ScreenLayout title="Registro Presenze" showBack color={C.primary} loading={loading} scrollable={false}
@@ -91,6 +114,18 @@ export default function TeacherPresenze() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Selettore classe (solo se la maestra ha più classi) */}
+      {classes.length>1&&(
+        <View style={s.classRow}>
+          {classes.map(c=>(
+            <TouchableOpacity key={c.id} onPress={()=>setClassId(c.id)}
+              style={[s.classChip,classId===c.id&&{backgroundColor:C.primary,borderColor:C.primary}]}>
+              <Text style={[s.classChipTxt,classId===c.id&&{color:C.white}]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {tab==='oggi'&&(
         <>
@@ -123,7 +158,7 @@ export default function TeacherPresenze() {
 
           <FlatList data={students} keyExtractor={s_=>s_.id} contentContainerStyle={{padding:8}}
             renderItem={({item})=>{
-              const p=presenze[item.id];
+              const p={presente:presenze[item.id]?.presente ?? true,nota:presenze[item.id]?.nota||''};
               return(
                 <View style={s.studentCard}>
                   <TouchableOpacity onPress={()=>toggle(item.id)} style={[s.checkbox,p?.presente&&s.checkboxActive]}>
@@ -161,8 +196,13 @@ export default function TeacherPresenze() {
       {/* Salva in basso al centro */}
       {tab==='oggi'&&(
         <View style={{padding:16,backgroundColor:'#FFFDD0'}}>
-          <TouchableOpacity onPress={handleSave} disabled={saving}
-            style={[{backgroundColor:'#4169E1',borderRadius:16,height:52,alignItems:'center',justifyContent:'center',opacity:saving?0.5:1}]}>
+          {savedOk&&(
+            <View style={{backgroundColor:'#E8F5E9',borderRadius:10,paddingVertical:8,alignItems:'center',marginBottom:8}}>
+              <Text style={{color:C.accentGreen,fontWeight:'800',fontSize:13}}>✓ Presenze salvate!</Text>
+            </View>
+          )}
+          <TouchableOpacity onPress={handleSave} disabled={saving||!classId||!students.length}
+            style={[{backgroundColor:'#4169E1',borderRadius:16,height:52,alignItems:'center',justifyContent:'center',opacity:(saving||!classId||!students.length)?0.5:1}]}>
             {saving
               ? <Text style={{color:'#FFF',fontWeight:'800',fontSize:16}}>Salvataggio...</Text>
               : <Text style={{color:'#FFF',fontWeight:'800',fontSize:16}}>✓ Salva Presenze</Text>
@@ -177,6 +217,9 @@ export default function TeacherPresenze() {
 const s=StyleSheet.create({
   saveBtn:      {backgroundColor:C.primary,borderRadius:10,paddingHorizontal:12,paddingVertical:6},
   saveBtnText:  {color:C.white,fontWeight:'700',fontSize:13},
+  classRow:     {flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:10,paddingBottom:4},
+  classChip:    {paddingHorizontal:12,paddingVertical:7,borderRadius:20,borderWidth:1,borderColor:C.border,backgroundColor:C.white},
+  classChipTxt: {fontSize:13,fontWeight:'600',color:C.text},
   tabs:         {flexDirection:'row',margin:10,backgroundColor:C.white,borderRadius:10,padding:3,borderWidth:0.5,borderColor:C.border},
   tab:          {flex:1,paddingVertical:8,alignItems:'center',borderRadius:8},
   tabActive:    {backgroundColor:C.primary},

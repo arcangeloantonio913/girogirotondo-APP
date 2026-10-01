@@ -5,6 +5,15 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db as firestoreDb } from './firebase';
 import api, { loginApi, setForcedLogoutHandler } from './api';
 import { registerForPushNotifications, unregisterForPushNotifications } from './notifications';
+import { tenant } from '../config/tenant';
+
+// Sedi valide per il TENANT attivo (white-label). La sede inviata in X-Sede-Id DEVE
+// appartenere a questo tenant: una sede di un altro tenant (es. 'girogirotondo' su
+// Dimensione Bimbo) fa rispondere il backend 400 "Sede non valida" su TUTTE le
+// operazioni admin. Il default e ogni valore salvato vengono quindi validati qui.
+const TENANT_SEDE_IDS: string[] = (tenant.sedi || []).map((s) => s.id);
+const DEFAULT_SEDE: string = TENANT_SEDE_IDS[0] || 'girogirotondo';
+const isValidSede = (s?: string | null): s is string => !!s && TENANT_SEDE_IDS.includes(s);
 
 interface User {
   id?: string; uid?: string; name: string; cognome?: string; email: string;
@@ -66,7 +75,9 @@ async function saveUser(userData: User, setSede: (s: string) => void) {
     // Superadmin: nessuna sede fissa. Seed della sede (esistente o default) così
     // l'header X-Sede-Id è SEMPRE presente per le scritture, coerente con la UI.
     const existing = await SecureStore.getItemAsync('ggt_sede');
-    const seed = existing || 'girogirotondo';
+    // Il valore salvato va scartato se non appartiene al tenant attivo (es. sede Giro
+    // rimasta da un bundle precedente): altrimenti X-Sede-Id è invalido → 400 su tutto.
+    const seed = isValidSede(existing) ? existing : DEFAULT_SEDE;
     await SecureStore.setItemAsync('ggt_sede', seed);
     setSede(seed);
   } else if (userData.sede_id) {
@@ -82,7 +93,7 @@ async function saveUser(userData: User, setSede: (s: string) => void) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser]       = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sede, setSede]       = useState('girogirotondo');
+  const [sede, setSede]       = useState(DEFAULT_SEDE);
   const [activeChildId, setACI] = useState<string | null>(null);
 
   // Sessione salvata → accesso istantaneo all'avvio
@@ -93,7 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const sedeS  = await SecureStore.getItemAsync('ggt_sede');
         const childS = await SecureStore.getItemAsync('ggt_active_child');
         if (stored) setUser(JSON.parse(stored));
-        if (sedeS)  setSede(sedeS);
+        // Sede salvata valida per questo tenant? Altrimenti correggi SUBITO anche il valore
+        // persistito (l'interceptor di api.ts legge ggt_sede da SecureStore, non lo state).
+        if (isValidSede(sedeS)) {
+          setSede(sedeS);
+        } else {
+          await SecureStore.setItemAsync('ggt_sede', DEFAULT_SEDE);
+          setSede(DEFAULT_SEDE);
+        }
         if (childS) setACI(childS);
       } catch {}
       setLoading(false);
@@ -199,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync('ggt_user');
     await SecureStore.deleteItemAsync('ggt_active_child');
     await SecureStore.deleteItemAsync('ggt_sede');   // niente X-Sede-Id stantio per il prossimo utente
-    setUser(null); setACI(null); setSede('girogirotondo');
+    setUser(null); setACI(null); setSede(DEFAULT_SEDE);
   };
 
   // Logout forzato lato server (account disabilitato/revocato): l'interceptor di api.ts

@@ -42,6 +42,7 @@ export default function TeacherMensa() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId,  setEditId]  = useState<string | null>(null);  // menu in modifica
   const [saving,  setSaving]  = useState(false);
 
   // Navigazione date
@@ -74,20 +75,37 @@ export default function TeacherMensa() {
     setForm(p => ({ ...p, date_to: addDays(p.date_from, days) }));
   };
 
+  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '' });
+
+  const openNew = () => { setEditId(null); resetForm(); setShowForm(true); };
+
+  const openEdit = (m: any) => {
+    setEditId(m.id);
+    setForm({
+      date_from: m.date_from || m.date || TODAY,
+      date_to:   m.date_to || m.date || TODAY,
+      primo: m.primo || '', secondo: m.secondo || '', contorno: m.contorno || '',
+      frutta: m.frutta || '', merenda_mattina: m.merenda_mattina || '',
+      merenda_pomeriggio: m.merenda_pomeriggio || '', class_id: m.class_id || '',
+    });
+    setShowForm(true);
+  };
+
   const handleSave = async () => {
     if (!form.primo && !form.secondo) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo'); return; }
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        // singola data se from == to, altrimenti range (date = null) — come web e admin
-        date: form.date_from === form.date_to ? form.date_from : null,
-      };
-      // Nessun header X-Sede-Id: per la maestra il backend usa la sede del profilo.
-      const res = await api.post('/meals/menu', payload);
-      setMeals(prev => [res.data, ...prev]);
+      const payload = { ...form, date: form.date_from === form.date_to ? form.date_from : null };
+      if (editId) {
+        const res = await api.put(`/meals/menu/${editId}`, payload);   // MODIFICA
+        setMeals(prev => prev.map(m => m.id === editId ? res.data : m));
+      } else {
+        const res = await api.post('/meals/menu', payload);            // NUOVO
+        setMeals(prev => [res.data, ...prev]);
+      }
       setShowForm(false);
-      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '' });
+      setEditId(null);
+      resetForm();
     } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile salvare il menu'); }
     finally { setSaving(false); }
   };
@@ -129,7 +147,7 @@ export default function TeacherMensa() {
         keyExtractor={(_, i) => String(i)}
         contentContainerStyle={{ padding: 12 }}
         ListHeaderComponent={
-          <TouchableOpacity onPress={() => setShowForm(true)} style={s.addBtn} testID="mensa-add">
+          <TouchableOpacity onPress={openNew} style={s.addBtn} testID="mensa-add">
             <Ionicons name="add" size={18} color={C.white} />
             <Text style={s.addBtnText}>Aggiungi Menu</Text>
           </TouchableOpacity>
@@ -147,6 +165,9 @@ export default function TeacherMensa() {
                 <Text style={s.cardClass}>{item.class_id ? classes.find(c => c.id === item.class_id)?.name || 'Classe' : 'Tutte le classi'}</Text>
                 <Text style={s.cardDates}>{item.date_from}{item.date_to !== item.date_from ? ` → ${item.date_to}` : ''}</Text>
               </View>
+              <TouchableOpacity onPress={() => openEdit(item)} style={s.delBtn} testID={`mensa-edit-${item.id}`}>
+                <Ionicons name="create-outline" size={18} color={C.primary} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.delBtn} testID={`mensa-del-${item.id}`}>
                 <Ionicons name="trash-outline" size={16} color={C.red} />
               </TouchableOpacity>
@@ -171,7 +192,7 @@ export default function TeacherMensa() {
         onRequestClose={() => setShowForm(false)}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Nuovo Menu</Text>
+            <Text style={s.modalTitle}>{editId ? 'Modifica Menu' : 'Nuovo Menu'}</Text>
             <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
 
@@ -227,7 +248,7 @@ export default function TeacherMensa() {
             ))}
 
             <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Menu'}</Text>
+              <Text style={s.submitText}>{saving ? 'Salvataggio...' : (editId ? 'Salva Modifiche' : 'Salva Menu')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

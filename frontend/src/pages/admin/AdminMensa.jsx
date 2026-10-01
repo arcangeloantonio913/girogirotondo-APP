@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UtensilsCrossed, Plus, Trash2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { UtensilsCrossed, Plus, Trash2, Pencil, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 const EMPTY_FORM = {
   class_id: '',
@@ -65,6 +65,7 @@ export default function AdminMensa() {
   const [preset, setPreset]     = useState(0); // indice in PRESETS
   const [loading, setLoading]   = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [editingId, setEditingId]   = useState(null);   // menu in modifica (null = nuovo)
   const [dateOffset, setDateOffset] = useState(0);
   const [error, setError]           = useState('');
 
@@ -105,7 +106,27 @@ export default function AdminMensa() {
 
   const openDialog = () => {
     const from = today;
+    setEditingId(null);
     setForm({ ...EMPTY_FORM, date_from: from, date_to: from });
+    setPreset(0);
+    setError('');
+    setDialogOpen(true);
+  };
+
+  // Apre il dialog PRECOMPILATO per modificare un menu esistente
+  const openEdit = (m) => {
+    setEditingId(m.id);
+    setForm({
+      class_id:           m.class_id || '',
+      date_from:          m.date_from || m.date || today,
+      date_to:            m.date_to || m.date || today,
+      primo:              m.primo || '',
+      secondo:            m.secondo || '',
+      contorno:           m.contorno || '',
+      frutta:             m.frutta || '',
+      merenda_mattina:    m.merenda_mattina || '',
+      merenda_pomeriggio: m.merenda_pomeriggio || '',
+    });
     setPreset(0);
     setError('');
     setDialogOpen(true);
@@ -123,13 +144,18 @@ export default function AdminMensa() {
         date_from: form.date_from,
         date_to:   form.date_to || form.date_from,
       };
-      await api.post('/meals/menu', payload);
+      if (editingId) {
+        await api.put(`/meals/menu/${editingId}`, payload);   // MODIFICA
+      } else {
+        await api.post('/meals/menu', payload);               // NUOVO
+      }
       setDialogOpen(false);
+      setEditingId(null);
       setForm(EMPTY_FORM);
       loadData();
     } catch (e) {
       console.error(e);
-      setError(e.response?.data?.detail || 'Errore durante la pubblicazione del menu');
+      setError(e.response?.data?.detail || 'Errore durante il salvataggio del menu');
     }
     finally { setLoading(false); }
   };
@@ -223,13 +249,20 @@ export default function AdminMensa() {
                       </span>
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(m.id)} disabled={deletingId === m.id}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-                    data-testid={`delete-meal-${m.id}`}>
-                    {deletingId === m.id
-                      ? <span className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin inline-block" />
-                      : <Trash2 className="w-4 h-4" />}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(m)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-gray-300 hover:text-blue-500 transition-colors"
+                      data-testid={`edit-meal-${m.id}`} title="Modifica menu">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(m.id)} disabled={deletingId === m.id}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                      data-testid={`delete-meal-${m.id}`} title="Elimina menu">
+                      {deletingId === m.id
+                        ? <span className="w-4 h-4 border-2 border-red-300 border-t-transparent rounded-full animate-spin inline-block" />
+                        : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <MealBadge label="Primo"     value={m.primo} />
@@ -249,7 +282,7 @@ export default function AdminMensa() {
           <DialogContent className="rounded-2xl max-w-sm mx-auto" data-testid="create-menu-dialog">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold" style={{ fontFamily: 'Nunito' }}>
-                Nuovo Menu
+                {editingId ? 'Modifica Menu' : 'Nuovo Menu'}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 pt-2 max-h-[75vh] overflow-y-auto pr-1">
@@ -336,7 +369,7 @@ export default function AdminMensa() {
                 disabled={loading || !form.primo || !form.secondo || !form.date_from}
                 className="w-full rounded-2xl font-bold h-11" style={{ backgroundColor: C.primary }}
                 data-testid="create-menu-submit">
-                {loading ? 'Salvataggio...' : '✓ Pubblica Menu'}
+                {loading ? 'Salvataggio...' : (editingId ? '✓ Salva Modifiche' : '✓ Pubblica Menu')}
               </Button>
             </div>
           </DialogContent>

@@ -41,6 +41,7 @@ export default function AdminMensa() {
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId,  setEditId]  = useState<string | null>(null);  // menu in modifica
   const [saving,  setSaving]  = useState(false);
   const [sedi,    setSedi]    = useState<Sede[]>([]);
 
@@ -94,12 +95,35 @@ export default function AdminMensa() {
       // Il backend deriva la sede dall'header X-Sede-Id (non dal body): passiamo la sede
       // scelta così la selezione ha davvero effetto (per il superadmin che opera su più sedi).
       const cfg = form.sede_ids[0] ? { headers: { 'X-Sede-Id': form.sede_ids[0] } } : undefined;
-      const res = await api.post('/meals/menu', payload, cfg);
-      setMeals(prev => [res.data, ...prev]);
+      if (editId) {
+        const res = await api.put(`/meals/menu/${editId}`, payload, cfg);   // MODIFICA
+        setMeals(prev => prev.map(m => m.id === editId ? res.data : m));
+      } else {
+        const res = await api.post('/meals/menu', payload, cfg);            // NUOVO
+        setMeals(prev => [res.data, ...prev]);
+      }
       setShowForm(false);
-      setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
+      setEditId(null);
+      resetForm();
     } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile salvare il menu'); }
     finally { setSaving(false); }
+  };
+
+  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '', sede_ids: sede ? [sede] : [] });
+
+  const openNew = () => { setEditId(null); resetForm(); setShowForm(true); };
+
+  const openEdit = (m: any) => {
+    setEditId(m.id);
+    setForm({
+      date_from: m.date_from || m.date || TODAY,
+      date_to:   m.date_to || m.date || TODAY,
+      primo: m.primo || '', secondo: m.secondo || '', contorno: m.contorno || '',
+      frutta: m.frutta || '', merenda_mattina: m.merenda_mattina || '',
+      merenda_pomeriggio: m.merenda_pomeriggio || '', class_id: m.class_id || '',
+      sede_ids: m.sede_id ? [m.sede_id] : (sede ? [sede] : []),
+    });
+    setShowForm(true);
   };
 
   const handleDelete = (id: string) => {
@@ -146,7 +170,7 @@ export default function AdminMensa() {
         keyExtractor={(_, i) => String(i)}
         contentContainerStyle={{ padding: 12 }}
         ListHeaderComponent={
-          <TouchableOpacity onPress={() => setShowForm(true)} style={s.addBtn}>
+          <TouchableOpacity onPress={openNew} style={s.addBtn}>
             <Ionicons name="add" size={18} color={C.white} />
             <Text style={s.addBtnText}>Aggiungi Menu</Text>
           </TouchableOpacity>
@@ -164,6 +188,9 @@ export default function AdminMensa() {
                 <Text style={s.cardClass}>{item.class_id ? classes.find(c => c.id === item.class_id)?.name || 'Classe' : 'Tutte le classi'}</Text>
                 <Text style={s.cardDates}>{item.date_from}{item.date_to !== item.date_from ? ` → ${item.date_to}` : ''}</Text>
               </View>
+              <TouchableOpacity onPress={() => openEdit(item)} style={s.delBtn}>
+                <Ionicons name="create-outline" size={18} color={C.primary} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.delBtn}>
                 <Ionicons name="trash-outline" size={16} color={C.red} />
               </TouchableOpacity>
@@ -188,7 +215,7 @@ export default function AdminMensa() {
         onRequestClose={() => setShowForm(false)}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Nuovo Menu</Text>
+            <Text style={s.modalTitle}>{editId ? 'Modifica Menu' : 'Nuovo Menu'}</Text>
             <TouchableOpacity onPress={() => setShowForm(false)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
 
@@ -255,7 +282,7 @@ export default function AdminMensa() {
             ))}
 
             <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-              <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Menu'}</Text>
+              <Text style={s.submitText}>{saving ? 'Salvataggio...' : (editId ? 'Salva Modifiche' : 'Salva Menu')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

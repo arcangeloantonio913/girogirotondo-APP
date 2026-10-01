@@ -258,17 +258,38 @@ async def upload_document_base64(
     if classe_id:
         ctx.assert_class(classe_id)   # 404 se la classe è di un'altra sede — PRIMA di creare
 
-    # Costruisci data URL
-    file_url = f"data:{file_type};base64,{file_b64}"
-
     db = get_db()
     doc_id = str(uuid.uuid4())
+
+    # ── Storage OFF-DB (Firebase) ──────────────────────────────────────────────
+    # Carica i BYTE su Firebase Storage: in Mongo solo il riferimento (storage_path)
+    # + URL firmato, NON il base64. Con Firebase spento, upload_file ricade su base64.
+    # Fallback a base64 su qualsiasi errore (un upload non si perde mai).
+    _EXT = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png",
+            "image/webp": "webp", "application/msword": "doc",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+            "application/vnd.ms-excel": "xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx"}
+    file_url     = f"data:{file_type};base64,{file_b64}"   # default/fallback
+    storage_path = None
+    try:
+        import base64 as _b64
+        raw = _b64.b64decode(file_b64)
+        ext = _EXT.get((file_type or "").lower(), "bin")
+        file_url, storage_path = await upload_file(
+            raw, f"documents/{doc_id}.{ext}", file_type, "photo"  # size-checked a 10MB
+        )
+    except Exception:
+        logger.warning("[DOCUMENTS] upload su storage fallito — fallback base64", exc_info=True)
+        file_url     = f"data:{file_type};base64,{file_b64}"
+        storage_path = None
+
     doc = {
         "id":          doc_id,
         "title":       title,
         "description": payload.get("description", ""),
         "file_url":    file_url,
-        "storage_path":None,
+        "storage_path":storage_path,
         "categoria":   payload.get("categoria", "modulistica"),
         "classe_id":   classe_id,
         "sede_id":     await _resolve_doc_sede(db, classe_id, ctx.user, x_sede_id),

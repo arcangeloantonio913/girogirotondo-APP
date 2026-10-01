@@ -127,6 +127,32 @@ def _thumbnail_from_data_url(data_url: str, max_px: int = 400, quality: int = 60
         return None
 
 
+# Mappa MIME → estensione file per i blob su Firebase Storage.
+_MIME_EXT = {
+    "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp",
+    "image/heic": "heic", "image/heif": "heif", "image/gif": "gif",
+    "video/mp4": "mp4", "video/quicktime": "mov", "video/x-m4v": "m4v", "video/webm": "webm",
+}
+
+
+def _decode_data_url(data_url: str):
+    """Decode a base64 data URL → (bytes, mime, ext). Returns (None, None, None) on failure."""
+    try:
+        import base64
+        if not data_url or not data_url.startswith("data:"):
+            return None, None, None
+        header, _, b64 = data_url.partition(",")
+        if not b64:
+            return None, None, None
+        mime = header[5:].split(";")[0].strip() or "application/octet-stream"
+        raw = base64.b64decode(b64)
+        ext = _MIME_EXT.get(mime, "jpg" if mime.startswith("image/") else "bin")
+        return raw, mime, ext
+    except Exception:
+        logger.warning("[GALLERY] decode data URL fallito", exc_info=True)
+        return None, None, None
+
+
 def _slim_list_item(item: dict) -> dict:
     """Prepare a gallery doc for the LIST response.
 
@@ -368,21 +394,48 @@ async def upload_media_base64(
     valid_student_ids = await _students_in_class(db, class_id, student_ids)
     media_id = str(uuid.uuid4())
 
-    # Genera una thumbnail leggera dalla data URL base64 (solo foto — mai video).
-    # Il fallimento non deve bloccare l'upload (già gestito in _thumbnail_from_data_url).
-    thumbnail_url = None
-    if media_type != "video":
-        thumbnail_url = _thumbnail_from_data_url(media_url)
+    # ── Storage OFF-DB (Firebase) ──────────────────────────────────────────────
+    # Decodifichiamo il base64 e carichiamo i BYTE su Firebase Storage: in Mongo
+    # finisce solo il riferimento (storage_path) + un URL firmato, NON il base64.
+    # Con Firebase spento, upload_file ricade su base64 (nessuna regressione).
+    # Qualsiasi errore → fallback: salviamo il base64 (un upload non si perde mai).
+    raw, mime, ext = _decode_data_url(media_url)
+    out_media_url   = media_url   # default: base64 (fallback)
+    storage_path    = None
+    thumbnail_url   = None
+    thumbnail_path  = None
+    try:
+        if raw is not None:
+            out_media_url, storage_path = await upload_file(
+                raw, f"gallery/{class_id}/{media_id}.{ext}", mime, media_type
+            )
+            if media_type != "video":
+                thumb_bytes = generate_thumbnail(raw)
+                if thumb_bytes:
+                    thumbnail_url, thumbnail_path = await upload_file(
+                        thumb_bytes, f"gallery/{class_id}/{media_id}_thumb.jpg",
+                        "image/jpeg", "photo"
+                    )
+        else:
+            if media_type != "video":
+                thumbnail_url = _thumbnail_from_data_url(media_url)
+    except Exception:
+        logger.warning("[GALLERY] upload su storage fallito — fallback base64", exc_info=True)
+        out_media_url  = media_url
+        storage_path   = None
+        thumbnail_path = None
+        if media_type != "video" and not thumbnail_url:
+            thumbnail_url = _thumbnail_from_data_url(media_url)
 
     doc = {
         "id":            media_id,
         "class_id":      class_id,
         "sede_id":       sede_id,
         "student_ids":   valid_student_ids,
-        "media_url":     media_url,
+        "media_url":     out_media_url,
         "thumbnail_url": thumbnail_url,
-        "storage_path":  None,
-        "thumbnail_path":None,
+        "storage_path":  storage_path,
+        "thumbnail_path":thumbnail_path,
         "media_type":    media_type,
         "caption":       caption,
         "tags":          [],

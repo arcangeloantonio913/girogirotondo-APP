@@ -2,6 +2,7 @@ import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
+import { todayLocal } from '@/lib/utils';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import {
   Plus, Trash2,
 } from 'lucide-react';
 
-const today = new Date().toISOString().split('T')[0];
+const today = todayLocal();
 
 function getStatusStyle(status) {
   if (status === 'confirmed') return { bg: C.tintGreen, color: C.accentGreen, label: 'Confermato', Icon: CheckCircle2 };

@@ -2,6 +2,7 @@ import { C } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
+import { todayLocal } from '@/lib/utils';
 import AppLayout from '@/components/layout/AppLayout';
 import { BookOpen, Calendar } from 'lucide-react';
 
@@ -9,7 +10,7 @@ export default function ParentDiario() {
   const { user, activeChildId } = useAuth();
   const [entries, setEntries] = useState([]);
   const [loadError, setLoadError] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   useEffect(() => {
     const childId = activeChildId || (user?.child_ids?.[0]) || user?.child_id;

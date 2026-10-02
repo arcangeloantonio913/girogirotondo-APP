@@ -91,6 +91,8 @@ export default function AdminUsers() {
       // 1) Dati anagrafici → PUT /users/{id} (UserUpdate non accetta email/password)
       const profile: any = { name: editForm.name, cognome: editForm.cognome };
       if (editForm.class_id) profile.class_id = editForm.class_id;
+      // Per le maestre allinea anche class_ids, altrimenti resta l'accesso alla classe precedente
+      if (editUser.role === 'teacher' && editForm.class_id) profile.class_ids = [editForm.class_id];
       await api.put(`/users/${editUser.id}`, profile);
 
       // 2) Credenziali (email/password) → PUT /users/{id}/credentials
@@ -122,8 +124,14 @@ export default function AdminUsers() {
   };
 
   const handleIscrizione = async () => {
-    if (!iscForm.bambino_nome || !iscForm.genitore_email) {
-      Alert.alert('Attenzione', 'Nome bambino e email genitore obbligatori'); return;
+    // Il backend richiede anche cognome e classe: validiamo qui per evitare un 422 illeggibile
+    const missing: string[] = [];
+    if (!iscForm.bambino_nome)     missing.push('nome bambino');
+    if (!iscForm.bambino_cognome)  missing.push('cognome bambino');
+    if (!iscForm.class_id)         missing.push('classe');
+    if (!iscForm.genitore_email)   missing.push('email genitore');
+    if (missing.length > 0) {
+      Alert.alert('Attenzione', `Campi obbligatori mancanti: ${missing.join(', ')}`); return;
     }
     setSaving(true);
     try {
@@ -137,6 +145,9 @@ export default function AdminUsers() {
       const res = await api.post('/users/iscrizione', payload);
       setIscResult(res.data);
 
+      // Errori delle operazioni secondarie: non devono passare sotto silenzio
+      const subErrors: string[] = [];
+
       // Secondo genitore (se inserito)
       if (iscForm.show_second_parent && iscForm.genitore2_email && res.data.student?.id) {
         try {
@@ -146,10 +157,12 @@ export default function AdminUsers() {
             genitore_nome: iscForm.genitore2_nome,
             genitore_password: iscForm.genitore2_password || genPwd(),
           });
-        } catch {}
+        } catch (e: any) {
+          subErrors.push(`secondo genitore non aggiunto (${e?.response?.data?.detail || 'errore di rete'})`);
+        }
       }
 
-      // Secondo bambino (opzionale)
+      // Secondo bambino (opzionale) — la dedup del genitore avviene per email lato backend
       if (iscForm.bambino2_nome && res.data.parent?.id && iscForm.bambino2_class_id) {
         try {
           await api.post('/users/iscrizione', {
@@ -158,14 +171,21 @@ export default function AdminUsers() {
             class_id: iscForm.bambino2_class_id,
             genitore_email: iscForm.genitore_email,
             genitore_nome: iscForm.genitore_nome,
-            parent_id_existing: res.data.parent?.id, // collega al genitore già creato
             sede_id: sede,
           });
-        } catch {}
+        } catch (e: any) {
+          subErrors.push(`secondo bambino non iscritto (${e?.response?.data?.detail || 'errore di rete'})`);
+        }
       }
 
-      const uR = await api.get('/users');
-      setUsers(uR.data || []);
+      if (subErrors.length > 0) {
+        Alert.alert('Attenzione', `Iscrizione del primo bambino completata, MA:\n• ${subErrors.join('\n• ')}`);
+      }
+
+      // Ricarica anche /students così il bambino appare subito nella sezione Bambini
+      const [uR, sR] = await Promise.allSettled([api.get('/users'), api.get('/students')]);
+      if (uR.status === 'fulfilled') setUsers(uR.value.data || []);
+      if (sR.status === 'fulfilled') setStudents(sR.value.data || []);
     } catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile completare'); }
     finally { setSaving(false); }
   };
@@ -195,7 +215,7 @@ export default function AdminUsers() {
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
         try { await api.delete(`/users/${id}`); setUsers(prev => prev.filter(u => u.id !== id)); }
-        catch { Alert.alert('Errore'); }
+        catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile eliminare'); }
       }},
     ]);
   };
@@ -206,7 +226,7 @@ export default function AdminUsers() {
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
         try { await api.delete(`/students/${id}`); setStudents(prev => prev.filter(x => x.id !== id)); }
-        catch { Alert.alert('Errore'); }
+        catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile eliminare'); }
       }},
     ]);
   };

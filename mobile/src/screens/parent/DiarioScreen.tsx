@@ -29,14 +29,14 @@ export default function ParentDiario() {
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
   useEffect(() => {
-    if (!childId) { setLoading(false); return; }
+    if (!childId) { setEntries([]); setLoading(false); return; }
     const url = viewAll
       ? `/diary?student_id=${childId}`
       : `/diary?student_id=${childId}&date=${date}`;
     setLoading(true);
     api.get(url)
       .then(r => setEntries(r.data || []))
-      .catch(() => {})
+      .catch(() => setEntries([]))   // azzera: niente diario del fratello dopo cambio figlio + errore
       .finally(() => setLoading(false));
   }, [childId, date, viewAll]);
 

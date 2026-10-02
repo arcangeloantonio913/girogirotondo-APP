@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, SafeAreaView,
-  StatusBar, StyleSheet, ActivityIndicator, Image, Modal,
+  StatusBar, StyleSheet, ActivityIndicator, Image, Modal, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
@@ -55,6 +55,8 @@ export default function ParentDashboard({ navigation }: any) {
   const [className, setClassName] = useState('');
   const [loading,  setLoading]  = useState(true);
   const [children, setChildren] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [childSwitcherOpen, setChildSwitcherOpen] = useState(false);
   const sedeAttiva = user?.sede_id || 'girogirotondo';
@@ -66,29 +68,34 @@ export default function ParentDashboard({ navigation }: any) {
 
   useEffect(() => {
     const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
-    if (!childId) { setLoading(false); return; }
-    // allSettled: ogni sezione è indipendente. Se una richiesta fallisce (es. 404 su un
-    // caso limite di dati) le altre continuano a popolarsi — niente dashboard vuota.
-    Promise.allSettled([
-      api.get(`/students/${childId}`),
-      api.get(`/diary?student_id=${childId}&date=${today}`),
-      api.get(`/griglia?student_id=${childId}&date=${today}`),
-      api.get(`/gallery?student_id=${childId}`),
-      api.get(`/meals?date=${today}`),
-      api.get('/classes'),
-    ]).then(([cR, dR, gR, galR, mR, clR]) => {
-      const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
-      const child = val(cR);
-      if (child) setChild(child);
-      setDiary(val(dR)?.[0] || null);
-      setGriglia(val(gR)?.[0] || null);
-      setGallery(val(galR) || []);
-      setMeal(val(mR)?.[0] || null);
-      const classes = val(clR);
-      const cls = Array.isArray(classes) ? classes.find((c: any) => c.id === child?.class_id) : null;
-      if (cls) setClassName(cls.name);
-    }).finally(() => setLoading(false));
-  }, [user, activeChildId]);
+    if (!childId) { setLoading(false); setRefreshing(false); return; }
+    (async () => {
+      // Prima lo studente: serve class_id per il menu della SUA classe
+      let childData: any = null;
+      try { childData = (await api.get(`/students/${childId}`)).data; } catch {}
+      if (childData) setChild(childData);
+      // allSettled: ogni sezione è indipendente. Se una richiesta fallisce (es. 404 su un
+      // caso limite di dati) le altre continuano a popolarsi — niente dashboard vuota.
+      await Promise.allSettled([
+        api.get(`/diary?student_id=${childId}&date=${today}`),
+        api.get(`/griglia?student_id=${childId}&date=${today}`),
+        api.get(`/gallery?student_id=${childId}`),
+        api.get(`/meals?date=${today}${childData?.class_id ? `&class_id=${childData.class_id}` : ''}`),
+        api.get('/classes'),
+      ]).then(([dR, gR, galR, mR, clR]) => {
+        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
+        setDiary(val(dR)?.[0] || null);
+        setGriglia(val(gR)?.[0] || null);
+        setGallery(val(galR) || []);
+        // Preferisco il menu specifico della classe rispetto a quello universale
+        const mealsList = (val(mR) || []) as any[];
+        setMeal(mealsList.find((m: any) => m.class_id) || mealsList[0] || null);
+        const classes = val(clR);
+        const cls = Array.isArray(classes) ? classes.find((c: any) => c.id === childData?.class_id) : null;
+        if (cls) setClassName(cls.name);
+      });
+    })().finally(() => { setLoading(false); setRefreshing(false); });
+  }, [user, activeChildId, refreshTick]);
 
   // Popola l'elenco figli per lo switcher (solo se il genitore ha più di un bambino)
   useEffect(() => {
@@ -173,7 +180,11 @@ export default function ParentDashboard({ navigation }: any) {
           <Ionicons name="menu" size={26} color={C.text} />
         </TouchableOpacity>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); setRefreshTick(t => t + 1); }} />
+        }>
 
         {/* Header */}
         <View style={s.header}>

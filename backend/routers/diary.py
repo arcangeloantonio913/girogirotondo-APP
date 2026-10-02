@@ -62,7 +62,9 @@ async def _get_diary(class_id: Optional[str], date: Optional[str], ctx: TenantCo
             {"student_ids": {"$in": [None, []]}},
             {"student_ids": {"$exists": False}},
         ]
-    return await db.diary.find(query, {"_id": 0}).to_list(100)
+    # Più recenti prima: senza sort l'ordine era di inserimento e oltre il cap le voci
+    # NUOVE non venivano mai restituite.
+    return await db.diary.find(query, {"_id": 0}).sort("date", -1).to_list(100)
 
 
 async def _create_diary(entry: DiaryEntryCreate, ctx: TenantContext):

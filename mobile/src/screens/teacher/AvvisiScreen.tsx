@@ -27,7 +27,15 @@ async function openAttachment(id?: string, url?: string, name?: string) {
 
 export default function TeacherAvvisi() {
   const { user } = useAuth();
-  const classId = user?.class_ids?.[0] || user?.class_id;
+  // Una maestra può avere PIÙ classi: niente più class_ids[0] fisso → selettore.
+  const classIds = React.useMemo(() => {
+    const ids = [...(user?.class_ids || [])];
+    if (user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  }, [user]);
+  const [classId, setClassId] = useState<string | undefined>(classIds[0]);
+  useEffect(() => { setClassId(prev => (prev && classIds.includes(prev)) ? prev : classIds[0]); }, [classIds]);
+  const [classes,  setClasses]  = useState<any[]>([]);
   const [avvisi,   setAvvisi]   = useState<any[]>([]);
   const [parents,  setParents]  = useState<any[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -39,6 +47,12 @@ export default function TeacherAvvisi() {
   const [targetType, setTargetType] = useState<'class' | 'specific'>('class');
   const [selParents, setSelParents] = useState<string[]>([]);
   const [saving,     setSaving]     = useState(false);
+
+  // Nomi classi per il selettore (solo quelle della maestra)
+  useEffect(() => {
+    if (!classIds.length) return;
+    api.get('/classes').then(r => setClasses((r.data || []).filter((c: any) => classIds.includes(c.id)))).catch(() => {});
+  }, [classIds]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -69,7 +83,8 @@ export default function TeacherAvvisi() {
         testo: body,
         target_class_ids: classId ? [classId] : [],
         target_roles: ['parent'],
-        target_sedi: [user?.sede_id || 'girogirotondo'],
+        // Sede dell'utente (il backend sovrascrive comunque per i teacher)
+        target_sedi: user?.sede_id ? [user.sede_id] : [],
       };
       if (targetType === 'specific' && selParents.length > 0) {
         payload.target_parent_ids = selParents;
@@ -88,7 +103,7 @@ export default function TeacherAvvisi() {
       { text: 'Annulla', style: 'cancel' },
       { text: 'Elimina', style: 'destructive', onPress: async () => {
         try { await api.delete(`/avvisi/${id}`); setAvvisi(prev => prev.filter(a => a.id !== id)); }
-        catch { Alert.alert('Errore'); }
+        catch (e: any) { Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile eliminare'); }
       }},
     ]);
   };
@@ -98,6 +113,17 @@ export default function TeacherAvvisi() {
 
   return (
     <ScreenLayout title="Avvisi" showBack color={C.accentPink} loading={loading} scrollable={false}>
+      {/* Selettore classe (solo se la maestra ha più classi) */}
+      {classes.length > 1 && (
+        <View style={s.classRow}>
+          {classes.map(c => (
+            <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)}
+              style={[s.classChip, classId === c.id && { backgroundColor: C.accentPink, borderColor: C.accentPink }]}>
+              <Text style={[s.classChipTxt, classId === c.id && { color: C.white }]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       <FlatList
         data={avvisi}
         keyExtractor={(_, i) => String(i)}
@@ -144,9 +170,12 @@ export default function TeacherAvvisi() {
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.deleteBtn}>
-                <Ionicons name="trash-outline" size={16} color={C.red} />
-              </TouchableOpacity>
+              {/* Elimina: solo i propri avvisi */}
+              {item.author_id === user?.id && (
+                <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.deleteBtn}>
+                  <Ionicons name="trash-outline" size={16} color={C.red} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -241,6 +270,9 @@ export default function TeacherAvvisi() {
 }
 
 const s = StyleSheet.create({
+  classRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 4 },
+  classChip:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
+  classChipTxt:    { fontSize: 13, fontWeight: '600', color: C.text },
   addBtn:          { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.accentPink, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:      { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:           { alignItems: 'center', paddingTop: 60 },

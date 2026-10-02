@@ -110,10 +110,16 @@ export default function TeacherGriglia() {
   }, [user]); // eslint-disable-line
 
   // Carica griglia per data + classe selezionata
-  // Menu del giorno → etichette coerenti della griglia (piatti reali)
+  // Menu del giorno → etichette coerenti della griglia (piatti reali).
+  // Si chiede il menu DELLA classe selezionata e si preferisce quello class-specific
+  // all'universale: prima si prendeva [0] arbitrario (poteva essere di un'altra classe).
   const [menu, setMenu] = useState(null);
   useEffect(() => {
-    api.get(`/meals?date=${currentDate}`).then(r => setMenu((r.data || [])[0] || null)).catch(() => setMenu(null));
+    if (!classId) { setMenu(null); return; }
+    api.get(`/meals?date=${currentDate}&class_id=${classId}`).then(r => {
+      const rows = r.data || [];
+      setMenu(rows.find(m => m.class_id === classId) || rows.find(m => !m.class_id) || rows[0] || null);
+    }).catch(() => setMenu(null));
   }, [currentDate, classId]);
   const mealCols = MEAL_COLS.map(col => {
     const dish = menu && menu[MENU_FIELD[col.key]];
@@ -205,20 +211,26 @@ export default function TeacherGriglia() {
       setTimeout(() => setSaved(false), 3000);
       return;
     }
-    // allSettled: una singola riga che fallisce NON annulla le altre; riportiamo i parziali.
-    const results = await Promise.allSettled(toSave.map(s => {
-      const d = grid[s.id] || defaultGrid();
-      return api.post('/griglia', { class_id: classId, student_ids: [s.id], date: currentDate, ...d });
-    }));
-    setSaving(false);
-    const failed = results.filter(r => r.status === 'rejected').length;
-    if (failed > 0) {
-      console.error('Griglia: salvataggi falliti', results.filter(r => r.status === 'rejected'));
-      setSaveError(`${failed} ${failed === 1 ? 'bambino non salvato' : 'bambini non salvati'} su ${toSave.length}. Riprova.`);
-    } else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+    // UNA sola richiesta bulk (come il mobile): N POST separate generavano una
+    // notifica push identica ai genitori per OGNI bambino salvato.
+    try {
+      await api.post('/griglia/bulk', {
+        class_id: classId,
+        date: currentDate,
+        entries: toSave.map(s => {
+          const d = grid[s.id] || defaultGrid();
+          return { student_id: s.id, ...d };
+        }),
+      });
+      setSaving(false);
+    } catch (e) {
+      setSaving(false);
+      console.error('Griglia: salvataggio bulk fallito', e);
+      setSaveError(e?.response?.data?.detail || 'Salvataggio non riuscito. Riprova.');
+      return;
     }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   return (

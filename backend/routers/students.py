@@ -257,11 +257,23 @@ async def delete_student(
 
     await db.students.delete_one({"id": student_id})
 
-    # Rimuovi riferimento dal genitore
+    # Rimuovi il riferimento da TUTTI i genitori collegati. L'iscrizione collega via
+    # users.child_ids e non valorizza student.parent_id, quindi la vecchia pulizia
+    # (solo parent_id) non scattava mai → "figli fantasma" nei profili genitore.
+    await db.users.update_many(
+        {"child_ids": student_id},
+        {"$pull": {"child_ids": student_id}}
+    )
+    # Legacy child_id puntato al bambino eliminato: azzeralo (il client fa fallback
+    # su child_ids[0]).
+    await db.users.update_many(
+        {"child_id": student_id},
+        {"$set": {"child_id": None}}
+    )
     if student.get("parent_id"):
         await db.users.update_one(
             {"id": student["parent_id"]},
-            {"$pull": {"child_ids": student_id}, "$unset": {"child_id": ""}}
+            {"$pull": {"child_ids": student_id}}
         )
 
     # Pulizia dati correlati

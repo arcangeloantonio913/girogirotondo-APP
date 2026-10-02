@@ -2,6 +2,7 @@ import { C, tenant } from '@/config/tenant';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
+import { todayLocal } from '@/lib/utils';
 import AppLayout from '@/components/layout/AppLayout';
 
 const QUANTITA_LABELS = {
@@ -53,7 +54,7 @@ export default function ParentGriglia() {
   const [child, setChild]       = useState(null);
   const [menu, setMenu]         = useState(null);
   const [loadError, setLoadError] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
 
   // activeChildId nelle dipendenze → si aggiorna quando il genitore cambia figlio
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function ParentGriglia() {
     { time: '9:30',  label: (menu && menu.merenda_mattina) || 'Merenda',  active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
     { time: '12:00', label: (menu && menu.primo) || 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: C.babyPink, isPasto: true },
     { time: '12:10', label: (menu && menu.secondo) || 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: C.babyBlue, isPasto: true },
-    ...(tenant.hidePaneGriglia ? [] : [{ time: '12:20', label: (menu && menu.contorno) || 'Pane', active: griglia.pane, qty: griglia.pane_qty, color: '#FFD699', isPasto: true }]),
+    ...(tenant.hidePaneGriglia ? [] : [{ time: '12:20', label: 'Pane', active: griglia.pane, qty: griglia.pane_qty, color: '#FFD699', isPasto: true }]),
     { time: '12:30', label: (menu && menu.frutta) || 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: C.babyGreen, isPasto: true },
     { time: '',      label: 'Pupù',     active: griglia.pupu,    qty: null,                color: '#D4B8E0', isPasto: false },
     { time: '',      label: 'Nanna',    active: griglia.nanna,   qty: null,                color: '#93C5FD', isPasto: false },

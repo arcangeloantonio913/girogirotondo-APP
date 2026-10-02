@@ -76,14 +76,20 @@ export default function AdminAvvisi() {
     api.get('/sedi').then(r => setSedi(r.data ?? [])).catch(() => setSedi([]));
   }, []);
 
-  // Default destinatari: tutte le sedi del caller, al primo caricamento di `sedi`
+  // Default destinatari: SOLO la sede attiva. Un admin non-superadmin non può
+  // pubblicare su altre sedi (il backend risponde 404); la multi-selezione resta disponibile.
+  const defaultSedi = () => {
+    if (sede && sedi.some(s => s.id === sede)) return [sede];
+    return sedi.length > 0 ? [sedi[0].id] : [];
+  };
+
   useEffect(() => {
-    if (sedi.length > 0 && selSedi.length === 0) setSelSedi(sedi.map(s => s.id));
+    if (sedi.length > 0 && selSedi.length === 0) setSelSedi(defaultSedi());
   }, [sedi]);
 
   const resetForm = () => {
     setTitle(''); setBody('');
-    setSelSedi(sedi.map(s => s.id));
+    setSelSedi(defaultSedi());
     setSelRoles(['parent', 'teacher']);
     setSelClasses([]); setAllClasses(true);
     setAllegati([]); setEditing(null);

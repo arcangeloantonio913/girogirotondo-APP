@@ -32,9 +32,11 @@ const TIMELINE = [
   { key: 'nanna',   label: 'Nanna / Riposo', icon: '😴', time: '13:00', type: 'bool' },
 ].filter(t => !(t.key === 'pane' && tenant.hidePaneGriglia));
 
-// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali)
+// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali).
+// NB: la riga "Pane" NON va mappata sul contorno (mostrava il nome del contorno sulla
+// riga del pane): resta l'etichetta generica "Pane".
 const MENU_FIELD: Record<string,string> = {
-  merenda: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', pane: 'contorno', frutta: 'frutta',
+  merenda: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', frutta: 'frutta',
 };
 
 function addDays(d: string, n: number) {
@@ -47,24 +49,35 @@ export default function ParentGriglia() {
   const [date,   setDate]   = useState(todayLocal());
   const [griglia,setGriglia]= useState<any>(null);
   const [menu,   setMenu]   = useState<any>(null);
+  const [classId,setClassId]= useState<string | null>(null);
   const [loading,setLoading]= useState(true);
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
   const today = todayLocal();
 
+  // Classe del figlio attivo → serve per chiedere il MENU della sua classe (non uno a caso)
   useEffect(() => {
-    if (!childId) { setLoading(false); return; }
+    if (!childId) { setClassId(null); return; }
+    api.get(`/students/${childId}`).then(r => setClassId(r.data?.class_id || null)).catch(() => setClassId(null));
+  }, [childId]);
+
+  useEffect(() => {
+    if (!childId) { setLoading(false); setGriglia(null); return; }
     setLoading(true);
     api.get(`/griglia?student_id=${childId}&date=${date}`)
       .then(r => setGriglia(r.data?.[0] || null))
-      .catch(() => {})
+      .catch(() => setGriglia(null))   // azzera: dopo cambio figlio con errore rete non mostrare i dati del fratello
       .finally(() => setLoading(false));
   }, [childId, date]);
 
-  // Menu del giorno → etichette coerenti (piatti reali)
+  // Menu del giorno DELLA CLASSE del figlio → etichette coerenti (piatti reali).
   useEffect(() => {
-    api.get(`/meals?date=${date}`).then(r => setMenu((r.data || [])[0] || null)).catch(() => setMenu(null));
-  }, [date]);
+    const q = classId ? `/meals?date=${date}&class_id=${classId}` : `/meals?date=${date}`;
+    api.get(q).then(r => {
+      const rows = r.data || [];
+      setMenu(rows.find((m: any) => m.class_id === classId) || rows.find((m: any) => !m.class_id) || rows[0] || null);
+    }).catch(() => setMenu(null));
+  }, [date, classId]);
   const timeline = TIMELINE.map(t => (
     t.type === 'meal' && menu && menu[MENU_FIELD[t.key]] ? { ...t, label: menu[MENU_FIELD[t.key]] } : t
   ));

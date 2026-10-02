@@ -17,7 +17,15 @@ const TODAY = todayLocal();
 
 export default function TeacherDiario() {
   const { user } = useAuth();
-  const classId = user?.class_ids?.[0] || user?.class_id;
+  // Una maestra può avere PIÙ classi: niente più class_ids[0] fisso → selettore.
+  const classIds = React.useMemo(() => {
+    const ids = [...(user?.class_ids || [])];
+    if (user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  }, [user]);
+  const [classId, setClassId] = useState<string | undefined>(classIds[0]);
+  useEffect(() => { setClassId(prev => (prev && classIds.includes(prev)) ? prev : classIds[0]); }, [classIds]);
+  const [classes,   setClasses]   = useState<any[]>([]);
   const [entries,   setEntries]   = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [showForm,  setShowForm]  = useState(false);
@@ -29,6 +37,12 @@ export default function TeacherDiario() {
   const [acts,  setActs]  = useState<string[]>([]);
   const [date,  setDate]  = useState(TODAY);
   const [saving,setSaving]= useState(false);
+
+  // Nomi classi per il selettore (solo quelle della maestra)
+  useEffect(() => {
+    if (!classIds.length) { setLoading(false); return; }
+    api.get('/classes').then(r => setClasses((r.data || []).filter((c: any) => classIds.includes(c.id)))).catch(() => {});
+  }, [classIds]);
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
@@ -87,6 +101,17 @@ export default function TeacherDiario() {
 
   return (
     <ScreenLayout title="Diario di Bordo" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+      {/* Selettore classe (solo se la maestra ha più classi) */}
+      {classes.length > 1 && (
+        <View style={s.classRow}>
+          {classes.map(c => (
+            <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)}
+              style={[s.classChip, classId === c.id && { backgroundColor: C.babyBlue, borderColor: C.babyBlue }]}>
+              <Text style={[s.classChipTxt, classId === c.id && { color: C.white }]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       <FlatList
         data={entries}
         keyExtractor={(_, i) => String(i)}
@@ -189,6 +214,9 @@ export default function TeacherDiario() {
 }
 
 const s = StyleSheet.create({
+  classRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 4 },
+  classChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
+  classChipTxt: { fontSize: 13, fontWeight: '600', color: C.text },
   addBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#A7C7E7', borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
   empty:     { alignItems: 'center', paddingTop: 60 },

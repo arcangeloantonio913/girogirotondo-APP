@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
+import { todayLocal } from '@/lib/utils';
 import AppLayout from '@/components/layout/AppLayout';
 import { Calendar, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -56,7 +57,7 @@ export default function ParentDashboard() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError]     = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayLocal();
   const todayFormatted = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 
   useEffect(() => {

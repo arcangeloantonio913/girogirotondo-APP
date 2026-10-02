@@ -23,16 +23,25 @@ const MEALS = [
   {key:'frutta',label:'Frutta',icon:'🍎'},
 ].filter(m => !(m.key === 'pane' && tenant.hidePaneGriglia));
 
-// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali)
+// Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali).
+// NIENTE pane→contorno: la riga Pane mantiene l'etichetta generica.
 const MENU_FIELD: Record<string,string> = {
-  merenda_mattina: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', pane: 'contorno', frutta: 'frutta',
+  merenda_mattina: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', frutta: 'frutta',
 };
 
 function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 
 export default function TeacherGriglia() {
   const { user } = useAuth();
-  const classId = user?.class_ids?.[0] || user?.class_id;
+  // Una maestra può avere PIÙ classi: niente più class_ids[0] fisso → selettore.
+  const classIds = React.useMemo(()=>{
+    const ids=[...(user?.class_ids||[])];
+    if(user?.class_id && !ids.includes(user.class_id)) ids.push(user.class_id);
+    return ids;
+  },[user]);
+  const [classId, setClassId] = useState<string|undefined>(classIds[0]);
+  useEffect(()=>{ setClassId(prev=>(prev && classIds.includes(prev))?prev:classIds[0]); },[classIds]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [date, setDate]       = useState(todayLocal());
   const [students, setStudents] = useState<any[]>([]);
   const [griglia, setGriglia]  = useState<Record<string,any>>({});
@@ -43,19 +52,31 @@ export default function TeacherGriglia() {
   const [saved, setSaved]       = useState(false);
   const [menu, setMenu]         = useState<any>(null);
 
+  // Nomi classi per il selettore (solo quelle della maestra)
+  useEffect(()=>{
+    if(!classIds.length){setLoading(false);return;}
+    api.get('/classes').then(r=>setClasses((r.data||[]).filter((c:any)=>classIds.includes(c.id)))).catch(()=>{});
+  },[classIds]);
+
   useEffect(()=>{
     if(!classId){setLoading(false);return;}
     api.get(`/students?class_id=${classId}`).then(r=>setStudents(r.data||[])).catch(()=>{}).finally(()=>setLoading(false));
   },[classId]);
 
-  // Menu del giorno → etichette coerenti (piatti reali)
+  // Menu del giorno → etichette coerenti (piatti reali). Preferisco il menu
+  // specifico della classe rispetto a quello universale.
   useEffect(()=>{
-    api.get(`/meals?date=${date}`).then(r=>setMenu((r.data||[])[0]||null)).catch(()=>setMenu(null));
-  },[date]);
-  const meals = MEALS.map(m => ({ ...m, label: (menu && menu[MENU_FIELD[m.key]]) || m.label }));
+    api.get(`/meals?date=${date}${classId?`&class_id=${classId}`:''}`).then(r=>{
+      const list=(r.data||[]) as any[];
+      setMenu(list.find((m:any)=>m.class_id)||list[0]||null);
+    }).catch(()=>setMenu(null));
+  },[date,classId]);
+  const meals = MEALS.map(m => ({ ...m, label: (menu && MENU_FIELD[m.key] && menu[MENU_FIELD[m.key]]) || m.label }));
 
   useEffect(()=>{
     if(!classId)return;
+    // Azzero subito: su cambio data/classe lo stato precedente non deve restare stale
+    setGriglia({});
     api.get(`/griglia?class_id=${classId}&date=${date}`).then(r=>{
       const map:Record<string,any>={};
       // Rimappa il doc backend nel formato-stato usato da updateField/render.
@@ -71,7 +92,7 @@ export default function TeacherGriglia() {
         notes:           g.notes || '',
       };});
       setGriglia(map);
-    }).catch(()=>{});
+    }).catch(()=>setGriglia({}));   // niente dati stale su errore
   },[date,classId]);
 
   const updateField=(sid:string,field:string,val:any)=>{
@@ -140,6 +161,18 @@ export default function TeacherGriglia() {
         </TouchableOpacity>
       }
     >
+      {/* Selettore classe (solo se la maestra ha più classi) */}
+      {classes.length>1&&(
+        <View style={s.classRow}>
+          {classes.map(c=>(
+            <TouchableOpacity key={c.id} onPress={()=>setClassId(c.id)}
+              style={[s.classChip,classId===c.id&&{backgroundColor:C.accentPink,borderColor:C.accentPink}]}>
+              <Text style={[s.classChipTxt,classId===c.id&&{color:C.white}]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* Date nav */}
       <View style={s.dateNav}>
         <TouchableOpacity onPress={()=>setDate(addDays(date,-1))} style={s.navBtn}>
@@ -258,6 +291,9 @@ export default function TeacherGriglia() {
 
 const s=StyleSheet.create({
   saveBtn:      {flexDirection:'row',alignItems:'center',gap:4,backgroundColor:C.accentPink,borderRadius:10,paddingHorizontal:12,paddingVertical:6},
+  classRow:     {flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:10,paddingTop:8,paddingBottom:4},
+  classChip:    {paddingHorizontal:12,paddingVertical:7,borderRadius:20,borderWidth:1,borderColor:C.border,backgroundColor:C.white},
+  classChipTxt: {fontSize:13,fontWeight:'600',color:C.text},
   dateNav:      {flexDirection:'row',alignItems:'center',justifyContent:'space-between',padding:12,backgroundColor:C.white,borderBottomWidth:0.5,borderBottomColor:C.border},
   navBtn:       {width:32,height:32,alignItems:'center',justifyContent:'center'},
   dateText:     {fontSize:14,fontWeight:'700',color:C.text,textTransform:'capitalize'},

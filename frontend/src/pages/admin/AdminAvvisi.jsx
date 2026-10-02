@@ -175,7 +175,10 @@ export default function AdminAvvisi() {
         titolo:            form.titolo,
         testo:             form.testo,
         target:            form.target_class_ids.length > 0 ? 'class' : 'global',
-        target_sedi:       form.target_sedi.length > 0 ? form.target_sedi : [sede],
+        // Nessuna sede selezionata = "tutte le sedi" (coerente con il filtro classi che
+        // tratta [] come tutte). Prima ricadeva su [sede] → avviso "Entrambe le sedi"
+        // pubblicato a una sola sede.
+        target_sedi:       form.target_sedi.length > 0 ? form.target_sedi : SEDI.map(s => s.id),
         target_roles:      form.target_roles.length > 0 ? form.target_roles : null,
         target_class_ids:  form.target_class_ids.length > 0 ? form.target_class_ids : null,
         target_parent_ids: form.target_parent_ids.length > 0 ? form.target_parent_ids : null,

@@ -81,7 +81,25 @@ async def create_class(
     class_dict = payload.model_dump()
     class_dict["id"] = str(uuid.uuid4())
     class_dict["sede_id"] = sede_id          # assegna alla sede attiva
+
+    # Maestra assegnata alla CREAZIONE: valida e sincronizza class_ids/class_id come fa
+    # il PATCH. Prima il teacher_id veniva salvato solo sul doc classe → la maestra
+    # risultava assegnata in UI ma non vedeva né classe né bambini.
+    teacher_id = class_dict.get("teacher_id") or None
+    if teacher_id:
+        teacher = await db.users.find_one({"id": teacher_id, "role": "teacher"})
+        if not teacher:
+            raise HTTPException(status_code=400, detail="Maestra non trovata")
+        if not current_user.get("is_superadmin") and teacher.get("sede_id") != sede_id:
+            raise HTTPException(status_code=400, detail="La maestra non appartiene alla sede della classe")
+    class_dict["teacher_id"] = teacher_id
+
     await db.classes.insert_one(class_dict)
+    if teacher_id:
+        await db.users.update_one(
+            {"id": teacher_id},
+            {"$addToSet": {"class_ids": class_dict["id"]}, "$set": {"class_id": class_dict["id"]}}
+        )
     class_dict.pop("_id", None)
     return class_dict
 

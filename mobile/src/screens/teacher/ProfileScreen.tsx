@@ -64,7 +64,8 @@ export default function TeacherProfile() {
               <View style={[s.infoRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: C.border }]}>
                 <Ionicons name="book-outline" size={16} color={C.muted} />
                 <Text style={s.infoLabel}>Classe</Text>
-                <Text style={s.infoValue}>{user?.class_id || user?.class_ids?.join(', ')}</Text>
+                {/* Nome classe risolto da /classes (niente UUID grezzi) */}
+                <Text style={s.infoValue}>{className}</Text>
               </View>
             )}
           </View>

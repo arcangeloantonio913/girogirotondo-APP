@@ -20,16 +20,16 @@ export default function ParentPresenze() {
   const mese = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   useEffect(() => {
-    if (!childId) { setLoading(false); return; }
+    if (!childId) { setRows([]); setLoading(false); return; }
     setLoading(true);
     api.get(`/presenze?student_id=${childId}&mese=${mese}`)
       .then(r => {
         const data = (r.data || []).sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
         setRows(data);
       })
-      .catch(() => {})
+      .catch(() => setRows([]))   // azzera: niente presenze del fratello dopo cambio figlio + errore
       .finally(() => setLoading(false));
-  }, [childId]);
+  }, [childId, mese]);
 
   const presenti = rows.filter(r => r.presente).length;
   const assenti  = rows.length - presenti;

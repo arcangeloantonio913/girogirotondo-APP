@@ -211,6 +211,15 @@ async def get_gallery(
             if student_id not in allowed:
                 raise HTTPException(status_code=404, detail="Risorsa non trovata")
             query["student_ids"] = student_id
+        elif class_id:
+            # Tab "Galleria di classe": il genitore può vedere le foto della classe di un
+            # proprio figlio ANCHE se la maestra non ha taggato bambini (student_ids=[]).
+            # Senza questo ramo il class_id veniva ignorato e le foto di classe non
+            # taggate restavano invisibili a tutti i genitori. Fail-closed: solo classi
+            # dei propri figli.
+            if class_id not in ctx.allowed_class_ids:
+                raise HTTPException(status_code=404, detail="Risorsa non trovata")
+            query["class_id"] = class_id
         else:
             query["student_ids"] = {"$in": list(allowed)}
         # Il genitore vede SOLO i media pubblicati: se la maestra "nasconde" una foto

@@ -57,9 +57,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(() => !localStorage.getItem('ggt_user'));
 
   // Sede attiva: default = prima sede del tenant (mai hardcoded 'girogirotondo').
-  const [sede, setSede] = useState(
-    () => localStorage.getItem('ggt_sede') || (SEDI[0] && SEDI[0].id) || 'girogirotondo'
-  );
+  // La sede salvata va VALIDATA contro le sedi del tenant: un valore stantio/di un altro
+  // tenant farebbe rispondere il backend 400 "Sede non valida" su ogni operazione admin
+  // (pagina utenti vuota senza spiegazione). Se invalida, si riparte dalla prima sede.
+  const [sede, setSede] = useState(() => {
+    const saved = localStorage.getItem('ggt_sede');
+    const valid = SEDI.some(s => s.id === saved);
+    const fallback = (SEDI[0] && SEDI[0].id) || 'girogirotondo';
+    if (!valid && saved) { try { localStorage.setItem('ggt_sede', fallback); } catch {} }
+    return valid ? saved : fallback;
+  });
 
   // Bambino attivo (per famiglie con più figli)
   const [activeChildId, setActiveChildIdState] = useState(

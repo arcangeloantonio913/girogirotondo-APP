@@ -290,11 +290,13 @@ export default function AdminMensa() {
               {/* Classe */}
               <div>
                 <Label className="text-xs font-medium text-gray-600">Classe (opzionale)</Label>
-                <Select value={form.class_id} onValueChange={v => setForm(f => ({ ...f, class_id: v }))}>
+                <Select value={form.class_id || '__all__'} onValueChange={v => setForm(f => ({ ...f, class_id: v === '__all__' ? '' : v }))}>
                   <SelectTrigger className="rounded-xl mt-1" data-testid="menu-class-select">
                     <SelectValue placeholder="Tutte le classi" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* Permette di tornare al menu valido per TUTTA la sede dopo aver scelto una classe */}
+                    <SelectItem value="__all__">Tutte le classi</SelectItem>
                     {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

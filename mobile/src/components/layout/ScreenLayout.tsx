@@ -29,11 +29,12 @@ interface Props {
   loading?: boolean;
   color?: string;
   scrollable?: boolean;
+  refreshControl?: React.ReactElement; // pull-to-refresh (solo se scrollable)
 }
 
 export default function ScreenLayout({
   title, showBack = false, rightAction, children,
-  loading = false, color, scrollable = true,
+  loading = false, color, scrollable = true, refreshControl,
 }: Props) {
   const nav        = useNavigation() as any;
   const { user, sede } = useAuth();
@@ -49,7 +50,7 @@ export default function ScreenLayout({
 
   const Wrapper = scrollable ? ScrollView : View;
   const wrapperProps = scrollable
-    ? { showsVerticalScrollIndicator: false, contentContainerStyle: { flexGrow: 1, paddingBottom: 20 } }
+    ? { showsVerticalScrollIndicator: false, contentContainerStyle: { flexGrow: 1, paddingBottom: 20 }, refreshControl }
     : { style: { flex: 1 } };
 
   return (

@@ -135,9 +135,13 @@ async def get_avvisi(
             {"_id": 0}
         ).sort("created_at", -1).to_list(500)
 
+        # L'autore vede SEMPRE i propri avvisi: il backend forza target_roles=['parent']
+        # sugli avvisi teacher, quindi senza questa clausola la maestra non rivedrebbe
+        # (né potrebbe modificare/eliminare) ciò che ha pubblicato.
         avvisi = [
             a for a in all_avvisi
-            if _avviso_visible_to(a, "teacher", user_id, teacher_class_ids, [], sede_id)
+            if a.get("author_id") == user_id
+            or _avviso_visible_to(a, "teacher", user_id, teacher_class_ids, [], sede_id)
         ]
 
     elif role == "parent":
@@ -207,7 +211,9 @@ async def get_avviso(
         legacy = current_user.get("class_id")
         if legacy and legacy not in teacher_class_ids:
             teacher_class_ids.append(legacy)
-        visible = _avviso_visible_to(avviso, "teacher", user_id, teacher_class_ids, [], sede_id)
+        # L'autore vede sempre il proprio avviso (coerente con la lista).
+        visible = (avviso.get("author_id") == user_id) or \
+            _avviso_visible_to(avviso, "teacher", user_id, teacher_class_ids, [], sede_id)
     elif role == "parent":
         child_ids = list(current_user.get("child_ids") or [])
         legacy = current_user.get("child_id")

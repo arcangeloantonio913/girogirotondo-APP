@@ -50,26 +50,39 @@ export default function ParentGallery() {
   };
 
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
+  const [classId, setClassId] = useState<string | null>(null);
+
+  // Classe del figlio attivo → la tab "Classe" mostra le foto della sua classe (anche quelle
+  // non taggate ai bambini). Senza class_id il backend ricade sulle sole foto dei figli.
+  useEffect(() => {
+    if (!childId) { setClassId(null); return; }
+    api.get(`/students/${childId}`).then(r => setClassId(r.data?.class_id || null)).catch(() => setClassId(null));
+  }, [childId]);
 
   const load = useCallback(async (reset=false) => {
+    // Guardia anti-doppia-pagina: onEndReached può scattare due volte con lo stesso page
+    // su scroll veloce → item duplicati. Se un load è già in corso, esci.
+    if (!reset && (loadingMore || loading)) return;
     const offset = reset ? 0 : page * PAGE;
     if(!reset && !hasMore) return;
     reset ? setLoading(true) : setLoadingMore(true);
     try {
       const url = tab==='personale'
         ? `/gallery?student_id=${childId}&limit=${PAGE}&offset=${offset}`
-        : `/gallery?limit=${PAGE}&offset=${offset}`;
+        : (classId
+            ? `/gallery?class_id=${classId}&limit=${PAGE}&offset=${offset}`
+            : `/gallery?limit=${PAGE}&offset=${offset}`);
       const r = await api.get(url);
       const data = r.data || [];
       setItems(prev => reset ? data : [...prev, ...data]);
       setPage(reset ? 1 : page + 1);
       setHasMore(data.length === PAGE);
-    } catch {} finally {
+    } catch { if (reset) setItems([]); } finally {
       setLoading(false); setLoadingMore(false);
     }
-  }, [tab, childId, page, hasMore]);
+  }, [tab, childId, classId, page, hasMore, loading, loadingMore]);
 
-  useEffect(() => { load(true); }, [tab, childId]);
+  useEffect(() => { load(true); }, [tab, childId, classId]);
 
   const handleDownload = async (item: any) => {
     // media_url può essere null nella lista (perf): recupera la foto piena on-demand.

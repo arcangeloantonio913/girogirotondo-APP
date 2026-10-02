@@ -98,12 +98,22 @@ def _assert_doc_visible(ctx: TenantContext, doc: dict) -> None:
 
 
 async def _resolve_doc_sede(db, classe_id, current_user, x_sede_id):
-    """Sede a new document belongs to: the class's sede if class-targeted, else
-    the uploader's own sede, else the admin-supplied X-Sede-Id header."""
+    """Sede a new document belongs to: the class's sede if class-targeted; for admins
+    the ACTIVE sede from the X-Sede-Id switcher (validated against the org's sedi);
+    otherwise the uploader's own sede.
+
+    Prima l'ordine era profilo→header: un superadmin col proprio sede_id valorizzato
+    che operava su un'ALTRA sede dallo switcher archiviava il documento nella propria
+    sede → lo vedevano (e venivano notificati) i genitori sbagliati."""
     if classe_id:
         cls = await db.classes.find_one({"id": classe_id}, {"_id": 0, "sede_id": 1})
         if cls and cls.get("sede_id"):
             return cls["sede_id"]
+    if current_user.get("role") == "admin" and (x_sede_id or "").strip():
+        # Validazione fail-closed identica agli altri router admin: l'header deve essere
+        # una sede consentita al chiamante (403/400 altrimenti).
+        from middleware.auth import validate_admin_sede_access
+        return await validate_admin_sede_access(current_user, x_sede_id)
     return current_user.get("sede_id") or (x_sede_id or None)
 
 
@@ -134,7 +144,8 @@ async def get_documents(
     elif not ctx.all_access:
         query.update(_tenant_scope(ctx))
 
-    docs = await db.documents.find(query, {"_id": 0}).to_list(100)
+    # Più recenti prima (senza sort, oltre il cap i documenti nuovi sparivano dalla lista).
+    docs = await db.documents.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     # PERF: la LISTA non deve trasportare i file base64 (data: URL fino a ~12MB CIASCUNO):
     # rendevano la pagina Modulistica e il refresh post-upload lentissimi. Restituiamo solo
     # metadati + flag `has_file`; il file vero si scarica on-demand via GET /documents/{id}.

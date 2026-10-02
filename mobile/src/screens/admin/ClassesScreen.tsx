@@ -54,15 +54,16 @@ export default function AdminClasses() {
       {text:'Annulla',style:'cancel'},
       {text:'Elimina',style:'destructive',onPress:async()=>{
         try{await api.delete(`/classes/${id}`);setClasses(prev=>prev.filter(c=>c.id!==id));}
-        catch{Alert.alert('Errore','Impossibile eliminare');}
+        catch(e:any){Alert.alert('Errore',e?.response?.data?.detail||'Impossibile eliminare');}
       }},
     ]);
   };
 
   const handleAssignTeacher=(classId:string,teacherId:string|null)=>{
-    api.patch(`/classes/${classId}`,{teacher_id:teacherId})
+    // Il backend interpreta null come "non cambiare": stringa vuota = rimuovi maestra (come il web)
+    api.patch(`/classes/${classId}`,{teacher_id:teacherId??''})
       .then(r=>setClasses(prev=>prev.map(c=>c.id===classId?{...c,...r.data}:c)))
-      .catch(()=>Alert.alert('Errore','Impossibile assegnare maestra'));
+      .catch((e:any)=>Alert.alert('Errore',e?.response?.data?.detail||'Impossibile assegnare maestra'));
   };
 
   const openEditStudent=(student:any)=>{

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
+import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal } from '../../lib/dates';
@@ -23,17 +24,32 @@ function addDays(d: string, n: number) {
 }
 
 export default function ParentDieta() {
+  const { activeChildId, user } = useAuth();
+  const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
   const [date,  setDate]  = useState(todayLocal());
   const [meal,  setMeal]  = useState<any>(null);
+  const [classId, setClassId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+
+  // Classe del figlio attivo → menu della SUA classe, non di un'altra
+  useEffect(() => {
+    if (!childId) { setClassId(undefined); return; }
+    api.get(`/students/${childId}`)
+      .then(r => setClassId(r.data?.class_id || undefined))
+      .catch(() => setClassId(undefined));
+  }, [childId]);
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/meals?date=${date}`)
-      .then(r => setMeal(r.data?.[0] || null))
-      .catch(() => {})
+    api.get(`/meals?date=${date}${classId ? `&class_id=${classId}` : ''}`)
+      .then(r => {
+        // Preferisco il menu specifico della classe rispetto a quello universale
+        const list = (r.data || []) as any[];
+        setMeal(list.find((m: any) => m.class_id) || list[0] || null);
+      })
+      .catch(() => setMeal(null))
       .finally(() => setLoading(false));
-  }, [date]);
+  }, [date, classId]);
 
   return (
     <ScreenLayout title="Menu Mensa" showBack color={C.babyGreen} loading={loading}>

@@ -214,7 +214,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
           </TouchableOpacity>
 
           <Text style={s.footer}>© 2026 {tenant.appName} — GDPR compliant</Text>
-          <Text style={s.footer}>v1.0.2 · aggiornamento 3 ottobre</Text>
+          <Text style={s.footer}>v1.0.2 · aggiornamento 4 ottobre (gestione funzioni maestre)</Text>
         </ScrollView>
       </Animated.View>
       </View>

@@ -81,9 +81,13 @@ export default function TeacherDashboard({ navigation }: any) {
           </View>
         </View>
 
-        {/* Cards */}
+        {/* Cards — nasconde i moduli disabilitati dalla direzione (funzioni_disabilitate) */}
         <Text style={s.sectionTitle}>Azioni rapide</Text>
-        {CARDS.map(card => (
+        {CARDS.filter(card => {
+          const mod = card.id === 'media' ? 'foto' : card.id;   // media→foto, gli altri id == chiave
+          const disabled: string[] = Array.isArray(user?.funzioni_disabilitate) ? user!.funzioni_disabilitate : [];
+          return !disabled.includes(mod);
+        }).map(card => (
           <TouchableOpacity key={card.id} onPress={() => navigation.navigate(card.tab)}
             style={s.card} activeOpacity={0.9}>
             <View style={[s.iconBox, { backgroundColor: card.bg }]}>

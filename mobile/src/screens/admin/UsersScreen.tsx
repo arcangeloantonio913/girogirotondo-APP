@@ -27,6 +27,18 @@ function genPwd(len = 10) {
 
 type ModalType = 'staff' | 'iscrizione' | 'edit' | null;
 
+// Moduli che la direzione può abilitare/disabilitare per ogni maestra (parità col web).
+// Le `key` combaciano con quelle usate dal gating della nav maestra (vedi Sidebar) e col web.
+const STAFF_MODULES: { key: string; label: string; emoji: string }[] = [
+  { key: 'griglia',      label: 'Griglia giornaliera', emoji: '📋' },
+  { key: 'diario',       label: 'Diario',              emoji: '📖' },
+  { key: 'foto',         label: 'Galleria foto',       emoji: '🖼️' },
+  { key: 'avvisi',       label: 'Avvisi',              emoji: '🔔' },
+  { key: 'menu',         label: 'Menù / Mensa',        emoji: '🍴' },
+  { key: 'presenze',     label: 'Presenze',            emoji: '✅' },
+  { key: 'appuntamenti', label: 'Appuntamenti',        emoji: '📆' },
+];
+
 export default function AdminUsers() {
   const { sede } = useAuth();
   const [users,   setUsers]   = useState<any[]>([]);
@@ -55,7 +67,7 @@ export default function AdminUsers() {
     bambino2_nome: '', bambino2_cognome: '', bambino2_class_id: '',
   });
   // Edit form
-  const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '' });
+  const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '', funz_disabled: [] as string[] });
 
   useEffect(() => {
     Promise.allSettled([api.get('/users'), api.get('/classes'), api.get('/students')])
@@ -80,7 +92,11 @@ export default function AdminUsers() {
 
   const openEdit = (user: any) => {
     setEditUser(user);
-    setEdit({ name: user.name || '', cognome: user.cognome || '', email: user.email || '', password: '', class_id: user.class_id || '' });
+    setEdit({
+      name: user.name || '', cognome: user.cognome || '', email: user.email || '',
+      password: '', class_id: user.class_id || '',
+      funz_disabled: Array.isArray(user.funzioni_disabilitate) ? user.funzioni_disabilitate : [],
+    });
     setModal('edit');
   };
 
@@ -93,6 +109,8 @@ export default function AdminUsers() {
       if (editForm.class_id) profile.class_id = editForm.class_id;
       // Per le maestre allinea anche class_ids, altrimenti resta l'accesso alla classe precedente
       if (editUser.role === 'teacher' && editForm.class_id) profile.class_ids = [editForm.class_id];
+      // Funzioni abilitate/disabilitate della maestra (parità col web: "dare i ruoli").
+      if (editUser.role === 'teacher') profile.funzioni_disabilitate = editForm.funz_disabled;
       await api.put(`/users/${editUser.id}`, profile);
 
       // 2) Credenziali (email/password) → PUT /users/{id}/credentials
@@ -358,6 +376,31 @@ export default function AdminUsers() {
                       <Text style={[s.chipText, editForm.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+                {/* Funzioni abilitate per la maestra ("dare i ruoli") — parità col web.
+                    Chip ACCESA = funzione abilitata; toccando la si disabilita. */}
+                <Text style={s.fl}>Funzioni abilitate</Text>
+                <Text style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+                  Tocca per abilitare/disabilitare cosa può usare questa maestra.
+                </Text>
+                <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
+                  {STAFF_MODULES.map(m => {
+                    const enabled = !editForm.funz_disabled.includes(m.key);
+                    return (
+                      <TouchableOpacity key={m.key}
+                        onPress={() => setEdit(p => ({
+                          ...p,
+                          funz_disabled: enabled
+                            ? [...p.funz_disabled, m.key]
+                            : p.funz_disabled.filter(k => k !== m.key),
+                        }))}
+                        style={[s.chip, enabled && { backgroundColor: C.primary, borderColor: C.primary }]}>
+                        <Text style={[s.chipText, enabled && { color: C.white }]}>
+                          {m.emoji} {m.label}{enabled ? '' : ' (off)'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </>
             )}

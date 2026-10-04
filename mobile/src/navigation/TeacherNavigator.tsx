@@ -12,6 +12,13 @@ import TeacherMensa     from '../screens/teacher/MensaScreen';
 import TeacherAvvisi    from '../screens/teacher/AvvisiScreen';
 import TeacherProfile   from '../screens/teacher/ProfileScreen';
 import NotificheScreen  from '../screens/shared/NotificheScreen';
+import { useAuth } from '../lib/AuthContext';
+
+// Gating: la direzione può disabilitare funzioni alla maestra (funzioni_disabilitate).
+// Mappa il tab → chiave-modulo; Home non è mai gateabile.
+const TAB_MODULE: Record<string, string> = {
+  Presenze: 'presenze', Griglia: 'griglia', Diario: 'diario', Media: 'foto',
+};
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -27,6 +34,9 @@ const TABS: { name:string; component:React.ComponentType<any>; icon:IName; iconA
 ];
 
 function TeacherTabs() {
+  const { user } = useAuth();
+  const disabled: string[] = Array.isArray(user?.funzioni_disabilitate) ? user!.funzioni_disabilitate : [];
+  const tabs = TABS.filter(t => { const m = TAB_MODULE[t.name]; return !(m && disabled.includes(m)); });
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -41,7 +51,7 @@ function TeacherTabs() {
         },
       })}
     >
-      {TABS.map(tab => (
+      {tabs.map(tab => (
         <Tab.Screen key={tab.name} name={tab.name} component={tab.component} options={{ tabBarLabel:tab.label }}/>
       ))}
     </Tab.Navigator>

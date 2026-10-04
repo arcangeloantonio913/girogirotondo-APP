@@ -94,7 +94,18 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
 
   const role = user?.role || 'parent';
   const color = ROLE_COLORS[role];
-  const items = NAV[role] || [];
+  // La direzione può disabilitare funzioni a una maestra (user.funzioni_disabilitate):
+  // nascondi dalla nav i moduli disabilitati (parità col web). Mappa screen → chiave-modulo.
+  const SCREEN_MODULE: Record<string, string> = {
+    Presenze: 'presenze', Griglia: 'griglia', Diario: 'diario',
+    Media: 'foto', Mensa: 'menu', Notifiche: 'avvisi', Appuntamenti: 'appuntamenti',
+  };
+  const _disabledFn: string[] = (role === 'teacher' && Array.isArray(user?.funzioni_disabilitate))
+    ? user!.funzioni_disabilitate : [];
+  const items = (NAV[role] || []).filter(it => {
+    const mod = SCREEN_MODULE[it.screen];
+    return !(mod && _disabledFn.includes(mod));
+  });
   const sedeKey = (role === 'admin' ? sede : user?.sede_id) || 'girogirotondo';
 
   const TAB_CONTAINER: Record<string, string> = {

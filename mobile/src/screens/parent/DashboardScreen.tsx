@@ -9,6 +9,8 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal } from '../../lib/dates';
+import { pickMealForClass } from '../../lib/meals';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider, shadow: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3 } };
 
@@ -57,6 +59,8 @@ export default function ParentDashboard({ navigation }: any) {
   const [children, setChildren] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  // Ricarica al ritorno sul tab / in foreground (iOS tiene l'app sospesa per giorni)
+  const screenTick = useScreenRefresh();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [childSwitcherOpen, setChildSwitcherOpen] = useState(false);
   const sedeAttiva = user?.sede_id || 'girogirotondo';
@@ -88,14 +92,13 @@ export default function ParentDashboard({ navigation }: any) {
         setGriglia(val(gR)?.[0] || null);
         setGallery(val(galR) || []);
         // Preferisco il menu specifico della classe rispetto a quello universale
-        const mealsList = (val(mR) || []) as any[];
-        setMeal(mealsList.find((m: any) => m.class_id) || mealsList[0] || null);
+        setMeal(pickMealForClass(val(mR), childData?.class_id));
         const classes = val(clR);
         const cls = Array.isArray(classes) ? classes.find((c: any) => c.id === childData?.class_id) : null;
         if (cls) setClassName(cls.name);
       });
     })().finally(() => { setLoading(false); setRefreshing(false); });
-  }, [user, activeChildId, refreshTick]);
+  }, [user, activeChildId, refreshTick, screenTick]);
 
   // Popola l'elenco figli per lo switcher (solo se il genitore ha più di un bambino)
   useEffect(() => {

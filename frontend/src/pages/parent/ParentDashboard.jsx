@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
+import { pickMealForClass } from '@/lib/meals';
 import { todayLocal } from '@/lib/utils';
 import AppLayout from '@/components/layout/AppLayout';
 import { Calendar, ChevronRight } from 'lucide-react';
@@ -92,7 +93,7 @@ export default function ParentDashboard() {
           ? `/meals?class_id=${childClassId}&date=${today}`
           : `/meals?date=${today}`;
         const mRes = await api.get(mealUrl);
-        setMeal(mRes.data?.[0] || null);
+        setMeal(pickMealForClass(mRes.data, childClassId));
       } catch {
         setMeal(null);
       }

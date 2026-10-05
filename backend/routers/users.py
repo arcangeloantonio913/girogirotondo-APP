@@ -1,5 +1,7 @@
 """Users router — CRUD + iscrizione bambino — multi-tenant."""
 import uuid
+import asyncio
+import logging
 import bcrypt
 import random
 import string
@@ -11,7 +13,9 @@ from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
 from services.database import get_db
 from models.user import UserCreate, UserUpdate, IscrizioneCreate, SecondoGenitoreCreate
 from middleware.auth import get_current_user, validate_admin_sede_access, get_valid_sede_ids
-from services.email_service import send_credentials_email, send_resend_credentials_email
+from services.email_service import (
+    send_credentials_email, send_resend_credentials_email, send_app_links_notice_email,
+)
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -639,6 +643,90 @@ async def update_user_credentials(
     await db.users.update_one({"id": user_id}, {"$set": updates})
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "admin_password": 0})
     return user
+
+
+# ---------------------------------------------------------------------------
+# POST /api/users/notify-app-links  — avviso "Scarica l'app" a tutti i genitori (admin)
+# ---------------------------------------------------------------------------
+
+_logger = logging.getLogger(__name__)
+_APP_NOTICE_FIELD = "app_links_notice_sent_at"
+
+
+async def _send_app_notices(recipients: list[dict]):
+    """Invio sequenziale con pausa (rate limit Resend ~2 req/s). Ogni invio riuscito viene
+    marcato sull'utente → un secondo click NON rimanda la mail a chi l'ha già ricevuta."""
+    db = get_db()
+    sent = failed = 0
+    for u in recipients:
+        try:
+            ok = await send_app_links_notice_email(
+                u["email"], u.get("name", ""), sede_id=u.get("sede_id"), org_id=u.get("org_id"),
+            )
+        except Exception as exc:   # un errore su un destinatario non blocca gli altri
+            _logger.error("[APP-NOTICE] invio a %s fallito: %s", u.get("email"), exc)
+            ok = False
+        if ok:
+            sent += 1
+            await db.users.update_one(
+                {"id": u["id"]},
+                {"$set": {_APP_NOTICE_FIELD: datetime.now(timezone.utc).isoformat()}},
+            )
+        else:
+            failed += 1
+        await asyncio.sleep(0.6)
+    _logger.info("[APP-NOTICE] completato: %d inviate, %d fallite", sent, failed)
+
+
+@router.post("/notify-app-links")
+async def notify_app_links(
+    payload: dict,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    """
+    Invia ai GENITORI attivi l'email informativa "Scarica l'app" (iPhone → App Store,
+    Android → app web). NON contiene password e NON modifica le credenziali.
+
+    Body:
+      - dry_run (bool, default true): conta soltanto i destinatari, non invia nulla.
+      - all_sedi (bool): solo SuperAdmin — tutte le sedi della propria org; altrimenti la sede attiva.
+      - include_already_sent (bool): rimanda anche a chi l'ha già ricevuta (default false).
+    """
+    _require_admin(current_user)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+    db = get_db()
+
+    if payload.get("all_sedi") and current_user.get("is_superadmin"):
+        sede_ids = list(await get_valid_sede_ids(db, current_user.get("org_id")))
+    else:
+        sede_ids = [sede_id]
+
+    query: dict = {"role": "parent", "active": True, "sede_id": {"$in": sede_ids},
+                   "email": {"$nin": [None, ""]}}
+    if not payload.get("include_already_sent"):
+        query[_APP_NOTICE_FIELD] = {"$exists": False}
+
+    recipients = await db.users.find(
+        query, {"_id": 0, "id": 1, "email": 1, "name": 1, "sede_id": 1, "org_id": 1}
+    ).to_list(5000)
+    already = await db.users.count_documents(
+        {"role": "parent", "active": True, "sede_id": {"$in": sede_ids}, _APP_NOTICE_FIELD: {"$exists": True}}
+    )
+
+    dry_run = payload.get("dry_run", True) is not False
+    if not dry_run and recipients:
+        background_tasks.add_task(_send_app_notices, recipients)
+
+    return {
+        "dry_run":      dry_run,
+        "recipients":   len(recipients),
+        "already_sent": already,
+        "sedi":         sede_ids,
+        "message": (f"{len(recipients)} famiglie riceveranno l'email" if dry_run
+                    else f"Invio avviato a {len(recipients)} famiglie (circa {max(1, round(len(recipients) * 0.6 / 60))} min)"),
+    }
 
 
 # ---------------------------------------------------------------------------

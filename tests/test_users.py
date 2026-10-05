@@ -290,3 +290,48 @@ async def test_admin_can_reset_credentials_same_sede(client, admin_headers):
         assert "admin_password" not in doc
     finally:
         await db.users.delete_one({"id": "ggt-cred"})
+
+
+# --- POST /api/users/notify-app-links (avviso "Scarica l'app") ----------------
+
+@pytest.mark.asyncio
+async def test_notify_app_links_dry_run_counts_only_own_sede_parents(client, admin_headers):
+    with patch("routers.users.send_app_links_notice_email", new_callable=AsyncMock, return_value=True) as m:
+        r = await client.post("/api/users/notify-app-links", json={}, headers=admin_headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["dry_run"] is True
+    assert body["recipients"] == 1          # solo p@ggt.it: niente MM / altra org
+    m.assert_not_called()                    # dry run: nessun invio
+
+
+@pytest.mark.asyncio
+async def test_notify_app_links_sends_once_and_marks(client, admin_headers):
+    db = get_db()
+    with patch("routers.users.send_app_links_notice_email", new_callable=AsyncMock, return_value=True) as m, \
+         patch("routers.users.asyncio.sleep", new_callable=AsyncMock):
+        r = await client.post("/api/users/notify-app-links", json={"dry_run": False}, headers=admin_headers)
+        assert r.status_code == 200 and r.json()["recipients"] == 1
+        assert m.await_count == 1
+        assert m.await_args.args[0] == "p@ggt.it"
+        doc = await db.users.find_one({"id": "parent-test-id"})
+        assert doc.get("app_links_notice_sent_at")
+        # Secondo click: chi l'ha già ricevuta NON la riceve di nuovo
+        r2 = await client.post("/api/users/notify-app-links", json={"dry_run": False}, headers=admin_headers)
+        assert r2.json()["recipients"] == 0
+        assert m.await_count == 1
+    await db.users.update_one({"id": "parent-test-id"}, {"$unset": {"app_links_notice_sent_at": ""}})
+
+
+@pytest.mark.asyncio
+async def test_notify_app_links_forbidden_for_parent(client, parent_headers):
+    r = await client.post("/api/users/notify-app-links", json={}, headers=parent_headers)
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_notify_app_links_all_sedi_only_superadmin_own_org(client, admin_headers, super_headers):
+    r = await client.post("/api/users/notify-app-links", json={"all_sedi": True}, headers=admin_headers)
+    assert r.json()["recipients"] == 1       # admin normale: all_sedi ignorato
+    r = await client.post("/api/users/notify-app-links", json={"all_sedi": True}, headers=super_headers)
+    assert r.json()["recipients"] == 2       # GGT + MM della stessa org, mai l'altra org

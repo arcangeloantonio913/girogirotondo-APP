@@ -899,3 +899,88 @@ async def send_appointment_email(
     return await _send_via_smtp(to_email, subject, html, plain,
                                 from_name=ident["from_name"], from_email=ident["from_email"],
                                 reply_to=ident["reply_to"])
+
+
+async def send_app_links_notice_email(
+    to_email: str,
+    user_name: str,
+    sede_id: str | None = None,
+    org_id: str | None = None,
+) -> bool:
+    """Avviso informativo "Scarica l'app" (NESSUNA password: non cambia le credenziali).
+
+    Chi ha già effettuato l'accesso può ignorarla. Ritorna False (e non invia) se l'org
+    non ha link app da mostrare: un'email senza pulsanti non avrebbe senso.
+    """
+    year = datetime.now().year
+    school_name, brand_color, ident = await _resolve_email_context(sede_id, org_id)
+    if not _sender_ready(ident):
+        return False
+    links_html = _app_links_html(ident, brand_color)
+    if not links_html:
+        logger.warning("[EMAIL] avviso app NON inviato a %s: org %r senza link app", to_email, org_id)
+        return False
+    brand_header, _ = _brand_parts(school_name)
+    saluto = f"Gentile {user_name}" if user_name else "Gentile famiglia"
+
+    subject = f"{brand_header} — Scarica l'app: scegli il pulsante per il tuo telefono"
+    plain = (
+        f"{saluto},\n\n"
+        f"vi inviamo i link per usare il portale {brand_header} dal telefono.\n"
+        f"Cliccate SOLO il pulsante del vostro dispositivo:\n\n"
+        f"{_app_links_text(ident)}"
+        f"Per entrare usate l'email e la password che avete già ricevuto.\n\n"
+        f"Se avete già effettuato l'accesso potete tranquillamente ignorare questa email.\n\n"
+        f"Per assistenza: {ident['support_email']}\n\n{school_name}"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+        <tr>
+          <td align="center" style="background:{brand_color};padding:28px 32px 24px;">
+            <h1 style="margin:0;font-size:26px;color:white;font-weight:900;">&#127897; {brand_header}</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">Scarica l'app</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 32px 0;">
+            <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:700;">{saluto}! 👋</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.75;">
+              vi inviamo i link per usare il portale <strong>{brand_header}</strong> dal telefono.<br>
+              <strong>Cliccate solo il pulsante del vostro dispositivo</strong>: iPhone oppure Android.
+            </p>
+{links_html}
+            <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.75;">
+              🔑 Per entrare usate <strong>l'email e la password che avete già ricevuto</strong>.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:{_tint(brand_color)};border-radius:12px;padding:14px 16px;margin-bottom:24px;">
+              <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
+                ✅ <strong>Avete già effettuato l'accesso?</strong> Potete tranquillamente ignorare questa email.
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 24px;background:#FAFAFA;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#9CA3AF;">
+              &copy; {year} {school_name} &nbsp;|&nbsp;
+              <a href="mailto:{ident['support_email']}" style="color:{brand_color};">{ident['support_email']}</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    if await _send_via_resend(to_email, subject, html, plain,
+                              from_name=ident["from_name"], from_email=ident["from_email"],
+                              reply_to=ident["reply_to"]):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain,
+                                from_name=ident["from_name"], from_email=ident["from_email"],
+                                reply_to=ident["reply_to"])

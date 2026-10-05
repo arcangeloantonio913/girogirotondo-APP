@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Users, Plus, Trash2, Shield, GraduationCap, Heart, Baby,
   AlertTriangle, Eye, EyeOff, CheckCircle, Mail, RefreshCw,
-  Pencil, BookOpen, Key, UserPlus, XCircle, SlidersHorizontal,
+  Pencil, BookOpen, Key, UserPlus, XCircle, SlidersHorizontal, Smartphone,
 } from 'lucide-react';
 import StudentDetailDialog from '@/components/StudentDetailDialog';
 
@@ -516,6 +516,34 @@ export default function AdminUsers() {
     iscForm.class_id && iscForm.genitore_email.trim() &&
     iscForm.genitore_password.length >= 6;
 
+  // ── Avviso "Scarica l'app" a tutte le famiglie (email senza password) ──────────
+  const [appNotice, setAppNotice] = useState({ open: false, loading: false, preview: null, result: null, error: '', allSedi: false });
+
+  const loadAppNoticePreview = async (allSedi) => {
+    setAppNotice(n => ({ ...n, loading: true, error: '', allSedi }));
+    try {
+      const r = await api.post('/users/notify-app-links', { dry_run: true, all_sedi: allSedi });
+      setAppNotice(n => ({ ...n, loading: false, preview: r.data }));
+    } catch (e) {
+      setAppNotice(n => ({ ...n, loading: false, error: e.response?.data?.detail || 'Errore nel conteggio delle famiglie' }));
+    }
+  };
+
+  const openAppNotice = () => {
+    setAppNotice({ open: true, loading: false, preview: null, result: null, error: '', allSedi: false });
+    loadAppNoticePreview(false);
+  };
+
+  const sendAppNotice = async () => {
+    setAppNotice(n => ({ ...n, loading: true, error: '' }));
+    try {
+      const r = await api.post('/users/notify-app-links', { dry_run: false, all_sedi: appNotice.allSedi });
+      setAppNotice(n => ({ ...n, loading: false, result: r.data }));
+    } catch (e) {
+      setAppNotice(n => ({ ...n, loading: false, error: e.response?.data?.detail || "Errore durante l'invio" }));
+    }
+  };
+
   const getClassName = (classId) => classes.find(c => c.id === classId)?.name || '—';
   const getStudentsForParent = (parentId) =>
     students.filter(s => s.parent_id === parentId || /* legacy */ users.find(u => u.id === parentId)?.child_ids?.includes(s.id));
@@ -530,7 +558,12 @@ export default function AdminUsers() {
             <Users className="w-5 h-5" style={{ color: C.primary }} />
             <span className="text-sm font-bold text-gray-700">{users.length} utenti · {students.length} alunni</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button data-testid="notify-app-links-button" onClick={openAppNotice}
+              variant="outline" className="rounded-2xl font-semibold h-9 text-sm border-2"
+              style={{ borderColor: C.accentGreen, color: C.accentGreen }}>
+              <Smartphone className="w-4 h-4 mr-1" />Invia link app
+            </Button>
             <Button data-testid="add-staff-button" onClick={openStaffDialog}
               variant="outline" className="rounded-2xl font-semibold h-9 text-sm border-2"
               style={{ borderColor: C.accentPink, color: C.accentPink }}>
@@ -542,6 +575,67 @@ export default function AdminUsers() {
             </Button>
           </div>
         </div>
+
+        {/* ── Dialog avviso "Scarica l'app" ──────────────────────────────────── */}
+        <Dialog open={appNotice.open} onOpenChange={o => !appNotice.loading && setAppNotice(n => ({ ...n, open: o }))}>
+          <DialogContent className="rounded-2xl max-w-md" data-testid="notify-app-links-dialog">
+            <DialogHeader>
+              <DialogTitle style={{ fontFamily: 'Nunito' }}>Invia link app alle famiglie</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm text-gray-600">
+              <p>
+                Ogni genitore riceve un'email con due pulsanti — <strong>iPhone</strong> (App Store) e
+                <strong> Android</strong> (app web) — e l'indicazione di cliccare quello del proprio telefono.
+                Chi ha già effettuato l'accesso può ignorarla.
+              </p>
+              <p className="text-xs text-gray-500">
+                L'email <strong>non contiene password</strong> e non modifica le credenziali.
+                Chi l'ha già ricevuta non la riceve una seconda volta.
+              </p>
+              {isSuperAdmin && !appNotice.result && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" data-testid="notify-app-links-all-sedi"
+                    checked={appNotice.allSedi} disabled={appNotice.loading}
+                    onChange={e => loadAppNoticePreview(e.target.checked)} />
+                  Tutte le sedi (non solo {sedeInfo?.label || 'la sede attiva'})
+                </label>
+              )}
+              {appNotice.loading && <p className="text-gray-400">Attendere…</p>}
+              {appNotice.error && <p className="text-red-600 font-medium" data-testid="notify-app-links-error">{appNotice.error}</p>}
+              {!appNotice.result && appNotice.preview && !appNotice.loading && (
+                <div className="rounded-xl p-3" style={{ backgroundColor: C.tintGreen }}>
+                  <p className="font-bold text-gray-800" data-testid="notify-app-links-count">
+                    {appNotice.preview.recipients} famiglie riceveranno l'email
+                  </p>
+                  {appNotice.preview.already_sent > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">{appNotice.preview.already_sent} l'hanno già ricevuta (saltate)</p>
+                  )}
+                </div>
+              )}
+              {appNotice.result && (
+                <div className="rounded-xl p-3 flex items-start gap-2" style={{ backgroundColor: C.tintGreen }} data-testid="notify-app-links-result">
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: C.accentGreen }} />
+                  <p className="font-semibold text-gray-800">{appNotice.result.message}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" className="rounded-2xl" disabled={appNotice.loading}
+                data-testid="notify-app-links-close"
+                onClick={() => setAppNotice(n => ({ ...n, open: false }))}>
+                {appNotice.result ? 'Chiudi' : 'Annulla'}
+              </Button>
+              {!appNotice.result && (
+                <Button className="rounded-2xl font-semibold" style={{ backgroundColor: C.accentGreen }}
+                  data-testid="notify-app-links-confirm"
+                  disabled={appNotice.loading || !appNotice.preview || appNotice.preview.recipients === 0}
+                  onClick={sendAppNotice}>
+                  <Mail className="w-4 h-4 mr-1" />Invia a {appNotice.preview?.recipients ?? '…'} famiglie
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ── Barra di ricerca ─────────────────────────────────────────────── */}
         <div className="relative">

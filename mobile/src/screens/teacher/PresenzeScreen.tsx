@@ -6,10 +6,12 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal, localYMD } from '../../lib/dates';
+import { useScreenRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
-function addDays(n:number){const d=new Date();d.setDate(d.getDate()+n);return localYMD(d);}
+// Relativo alla data MOSTRATA (prima era relativo a oggi → non si andava oltre "ieri")
+function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return localYMD(d);}
 
 export default function TeacherPresenze() {
   const { user } = useAuth();
@@ -23,7 +25,10 @@ export default function TeacherPresenze() {
   useEffect(()=>{ setClassId(prev=>(prev && classIds.includes(prev))?prev:classIds[0]); },[classIds]);
   const [classes, setClasses] = useState<any[]>([]);
   const [tab, setTab]         = useState<'oggi'|'mese'|'anno'>('oggi');
-  const [date, setDate]       = useState(todayLocal());
+  // Solo la DATA segue oggi (app aperta oltre mezzanotte): l'appello in compilazione NON viene
+  // ricaricato al ritorno sul tab, altrimenti si perderebbero le spunte non ancora salvate.
+  const refreshTick = useScreenRefresh();
+  const [date, setDate]       = useFollowToday(refreshTick);
   const [students, setStudents] = useState<any[]>([]);
   const [presenze, setPresenze] = useState<Record<string,{presente:boolean;nota:string}>>({});
   const [archivio, setArchivio] = useState<any[]>([]);
@@ -131,14 +136,14 @@ export default function TeacherPresenze() {
         <>
           {/* Date nav */}
           <View style={s.dateNav}>
-            <TouchableOpacity onPress={()=>setDate(addDays(-1))} style={s.navBtn}>
+            <TouchableOpacity onPress={()=>setDate(addDays(date,-1))} style={s.navBtn}>
               <Ionicons name="chevron-back" size={20} color={C.text}/>
             </TouchableOpacity>
             <View style={{alignItems:'center'}}>
               <Text style={s.dateText}>{new Date(date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'})}</Text>
               <Text style={s.dateStats}>{presentCount}/{students.length} presenti</Text>
             </View>
-            <TouchableOpacity onPress={()=>setDate(addDays(1))} style={s.navBtn}
+            <TouchableOpacity onPress={()=>setDate(addDays(date,1))} style={s.navBtn}
               disabled={date>=todayLocal()}>
               <Ionicons name="chevron-forward" size={20} color={date>=todayLocal()?C.muted:C.text}/>
             </TouchableOpacity>

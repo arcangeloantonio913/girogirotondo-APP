@@ -6,10 +6,9 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal } from '../../lib/dates';
+import { useScreenRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
-const TODAY = todayLocal();
-const CURRENT_MONTH = TODAY.slice(0, 7);          // YYYY-MM
 const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
   'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
@@ -20,10 +19,12 @@ export default function AdminPresenze() {
   const [records, setRecords]     = useState<any[]>([]);
   const [students, setStudents]   = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [date, setDate]           = useState(TODAY);
+  // Solo la DATA segue oggi: le presenze modificate e non ancora salvate NON vengono ricaricate.
+  const refreshTick = useScreenRefresh();
+  const [date, setDate]           = useFollowToday(refreshTick);
   const [saving, setSaving]       = useState(false);
   const [tab, setTab]             = useState<'oggi' | 'riepilogo'>('oggi');
-  const [meseRiepilogo, setMeseRiepilogo] = useState(CURRENT_MONTH);   // YYYY-MM
+  const [meseRiepilogo, setMeseRiepilogo] = useState(() => todayLocal().slice(0, 7));   // YYYY-MM
   const [studenti, setStudenti]   = useState<any[]>([]);
   const [loadingRiep, setLoadingRiep] = useState(false);
 
@@ -34,7 +35,7 @@ export default function AdminPresenze() {
         setClasses(val(cR) || []); setStudents(val(sR) || []);
       })
       .catch(() => {}).finally(() => setLoading(false));
-  }, [sede]);
+  }, [sede, refreshTick]);
 
   useEffect(() => {
     if (!selected) return;
@@ -49,7 +50,7 @@ export default function AdminPresenze() {
       .then(r => setStudenti(r.data?.studenti || []))
       .catch(() => setStudenti([]))
       .finally(() => setLoadingRiep(false));
-  }, [tab, meseRiepilogo]);
+  }, [tab, meseRiepilogo, refreshTick]);
 
   const presentCount = records.filter(r => r.presente).length;
   const classStudents = students.filter(s => s.class_id === selected || s.class_ids?.includes(selected));
@@ -73,7 +74,7 @@ export default function AdminPresenze() {
     try {
       // Guardia: date non deve essere undefined/null
       let safeDate = date;
-      if (!safeDate) { if (__DEV__) console.log('[PRESENZE] date mancante, uso TODAY'); safeDate = TODAY; }
+      if (!safeDate) { if (__DEV__) console.log('[PRESENZE] date mancante, uso oggi'); safeDate = todayLocal(); }
 
       // Costruzione batch difensiva: salta studenti senza id, valori sempre definiti
       const batch = (classStudents || [])

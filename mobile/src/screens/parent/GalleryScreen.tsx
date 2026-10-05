@@ -8,6 +8,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { useScreenRefresh, useIsAutoRefresh } from '../../lib/useScreenRefresh';
 
 const { width, height } = Dimensions.get('window');
 const IMG = (width - 48) / 2;
@@ -59,13 +60,13 @@ export default function ParentGallery() {
     api.get(`/students/${childId}`).then(r => setClassId(r.data?.class_id || null)).catch(() => setClassId(null));
   }, [childId]);
 
-  const load = useCallback(async (reset=false) => {
+  const load = useCallback(async (reset=false, silent=false) => {
     // Guardia anti-doppia-pagina: onEndReached può scattare due volte con lo stesso page
     // su scroll veloce → item duplicati. Se un load è già in corso, esci.
     if (!reset && (loadingMore || loading)) return;
     const offset = reset ? 0 : page * PAGE;
     if(!reset && !hasMore) return;
-    reset ? setLoading(true) : setLoadingMore(true);
+    if (!silent) { reset ? setLoading(true) : setLoadingMore(true); }
     try {
       const url = tab==='personale'
         ? `/gallery?student_id=${childId}&limit=${PAGE}&offset=${offset}`
@@ -77,12 +78,20 @@ export default function ParentGallery() {
       setItems(prev => reset ? data : [...prev, ...data]);
       setPage(reset ? 1 : page + 1);
       setHasMore(data.length === PAGE);
-    } catch { if (reset) setItems([]); } finally {
+    } catch { if (reset && !silent) setItems([]); } finally {
       setLoading(false); setLoadingMore(false);
     }
   }, [tab, childId, classId, page, hasMore, loading, loadingMore]);
 
-  useEffect(() => { load(true); }, [tab, childId, classId]);
+  // Refresh silenzioso al ritorno sul tab / in foreground: le nuove foto compaiono senza
+  // riavviare l'app. Non durante l'anteprima a schermo intero (cambierebbe la foto mostrata).
+  const refreshTick = useScreenRefresh();
+  const isAutoRefresh = useIsAutoRefresh(refreshTick);
+  useEffect(() => {
+    const silent = isAutoRefresh();
+    if (silent && preview !== null) return;
+    load(true, silent);
+  }, [tab, childId, classId, refreshTick]);
 
   const handleDownload = async (item: any) => {
     // media_url può essere null nella lista (perf): recupera la foto piena on-demand.

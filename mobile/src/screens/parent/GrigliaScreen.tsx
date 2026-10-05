@@ -6,6 +6,8 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal } from '../../lib/dates';
+import { pickMealForClass } from '../../lib/meals';
+import { useScreenRefresh, useIsAutoRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -46,7 +48,10 @@ function addDays(d: string, n: number) {
 
 export default function ParentGriglia() {
   const { activeChildId, user } = useAuth();
-  const [date,   setDate]   = useState(todayLocal());
+  // Refresh al ritorno sul tab / in foreground (la maestra compila la griglia durante la giornata)
+  const refreshTick = useScreenRefresh();
+  const isAutoRefresh = useIsAutoRefresh(refreshTick);
+  const [date,   setDate]   = useFollowToday(refreshTick);
   const [griglia,setGriglia]= useState<any>(null);
   const [menu,   setMenu]   = useState<any>(null);
   const [classId,setClassId]= useState<string | null>(null);
@@ -62,22 +67,20 @@ export default function ParentGriglia() {
   }, [childId]);
 
   useEffect(() => {
+    const silent = isAutoRefresh();
     if (!childId) { setLoading(false); setGriglia(null); return; }
-    setLoading(true);
+    if (!silent) setLoading(true);
     api.get(`/griglia?student_id=${childId}&date=${date}`)
       .then(r => setGriglia(r.data?.[0] || null))
-      .catch(() => setGriglia(null))   // azzera: dopo cambio figlio con errore rete non mostrare i dati del fratello
+      .catch(() => { if (!silent) setGriglia(null); })   // azzera: dopo cambio figlio con errore rete non mostrare i dati del fratello
       .finally(() => setLoading(false));
-  }, [childId, date]);
+  }, [childId, date, refreshTick]);
 
   // Menu del giorno DELLA CLASSE del figlio → etichette coerenti (piatti reali).
   useEffect(() => {
     const q = classId ? `/meals?date=${date}&class_id=${classId}` : `/meals?date=${date}`;
-    api.get(q).then(r => {
-      const rows = r.data || [];
-      setMenu(rows.find((m: any) => m.class_id === classId) || rows.find((m: any) => !m.class_id) || rows[0] || null);
-    }).catch(() => setMenu(null));
-  }, [date, classId]);
+    api.get(q).then(r => setMenu(pickMealForClass(r.data, classId))).catch(() => setMenu(null));
+  }, [date, classId, refreshTick]);
   const timeline = TIMELINE.map(t => (
     t.type === 'meal' && menu && menu[MENU_FIELD[t.key]] ? { ...t, label: menu[MENU_FIELD[t.key]] } : t
   ));

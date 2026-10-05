@@ -12,6 +12,7 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { openFileUrl } from '../../lib/openFile';
 import { tenant } from '../../config/tenant';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -45,6 +46,7 @@ function getFileIcon(name: string) {
 
 export default function AdminAvvisi() {
   const { user, sede } = useAuth();
+  const refreshTick = useScreenRefresh();   // lista aggiornata al ritorno sul tab / in foreground
   const [avvisi,  setAvvisi]  = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function AdminAvvisi() {
         setAvvisi(val(aR) || []); setClasses(val(cR) || []);
       })
       .catch(() => {}).finally(() => setLoading(false));
-  }, [sede]);
+  }, [sede, refreshTick]);
 
   // Sedi dell'org del caller (org-aware lato backend)
   useEffect(() => {

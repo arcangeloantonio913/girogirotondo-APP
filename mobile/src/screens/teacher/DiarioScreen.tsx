@@ -9,11 +9,11 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal, formatItDate } from '../../lib/dates';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const MOODS = ['😊','😢','😴','🤒','😤','🎉','😍','😮'];
 const ACTIVITIES = ['Lettura','Pittura','Musica','Sport','Natura','Cucina','Teatro','Puzzle','Danza','Canto'];
-const TODAY = todayLocal();
 
 export default function TeacherDiario() {
   const { user } = useAuth();
@@ -35,7 +35,10 @@ export default function TeacherDiario() {
   const [note,  setNote]  = useState('');
   const [mood,  setMood]  = useState('');
   const [acts,  setActs]  = useState<string[]>([]);
-  const [date,  setDate]  = useState(TODAY);
+  // todayLocal() calcolato al momento (prima era una costante di modulo: con l'app aperta
+  // da giorni le nuove note avevano come default la data del primo avvio)
+  const [date,  setDate]  = useState(todayLocal());
+  const refreshTick = useScreenRefresh();
   const [saving,setSaving]= useState(false);
 
   // Nomi classi per il selettore (solo quelle della maestra)
@@ -49,10 +52,10 @@ export default function TeacherDiario() {
     api.get(`/diary?class_id=${classId}`)
       .then(r => setEntries(r.data || []))
       .catch(() => {}).finally(() => setLoading(false));
-  }, [classId]);
+  }, [classId, refreshTick]);
 
   const resetForm = () => {
-    setNote(''); setMood(''); setActs([]); setDate(TODAY); setEditEntry(null);
+    setNote(''); setMood(''); setActs([]); setDate(todayLocal()); setEditEntry(null);
   };
 
   const openEdit = (entry: any) => {
@@ -60,7 +63,7 @@ export default function TeacherDiario() {
     setNote(entry.note || entry.summary || '');
     setMood(entry.mood || '');
     setActs(entry.activities || []);
-    setDate(entry.date || TODAY);
+    setDate(entry.date || todayLocal());
     setShowForm(true);
   };
 

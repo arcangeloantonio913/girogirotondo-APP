@@ -3,21 +3,22 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
+import { pickMealForClass } from '@/lib/meals';
 import { UtensilsCrossed, Apple, Coffee, Cookie, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-                   'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
 export default function ParentAlimentazione() {
   const { user, activeChildId } = useAuth();
   const [meal, setMeal]         = useState(null);
   const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState('');
   const [dateOffset, setDateOffset] = useState(0);
+  const [reloadTick, setReloadTick] = useState(0);
 
+  // Data LOCALE (non UTC): con toISOString() tra mezzanotte e le 01/02 si leggeva il menu di ieri
   const getDate = (offset) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
-    return d.toISOString().split('T')[0];
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const currentDate = getDate(dateOffset);
@@ -26,24 +27,43 @@ export default function ParentAlimentazione() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 
+  // Ricarica quando il genitore torna sulla scheda/app (PWA o TWA lasciata aperta):
+  // il menu pubblicato nel frattempo dalla maestra compare senza ricaricare la pagina.
   useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') setReloadTick(t => t + 1); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
-      setMeal(null);
+      setError('');
       try {
-        // Trova la classe del figlio
         const childId = (activeChildId) || (user?.child_ids && user.child_ids[0]) || user?.child_id;
-        if (!childId) return;
-        const sRes = await api.get(`/students/${childId}`);
-        const classId = sRes.data?.class_id;
-        if (!classId) return;
-        const mRes = await api.get(`/meals?class_id=${classId}&date=${currentDate}`);
-        setMeal(mRes.data?.[0] || null);
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
+        // Classe del figlio: se non disponibile si interroga comunque /meals (il backend
+        // restituisce i menu autorizzati per il genitore) — prima si usciva e il menu non compariva.
+        let classId;
+        if (childId) {
+          try { classId = (await api.get(`/students/${childId}`)).data?.class_id || undefined; }
+          catch { classId = undefined; }
+        }
+        const mRes = await api.get('/meals', { params: { date: currentDate, ...(classId ? { class_id: classId } : {}) } });
+        if (!cancelled) setMeal(pickMealForClass(mRes.data, classId));
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setMeal(null);
+          setError(err.response?.data?.detail || 'Impossibile caricare il menu. Riprova.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
     load();
-  }, [user, activeChildId, currentDate]); // ← activeChildId nelle deps per fratellini
+    return () => { cancelled = true; };
+  }, [user, activeChildId, currentDate, reloadTick]); // ← activeChildId nelle deps per fratellini
 
   const mealItems = meal ? [
     { label: 'Merenda Mattina',    value: meal.merenda_mattina,   icon: Coffee,         color: '#F59E0B', bg: '#FFFBEB' },
@@ -61,7 +81,7 @@ export default function ParentAlimentazione() {
         {/* Navigazione data */}
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
           <div className="flex items-center justify-between">
-            <button onClick={() => setDateOffset(d => d - 1)}
+            <button onClick={() => setDateOffset(d => d - 1)} data-testid="alimentazione-prev-day" aria-label="Giorno precedente"
               className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
@@ -69,13 +89,18 @@ export default function ParentAlimentazione() {
               <p className="text-base font-bold capitalize" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>
                 {dateDisplay}
               </p>
-              {dateOffset === 0 && (
+              {dateOffset === 0 ? (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: C.primary }}>
                   Oggi
                 </span>
+              ) : (
+                <button onClick={() => setDateOffset(0)} data-testid="alimentazione-go-today"
+                  className="text-[11px] font-bold underline" style={{ color: C.primary }}>
+                  Torna a oggi
+                </button>
               )}
             </div>
-            <button onClick={() => setDateOffset(d => d + 1)}
+            <button onClick={() => setDateOffset(d => d + 1)} data-testid="alimentazione-next-day" aria-label="Giorno successivo"
               className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
               <ChevronRight className="w-5 h-5 text-gray-600" />
             </button>
@@ -88,7 +113,18 @@ export default function ParentAlimentazione() {
           </div>
         )}
 
-        {!loading && !meal && (
+        {!loading && error && (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-md" data-testid="alimentazione-error">
+            <UtensilsCrossed className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-sm text-gray-500 font-medium">{error}</p>
+            <button onClick={() => setReloadTick(t => t + 1)} data-testid="alimentazione-retry"
+              className="mt-3 px-4 py-2 rounded-xl text-white text-sm font-bold" style={{ backgroundColor: C.primary }}>
+              Riprova
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && mealItems.length === 0 && (
           <div className="bg-white rounded-2xl p-8 text-center shadow-md">
             <UtensilsCrossed className="w-12 h-12 mx-auto text-gray-300 mb-3" />
             <p className="text-sm text-gray-500 font-medium">Menu non ancora disponibile</p>
@@ -98,7 +134,7 @@ export default function ParentAlimentazione() {
           </div>
         )}
 
-        {!loading && meal && (
+        {!loading && !error && mealItems.length > 0 && (
           <div className="space-y-3" data-testid="meal-list">
             {mealItems.map((item, idx) => (
               <div key={idx} data-testid={`meal-item-${idx}`}

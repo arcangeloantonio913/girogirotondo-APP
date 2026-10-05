@@ -4,6 +4,7 @@ import {
   StyleSheet, Alert, Dimensions, ActivityIndicator, Modal, ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
@@ -31,6 +32,7 @@ export default function TeacherMedia() {
   const [loading,   setLoading]   = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const refreshTick = useScreenRefresh();   // foto pubblicate da altre maestre / da web
 
   // Form upload
   const [selStudents, setSelStudents] = useState<string[]>([]);
@@ -54,7 +56,7 @@ export default function TeacherMedia() {
       setItems(val(gR) || []);
       setStudents(val(sR) || []);
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [classId]);
+  }, [classId, refreshTick]);
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();

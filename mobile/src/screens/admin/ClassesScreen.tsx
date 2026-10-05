@@ -5,11 +5,13 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
 export default function AdminClasses() {
   const { sede } = useAuth();
+  const refreshTick = useScreenRefresh();   // lista aggiornata al ritorno sul tab / in foreground
   const [classes,  setClasses]  = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [users,    setUsers]    = useState<any[]>([]);
@@ -29,7 +31,7 @@ export default function AdminClasses() {
         setClasses(val(cR)||[]);setStudents(val(sR)||[]);setUsers(val(uR)||[]);
       })
       .catch(()=>{}).finally(()=>setLoading(false));
-  },[sede]);
+  },[sede,refreshTick]);
 
   const filtered = classes.filter(c => {
     if(!search) return true;

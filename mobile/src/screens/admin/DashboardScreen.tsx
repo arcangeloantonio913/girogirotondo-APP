@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
@@ -28,6 +29,7 @@ const CARDS = [
 export default function AdminDashboard({ navigation }: any) {
   const { user, sede, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const refreshTick = useScreenRefresh();
   const sedeAttiva = sede || user?.sede_id || 'girogirotondo';
   const [stats, setStats] = useState({ users: 0, students: 0, classes: 0 });
   const [sedi, setSedi] = useState<Sede[]>([]);
@@ -50,7 +52,7 @@ export default function AdminDashboard({ navigation }: any) {
         });
       })
       .catch(() => {});
-  }, [sede]);
+  }, [sede, refreshTick]);
 
   return (
     <SafeAreaView style={s.root}>

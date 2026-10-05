@@ -8,6 +8,7 @@ import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -41,6 +42,7 @@ const STAFF_MODULES: { key: string; label: string; emoji: string }[] = [
 
 export default function AdminUsers() {
   const { sede } = useAuth();
+  const refreshTick = useScreenRefresh();   // lista aggiornata al ritorno sul tab / in foreground
   const [users,   setUsers]   = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
@@ -76,7 +78,7 @@ export default function AdminUsers() {
         setUsers(val(uR) || []); setClasses(val(cR) || []); setStudents(val(sR) || []);
       })
       .catch(() => {}).finally(() => setLoading(false));
-  }, [sede]);
+  }, [sede, refreshTick]);
 
   const q = search.toLowerCase();
   const matchUser = (u: any) => `${u.name} ${u.cognome} ${u.email}`.toLowerCase().includes(q);

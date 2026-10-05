@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal, formatItDate } from '../../lib/dates';
+import { useScreenRefresh, useIsAutoRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -23,22 +24,26 @@ export default function ParentDiario() {
   const { activeChildId, user } = useAuth();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date,    setDate]    = useState(todayLocal());
+  // Refresh al ritorno sul tab / in foreground: le note della maestra compaiono senza riavviare l'app
+  const refreshTick = useScreenRefresh();
+  const isAutoRefresh = useIsAutoRefresh(refreshTick);
+  const [date,    setDate]    = useFollowToday(refreshTick);
   const [viewAll, setViewAll] = useState(false);
 
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
   useEffect(() => {
+    const silent = isAutoRefresh();
     if (!childId) { setEntries([]); setLoading(false); return; }
     const url = viewAll
       ? `/diary?student_id=${childId}`
       : `/diary?student_id=${childId}&date=${date}`;
-    setLoading(true);
+    if (!silent) setLoading(true);
     api.get(url)
       .then(r => setEntries(r.data || []))
-      .catch(() => setEntries([]))   // azzera: niente diario del fratello dopo cambio figlio + errore
+      .catch(() => { if (!silent) setEntries([]); })   // azzera: niente diario del fratello dopo cambio figlio + errore
       .finally(() => setLoading(false));
-  }, [childId, date, viewAll]);
+  }, [childId, date, viewAll, refreshTick]);
 
   const today = todayLocal();
 

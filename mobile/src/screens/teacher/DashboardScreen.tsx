@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
+import { useScreenRefresh } from '../../lib/useScreenRefresh';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
@@ -23,6 +24,7 @@ export default function TeacherDashboard({ navigation }: any) {
   const [studentCount, setStudentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const refreshTick = useScreenRefresh();
   const sedeAttiva = user?.sede_id || 'girogirotondo';
   const sedeInfo = tenant.sedi.find(x => x.id === sedeAttiva);
 
@@ -35,7 +37,7 @@ export default function TeacherDashboard({ navigation }: any) {
       const cls = (val(cR) || []).filter((c: any) => classIds.includes(c.id));
       setClassName(cls?.map((c: any) => c.name).join(', ') || '');
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [user]);
+  }, [user, refreshTick]);
 
   return (
     <SafeAreaView style={s.root}>

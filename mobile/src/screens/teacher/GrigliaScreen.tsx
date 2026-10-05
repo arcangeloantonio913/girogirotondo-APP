@@ -6,6 +6,8 @@ import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal } from '../../lib/dates';
+import { pickMealForClass } from '../../lib/meals';
+import { useScreenRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 const QTY = ['tutto','bis','metà','mangiata_poca','lasciata_poca','no'];
@@ -42,7 +44,10 @@ export default function TeacherGriglia() {
   const [classId, setClassId] = useState<string|undefined>(classIds[0]);
   useEffect(()=>{ setClassId(prev=>(prev && classIds.includes(prev))?prev:classIds[0]); },[classIds]);
   const [classes, setClasses] = useState<any[]>([]);
-  const [date, setDate]       = useState(todayLocal());
+  // Al ritorno sul tab si aggiornano data (dopo mezzanotte), alunni e menu; la griglia in
+  // compilazione NON viene ricaricata per non perdere le modifiche non salvate.
+  const refreshTick = useScreenRefresh();
+  const [date, setDate]       = useFollowToday(refreshTick);
   const [students, setStudents] = useState<any[]>([]);
   const [griglia, setGriglia]  = useState<Record<string,any>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -61,16 +66,15 @@ export default function TeacherGriglia() {
   useEffect(()=>{
     if(!classId){setLoading(false);return;}
     api.get(`/students?class_id=${classId}`).then(r=>setStudents(r.data||[])).catch(()=>{}).finally(()=>setLoading(false));
-  },[classId]);
+  },[classId,refreshTick]);
 
   // Menu del giorno → etichette coerenti (piatti reali). Preferisco il menu
   // specifico della classe rispetto a quello universale.
   useEffect(()=>{
-    api.get(`/meals?date=${date}${classId?`&class_id=${classId}`:''}`).then(r=>{
-      const list=(r.data||[]) as any[];
-      setMenu(list.find((m:any)=>m.class_id)||list[0]||null);
-    }).catch(()=>setMenu(null));
-  },[date,classId]);
+    api.get(`/meals?date=${date}${classId?`&class_id=${classId}`:''}`)
+      .then(r=>setMenu(pickMealForClass(r.data,classId)))
+      .catch(()=>setMenu(null));
+  },[date,classId,refreshTick]);
   const meals = MEALS.map(m => ({ ...m, label: (menu && MENU_FIELD[m.key] && menu[MENU_FIELD[m.key]]) || m.label }));
 
   useEffect(()=>{

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
@@ -7,7 +7,7 @@ import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
 import { todayLocal, localYMD } from '../../lib/dates';
 import { pickMealForClass } from '../../lib/meals';
-import { useScreenRefresh } from '../../lib/useScreenRefresh';
+import { useScreenRefresh, useFollowToday } from '../../lib/useScreenRefresh';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
@@ -28,25 +28,15 @@ function addDays(d: string, n: number) {
 export default function ParentDieta() {
   const { activeChildId, user } = useAuth();
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
-  const [date,  setDate]  = useState(todayLocal());
   const [meal,  setMeal]  = useState<any>(null);
   const [loading, setLoading]       = useState(true);   // solo primo caricamento (spinner pieno)
   const [refreshing, setRefreshing] = useState(false);  // pull-to-refresh
   const [error, setError]           = useState('');
   const [manualTick, setManualTick] = useState(0);
   const refreshTick = useScreenRefresh();
-
-  // Se il genitore sta guardando "oggi" e l'app resta aperta oltre la mezzanotte
-  // (tipico su iPhone), al ritorno si riallinea alla data corrente.
-  const followToday = useRef(true);
-  useEffect(() => {
-    if (followToday.current) setDate(todayLocal());
-  }, [refreshTick]);
-
-  const changeDate = (next: string) => {
-    followToday.current = next === todayLocal();
-    setDate(next);
-  };
+  // Segue "oggi": se l'app resta aperta oltre la mezzanotte (tipico su iPhone) al ritorno
+  // si riallinea alla data corrente; se il genitore ha scelto un altro giorno resta lì.
+  const [date, changeDate] = useFollowToday(refreshTick);
 
   // Caricamento SEQUENZIALE: prima la classe del figlio, poi il menu di quella classe.
   // Prima erano due effect in parallelo → la risposta senza class_id poteva arrivare per ultima

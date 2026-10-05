@@ -24,21 +24,22 @@ const QTY_MAP: Record<string, { label: string; color: string; bg: string; emoji:
 };
 
 // Le chiavi combaciano con i campi del backend: attivo su `key`, quantità su `key_qty`.
+// Le 6 categorie coincidono 1:1 col menù Mensa → griglia e mensa sono coerenti.
 const TIMELINE = [
-  { key: 'merenda', label: 'Merenda',        icon: '☕', time: '09:30', type: 'meal' },
-  { key: 'pasta',   label: 'Pasta / Primo',  icon: '🍝', time: '12:00', type: 'meal' },
-  { key: 'secondo', label: 'Secondo',        icon: '🍗', time: '12:15', type: 'meal' },
-  { key: 'pane',    label: 'Pane',           icon: '🍞', time: '12:25', type: 'meal' },
-  { key: 'frutta',  label: 'Frutta',         icon: '🍎', time: '12:35', type: 'meal' },
-  { key: 'pupu',    label: 'Pupù',           icon: '💩', time: '',      type: 'bool' },
-  { key: 'nanna',   label: 'Nanna / Riposo', icon: '😴', time: '13:00', type: 'bool' },
-].filter(t => !(t.key === 'pane' && tenant.hidePaneGriglia));
+  { key: 'merenda',  label: 'Merenda mattina',    icon: '☕', time: '09:30', type: 'meal' },
+  { key: 'pasta',    label: 'Primo',              icon: '🍝', time: '12:00', type: 'meal' },
+  { key: 'secondo',  label: 'Secondo',            icon: '🍗', time: '12:15', type: 'meal' },
+  { key: 'contorno', label: 'Contorno',           icon: '🥗', time: '12:20', type: 'meal' },
+  { key: 'frutta',   label: 'Frutta',             icon: '🍎', time: '12:35', type: 'meal' },
+  { key: 'merenda_pomeriggio', label: 'Merenda pomeriggio', icon: '🍪', time: '16:00', type: 'meal' },
+  { key: 'pupu',     label: 'Pupù',               icon: '💩', time: '',      type: 'bool' },
+  { key: 'nanna',    label: 'Nanna / Riposo',     icon: '😴', time: '13:00', type: 'bool' },
+];
 
 // Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali).
-// NB: la riga "Pane" NON va mappata sul contorno (mostrava il nome del contorno sulla
-// riga del pane): resta l'etichetta generica "Pane".
 const MENU_FIELD: Record<string,string> = {
-  merenda: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', frutta: 'frutta',
+  merenda: 'merenda_mattina', pasta: 'primo', secondo: 'secondo',
+  contorno: 'contorno', frutta: 'frutta', merenda_pomeriggio: 'merenda_pomeriggio',
 };
 
 function addDays(d: string, n: number) {

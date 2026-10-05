@@ -17,18 +17,20 @@ const QTY_COLORS: Record<string,{bg:string;text:string}> = {
   'metà':{bg:'#FEF9C3',text:'#854D0E'},mangiata_poca:{bg:'#FEE2E2',text:'#991B1B'},
   lasciata_poca:{bg:'#FECACA',text:'#7F1D1D'},no:{bg:'#F1F5F9',text:'#64748B'},
 };
+// Le 6 categorie coincidono 1:1 col menù Mensa → griglia e mensa sono coerenti.
 const MEALS = [
   {key:'merenda_mattina',label:'Merenda mattina',icon:'☕'},
-  {key:'pasta',label:'Pasta',icon:'🍝'},
+  {key:'pasta',label:'Primo',icon:'🍝'},
   {key:'secondo',label:'Secondo',icon:'🍗'},
-  {key:'pane',label:'Pane',icon:'🍞'},
+  {key:'contorno',label:'Contorno',icon:'🥗'},
   {key:'frutta',label:'Frutta',icon:'🍎'},
-].filter(m => !(m.key === 'pane' && tenant.hidePaneGriglia));
+  {key:'merenda_pomeriggio',label:'Merenda pomeriggio',icon:'🍪'},
+];
 
 // Categoria griglia → campo menu del giorno (coerenza: mostra i piatti reali).
-// NIENTE pane→contorno: la riga Pane mantiene l'etichetta generica.
 const MENU_FIELD: Record<string,string> = {
-  merenda_mattina: 'merenda_mattina', pasta: 'primo', secondo: 'secondo', frutta: 'frutta',
+  merenda_mattina: 'merenda_mattina', pasta: 'primo', secondo: 'secondo',
+  contorno: 'contorno', frutta: 'frutta', merenda_pomeriggio: 'merenda_pomeriggio',
 };
 
 function addDays(dateStr:string,n:number){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
@@ -89,8 +91,9 @@ export default function TeacherGriglia() {
         merenda_mattina: g.merenda_qty || '',
         pasta:           g.pasta_qty   || '',
         secondo:         g.secondo_qty || '',
-        pane:            g.pane_qty    || '',
+        contorno:        g.contorno_qty || '',
         frutta:          g.frutta_qty  || '',
+        merenda_pomeriggio: g.merenda_pomeriggio_qty || '',
         'pupù':          !!g.pupu,
         nanna:           !!g.nanna,
         notes:           g.notes || '',
@@ -124,7 +127,8 @@ export default function TeacherGriglia() {
     try{
       // [campo_backend, chiave_stato_UI]. Nello stato il valore pasto è la STRINGA quantità.
       const MEAL_MAP:[string,string][]=[
-        ['merenda','merenda_mattina'],['pasta','pasta'],['secondo','secondo'],['pane','pane'],['frutta','frutta'],
+        ['merenda','merenda_mattina'],['pasta','pasta'],['secondo','secondo'],
+        ['contorno','contorno'],['frutta','frutta'],['merenda_pomeriggio','merenda_pomeriggio'],
       ];
       const buildEntry=(st:any)=>{
         const g=griglia[st.id]||{};

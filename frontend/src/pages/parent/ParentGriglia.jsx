@@ -79,12 +79,14 @@ export default function ParentGriglia() {
     });
   }, [user, activeChildId, today]); // ← activeChildId nelle deps
 
+  // Le 6 categorie coincidono 1:1 col menù Mensa → griglia e mensa sono coerenti.
   const timelineItems = griglia ? [
-    { time: '9:30',  label: (menu && menu.merenda_mattina) || 'Merenda',  active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
-    { time: '12:00', label: (menu && menu.primo) || 'Pasta',    active: griglia.pasta,   qty: griglia.pasta_qty,   color: C.babyPink, isPasto: true },
-    { time: '12:10', label: (menu && menu.secondo) || 'Secondo',  active: griglia.secondo, qty: griglia.secondo_qty, color: C.babyBlue, isPasto: true },
-    ...(tenant.hidePaneGriglia ? [] : [{ time: '12:20', label: 'Pane', active: griglia.pane, qty: griglia.pane_qty, color: '#FFD699', isPasto: true }]),
-    { time: '12:30', label: (menu && menu.frutta) || 'Frutta',   active: griglia.frutta,  qty: griglia.frutta_qty,  color: C.babyGreen, isPasto: true },
+    { time: '9:30',  label: (menu && menu.merenda_mattina) || 'Merenda mattina', active: griglia.merenda, qty: griglia.merenda_qty, color: '#FFB347', isPasto: true },
+    { time: '12:00', label: (menu && menu.primo) || 'Primo',       active: griglia.pasta,    qty: griglia.pasta_qty,    color: C.babyPink,  isPasto: true },
+    { time: '12:10', label: (menu && menu.secondo) || 'Secondo',   active: griglia.secondo,  qty: griglia.secondo_qty,  color: C.babyBlue,  isPasto: true },
+    { time: '12:20', label: (menu && menu.contorno) || 'Contorno', active: griglia.contorno, qty: griglia.contorno_qty, color: '#86EFAC',   isPasto: true },
+    { time: '12:30', label: (menu && menu.frutta) || 'Frutta',     active: griglia.frutta,   qty: griglia.frutta_qty,   color: C.babyGreen, isPasto: true },
+    { time: '16:00', label: (menu && menu.merenda_pomeriggio) || 'Merenda pomeriggio', active: griglia.merenda_pomeriggio, qty: griglia.merenda_pomeriggio_qty, color: '#FCD34D', isPasto: true },
     { time: '',      label: 'Pupù',     active: griglia.pupu,    qty: null,                color: '#D4B8E0', isPasto: false },
     { time: '',      label: 'Nanna',    active: griglia.nanna,   qty: null,                color: '#93C5FD', isPasto: false },
   ] : [];

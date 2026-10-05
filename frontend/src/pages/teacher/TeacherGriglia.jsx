@@ -13,23 +13,25 @@ function pad(n) { return String(n).padStart(2, '0'); }
 // Data locale YYYY-MM-DD (evita lo slittamento UTC a cavallo della mezzanotte)
 function localDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
-// Ordine: Merenda PRIMA, poi gli altri pasti
+// Le 6 categorie coincidono 1:1 col menù Mensa → griglia e mensa sono coerenti.
 const MEAL_COLS = [
-  { key: 'merenda', label: 'Merenda',  short: 'MER', color: '#FFB347' },
-  { key: 'pasta',   label: 'Pasta',    short: 'PAS', color: C.babyPink },
-  { key: 'secondo', label: 'Secondo',  short: 'SEC', color: C.babyBlue },
-  { key: 'pane',    label: 'Pane',     short: 'PAN', color: '#FFD699' },
-  { key: 'frutta',  label: 'Frutta',   short: 'FRU', color: C.babyGreen },
-].filter(col => !(col.key === 'pane' && tenant.hidePaneGriglia));
+  { key: 'merenda',            label: 'Merenda matt.', short: 'MER', color: '#FFB347' },
+  { key: 'pasta',              label: 'Primo',         short: 'PRI', color: C.babyPink },
+  { key: 'secondo',            label: 'Secondo',       short: 'SEC', color: C.babyBlue },
+  { key: 'contorno',           label: 'Contorno',      short: 'CON', color: '#86EFAC' },
+  { key: 'frutta',             label: 'Frutta',        short: 'FRU', color: C.babyGreen },
+  { key: 'merenda_pomeriggio', label: 'Merenda pom.',  short: 'MEP', color: '#FCD34D' },
+];
 
 // Mappa categoria griglia → campo del MENU del giorno, così la griglia mostra i
 // PIATTI REALI (es. "Pasta al pomodoro") invece delle etichette generiche → coerenza.
 const MENU_FIELD = {
-  merenda: 'merenda_mattina',
-  pasta:   'primo',
-  secondo: 'secondo',
-  pane:    'contorno',
-  frutta:  'frutta',
+  merenda:            'merenda_mattina',
+  pasta:              'primo',
+  secondo:            'secondo',
+  contorno:           'contorno',
+  frutta:             'frutta',
+  merenda_pomeriggio: 'merenda_pomeriggio',
 };
 
 // Colonne boolean (toggle)
@@ -50,11 +52,12 @@ const QUANTITA_OPTIONS = [
 ];
 
 const defaultGrid = () => ({
-  merenda: false, merenda_qty: '',
-  pasta:   false, pasta_qty:   '',
-  secondo: false, secondo_qty: '',
-  pane:    false, pane_qty:    '',
-  frutta:  false, frutta_qty:  '',
+  merenda:            false, merenda_qty:            '',
+  pasta:              false, pasta_qty:              '',
+  secondo:            false, secondo_qty:            '',
+  contorno:           false, contorno_qty:           '',
+  frutta:             false, frutta_qty:             '',
+  merenda_pomeriggio: false, merenda_pomeriggio_qty: '',
   pupu:    false,
   nanna:   false,
   notes:   '',
@@ -138,11 +141,12 @@ export default function TeacherGriglia() {
         res.data.forEach(entry => {
           if (g[entry.student_id] !== undefined) {
             g[entry.student_id] = {
-              merenda: entry.merenda || false, merenda_qty: entry.merenda_qty || '',
-              pasta:   entry.pasta   || false, pasta_qty:   entry.pasta_qty   || '',
-              secondo: entry.secondo || false, secondo_qty: entry.secondo_qty || '',
-              pane:    entry.pane    || false, pane_qty:    entry.pane_qty    || '',
-              frutta:  entry.frutta  || false, frutta_qty:  entry.frutta_qty  || '',
+              merenda:            entry.merenda            || false, merenda_qty:            entry.merenda_qty            || '',
+              pasta:              entry.pasta              || false, pasta_qty:              entry.pasta_qty              || '',
+              secondo:            entry.secondo            || false, secondo_qty:            entry.secondo_qty            || '',
+              contorno:           entry.contorno           || false, contorno_qty:           entry.contorno_qty           || '',
+              frutta:             entry.frutta             || false, frutta_qty:             entry.frutta_qty             || '',
+              merenda_pomeriggio: entry.merenda_pomeriggio || false, merenda_pomeriggio_qty: entry.merenda_pomeriggio_qty || '',
               pupu:    entry.pupu    || false,
               nanna:   entry.nanna   || false,
               notes:   entry.notes   || '',

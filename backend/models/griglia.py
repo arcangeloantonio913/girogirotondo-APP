@@ -21,14 +21,18 @@ class GrigliaEntry(BaseModel):
     pasta:    bool = False
     secondo:  bool = False
     pane:     bool = False
+    contorno: bool = False
     frutta:   bool = False
+    merenda_pomeriggio: bool = False
 
     # ── Quantità per pasto (tutto | bis | poca | metà | no | "") ─────────────
     merenda_qty: Optional[str] = ""
     pasta_qty:   Optional[str] = ""
     secondo_qty: Optional[str] = ""
     pane_qty:    Optional[str] = ""
+    contorno_qty: Optional[str] = ""
     frutta_qty:  Optional[str] = ""
+    merenda_pomeriggio_qty: Optional[str] = ""
 
     # ── Igiene e riposo ───────────────────────────────────────────────────────
     pupu:  bool = False
@@ -45,12 +49,16 @@ class GrigliaStudentEntry(BaseModel):
     pasta:    bool = False
     secondo:  bool = False
     pane:     bool = False
+    contorno: bool = False
     frutta:   bool = False
+    merenda_pomeriggio: bool = False
     merenda_qty: Optional[str] = ""
     pasta_qty:   Optional[str] = ""
     secondo_qty: Optional[str] = ""
     pane_qty:    Optional[str] = ""
+    contorno_qty: Optional[str] = ""
     frutta_qty:  Optional[str] = ""
+    merenda_pomeriggio_qty: Optional[str] = ""
     pupu:  bool = False
     nanna: bool = False
     notes: str = ""

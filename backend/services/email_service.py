@@ -930,7 +930,10 @@ async def send_app_links_notice_email(
         f"Cliccate SOLO il pulsante del vostro dispositivo:\n\n"
         f"{_app_links_text(ident)}"
         f"Per entrare usate l'email e la password che avete già ricevuto.\n\n"
-        f"Se avete già effettuato l'accesso potete tranquillamente ignorare questa email.\n\n"
+        f"Se riuscite già ad accedere all'app, potete ignorare questa email.\n"
+        f"Se invece avete avuto problemi ad accedere, seguite le istruzioni qui sopra: toccate il\n"
+        f"pulsante giusto per il vostro telefono (iPhone oppure Android), installate l'app ed entrate\n"
+        f"con l'email e la password che avete già ricevuto.\n\n"
         f"Per assistenza: {ident['support_email']}\n\n{school_name}"
     )
     html = f"""<!DOCTYPE html>
@@ -958,8 +961,11 @@ async def send_app_links_notice_email(
             </p>
             <table width="100%" cellpadding="0" cellspacing="0"
                    style="background:{_tint(brand_color)};border-radius:12px;padding:14px 16px;margin-bottom:24px;">
-              <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
-                ✅ <strong>Avete già effettuato l'accesso?</strong> Potete tranquillamente ignorare questa email.
+              <tr><td style="font-size:13px;color:#1A202C;line-height:1.7;">
+                ✅ <strong>Riuscite già ad accedere all'app?</strong> Potete tranquillamente ignorare questa email.<br><br>
+                ⚠️ <strong>Avete avuto problemi ad accedere?</strong> Seguite le istruzioni qui sopra: toccate il
+                <strong>pulsante giusto per il vostro telefono</strong> (iPhone oppure Android), installate l'app
+                ed entrate con l'email e la password che avete già ricevuto.
               </td></tr>
             </table>
           </td>

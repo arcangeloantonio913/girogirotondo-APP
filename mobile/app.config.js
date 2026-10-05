@@ -37,7 +37,7 @@ module.exports = () => {
           // NB: la config dinamica re-impone questo valore nel binario ad ogni build
           // (autoIncrement non persiste con app.config.js). Va alzato A MANO se il numero
           // è già stato caricato su App Store Connect. Usati finora per 1.0.1: 1, 6, 11.
-          buildNumber: '13',
+          buildNumber: '14',
           infoPlist: {
             ...base.ios.infoPlist,
             // TODO: NSPrivacyDescription per Dimensione Bimbo — ora l'URL punta a
@@ -50,7 +50,7 @@ module.exports = () => {
           package: 'it.dimensionebimbo.app',
           // NB: la config dinamica re-impone questo valore ad ogni build → va alzato A MANO
           // quando il versionCode è già stato caricato su Play. Usati finora: 5, 6, 11.
-          versionCode: 13,
+          versionCode: 14,
           // permissions / intentFilters invariati (ereditati da base.android).
           adaptiveIcon: {
             ...base.android.adaptiveIcon,

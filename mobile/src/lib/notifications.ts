@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import api from './api';
 
 export async function registerForPushNotifications(): Promise<string | null> {
@@ -33,8 +34,16 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    // Token Expo Push — funziona in Expo Go e in build produzione
-    const tokenData = await Notifications.default.getExpoPushTokenAsync();
+    // Token Expo Push — funziona in Expo Go e in build produzione.
+    // projectId ESPLICITO: nelle build standalone multi-tenant il projectId va passato
+    // (per DB è il 2° progetto EAS). Lo leggiamo dalla config risolta del tenant attivo;
+    // senza, getExpoPushTokenAsync può fallire silenziosamente su build nativa.
+    const projectId =
+      (Constants as any)?.expoConfig?.extra?.eas?.projectId ??
+      (Constants as any)?.easConfig?.projectId;
+    const tokenData = await Notifications.default.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
     const token = tokenData.data;
     if (__DEV__) console.log('[PUSH] Token ottenuto');
 

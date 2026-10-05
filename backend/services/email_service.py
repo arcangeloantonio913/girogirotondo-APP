@@ -58,6 +58,14 @@ def _brand_parts(school_name: str):
     return parts[0], (parts[1] if len(parts) > 1 else "")
 
 
+# Link App Store di default per org (sovrascrivibile con org.ios_app_url sul DB).
+# Android: per ORA si usa l'app WEB (portal_url), NON il Google Play — quando l'app Play
+# sarà pubblicata basterà impostare org.android_app_url sul documento org.
+_DEFAULT_IOS_APP_URL = {
+    "girogirotondo-group": "https://apps.apple.com/it/app/id6775421772",
+}
+
+
 def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
     """Identità mittente BRAND-LEVEL letta dal documento org (non dalla sede).
 
@@ -69,12 +77,14 @@ def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
     errore esplicito. MAI sostituirlo con un mittente generico (fallirebbe 403
     silenzioso) né con un valore di un altro tenant.
     """
-    fn = fe = se = pu = None
+    fn = fe = se = pu = ios = android = None
     if org_doc:
         fn = org_doc.get("from_name") or None
         fe = org_doc.get("from_email") or None
         se = org_doc.get("support_email") or None
         pu = org_doc.get("portal_url") or None
+        ios = org_doc.get("ios_app_url") or None
+        android = org_doc.get("android_app_url") or None
 
     if not fe:
         logger.error(
@@ -91,7 +101,60 @@ def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
         "support_email": se,
         "portal_url":    pu or "",
         "reply_to":      se,               # le risposte vanno alla scuola giusta
+        "ios_app_url":   ios or _DEFAULT_IOS_APP_URL.get(org_id or "", ""),
+        # Android → app web finché l'app Google Play non è pronta
+        "android_app_url": android or pu or "",
     }
+
+
+def _app_links_html(ident: dict, color: str) -> str:
+    """Blocco "Scarica l'app": iPhone → App Store, Android → link (per ora l'app web).
+    Vuoto se l'org non ha nessuno dei due link (niente bottoni rotti)."""
+    ios, android = ident.get("ios_app_url"), ident.get("android_app_url")
+    if not ios and not android:
+        return ""
+    android_is_web = bool(android) and android == ident.get("portal_url")
+    btn = ("display:inline-block;background:{bg};color:white;text-decoration:none;"
+           "padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;margin:4px;")
+    cells = []
+    if ios:
+        cells.append(f'<a href="{ios}" style="{btn.format(bg="#111827")}">&#63743; iPhone — App Store</a>')
+    if android:
+        label = "Android — Apri l'app web" if android_is_web else "Android — Google Play"
+        cells.append(f'<a href="{android}" style="{btn.format(bg=color)}">🤖 {label}</a>')
+    nota = ""
+    if android_is_web:
+        nota = ("""
+                <p style="margin:10px 0 0;font-size:12px;color:#6B7280;line-height:1.6;text-align:center;">
+                  Su Android apri il link con Chrome e scegli <strong>&laquo;Aggiungi a schermata Home&raquo;</strong>:
+                  l'app comparirà tra le tue applicazioni.
+                </p>""")
+    return f"""
+            <!-- Scarica l'app -->
+            <p style="margin:0 0 12px;font-size:14px;color:#1A202C;font-weight:700;">
+              📲 Scarica l'app
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#F8F9FA;border-radius:12px;padding:16px;margin-bottom:24px;">
+              <tr><td align="center">
+                {''.join(cells)}{nota}
+              </td></tr>
+            </table>
+"""
+
+
+def _app_links_text(ident: dict) -> str:
+    """Versione testo del blocco "Scarica l'app" (stessa logica di _app_links_html)."""
+    lines = []
+    if ident.get("ios_app_url"):
+        lines.append(f"  iPhone (App Store): {ident['ios_app_url']}")
+    android = ident.get("android_app_url")
+    if android:
+        if android == ident.get("portal_url"):
+            lines.append(f"  Android (app web): {android}")
+        else:
+            lines.append(f"  Android (Google Play): {android}")
+    return ("Scarica l'app:\n" + "\n".join(lines) + "\n\n") if lines else ""
 
 
 async def _resolve_email_context(sede_id: str, org_id: str | None = None):
@@ -133,7 +196,8 @@ async def _resolve_email_context(sede_id: str, org_id: str | None = None):
             org_doc = await db.orgs.find_one(
                 {"id": eff_org},
                 {"_id": 0, "name": 1, "from_name": 1, "from_email": 1,
-                 "support_email": 1, "portal_url": 1},
+                 "support_email": 1, "portal_url": 1,
+                 "ios_app_url": 1, "android_app_url": 1},
             )
         except Exception as exc:
             logger.error("[EMAIL] lookup org '%s' fallito: %s", eff_org, exc)
@@ -191,7 +255,7 @@ REPLY_TO   = os.environ.get("RESEND_REPLY_TO", "").strip()
 
 
 def _build_html(bambino_nome, bambino_cognome, to_email, password, school_name, year,
-                header_color, support_email, portal_url):
+                header_color, support_email, portal_url, app_links=""):
     # Il display-name è "<Brand> — <Qualifica>" (es. "Girogirotondo — Scuola
     # dell'Infanzia", "Dimensione Bimbo — Nido"). Scomponiamo per usare il brand
     # nell'header e la qualifica nei sottotitoli: così restano TENANT-NEUTRE
@@ -324,7 +388,7 @@ def _build_html(bambino_nome, bambino_cognome, to_email, password, school_name, 
                 </table>
               </td></tr>
             </table>
-{come_accedere}            <!-- Nota sicurezza -->
+{come_accedere}{app_links}            <!-- Nota sicurezza -->
             <p style="margin:0;font-size:12px;color:#9CA3AF;line-height:1.6;
                        padding-bottom:24px;border-bottom:1px solid #F0F0F0;">
               🔒 Per sicurezza vi consigliamo di cambiare la password al primo accesso.<br>
@@ -510,10 +574,12 @@ async def send_credentials_email(
         f"  Email: {to_email}\n"
         f"  Password: {password}\n\n"
         f"Vi consigliamo di cambiare la password al primo accesso.\n\n"
+        f"{_app_links_text(ident)}"
         f"Per assistenza: {ident['support_email']}\n\n{school_name}"
     )
     html_body = _build_html(bambino_nome, bambino_cognome, to_email, password, school_name,
-                            year, brand_color, ident["support_email"], ident["portal_url"])
+                            year, brand_color, ident["support_email"], ident["portal_url"],
+                            _app_links_html(ident, brand_color))
 
     # Prova Resend (sempre funziona da cloud)
     if await _send_via_resend(to_email, subject, html_body, plain_body,
@@ -564,6 +630,7 @@ async def send_resend_credentials_email(
         f"Email:    {to_email}\n"
         f"Password: {new_password}\n\n"
         f"Accedi su: {ident['portal_url']}\n\n"
+        f"{_app_links_text(ident)}"
         f"Per assistenza: {ident['support_email']}\n\n"
         f"{school_name}"
     )
@@ -616,6 +683,7 @@ async def send_resend_credentials_email(
                 </a>
               </td></tr>
             </table>
+{_app_links_html(ident, brand_color)}
           </td>
         </tr>
         <tr>

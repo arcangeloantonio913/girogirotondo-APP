@@ -125,3 +125,35 @@ async def test_no_send_when_org_lacks_verified_sender(seed_db, monkeypatch):
     assert ok is False
     assert called["resend"] is False
     assert called["smtp"] is False
+
+
+# --- Link "Scarica l'app" nelle email credenziali ------------------------------
+from services.email_service import _org_identity, _app_links_html, _app_links_text
+
+
+def test_android_link_is_web_portal_not_play_store():
+    """Per ora Android punta all'app WEB (portal_url), mai a Google Play."""
+    ident = _org_identity({"from_email": "noreply@x.it", "portal_url": "https://girogirotondowebapp.it"},
+                          "girogirotondo-group")
+    assert ident["android_app_url"] == "https://girogirotondowebapp.it"
+    assert ident["ios_app_url"].startswith("https://apps.apple.com/")
+    html = _app_links_html(ident, "#4169E1")
+    assert "play.google.com" not in html
+    assert 'href="https://girogirotondowebapp.it"' in html
+    assert "Aggiungi a schermata Home" in html
+    assert "Android (app web): https://girogirotondowebapp.it" in _app_links_text(ident)
+
+
+def test_android_play_link_only_when_configured_on_org():
+    play = "https://play.google.com/store/apps/details?id=it.girogirotondo.app"
+    ident = _org_identity({"from_email": "noreply@x.it", "portal_url": "https://p.it",
+                           "android_app_url": play}, "girogirotondo-group")
+    assert ident["android_app_url"] == play
+    assert "Google Play" in _app_links_html(ident, "#4169E1")
+
+
+def test_no_app_block_without_links():
+    """Org senza portale né link app (es. Dimensione Bimbo) → nessun blocco, niente link rotti."""
+    ident = _org_identity({"from_email": "noreply@x.it", "portal_url": ""}, "dimensione-bimbo")
+    assert _app_links_html(ident, "#FB6A00") == ""
+    assert _app_links_text(ident) == ""

@@ -96,6 +96,30 @@ def _avviso_visible_to(avviso: dict, role: str, user_id: str,
     return True
 
 
+def _teacher_manage_ok(avviso: dict, teacher_sede_ids) -> bool:
+    """Una maestra può VEDERE e GESTIRE (modifica/eliminazione) qualsiasi avviso
+    creato da una collega della PROPRIA sede. Scelta prodotto confermata: la
+    bacheca avvisi è condivisa fra tutte le maestre della stessa sede.
+
+    Fail-closed e tenant-safe:
+      - SOLO avvisi scritti da una maestra (author_role == 'teacher'): gli avvisi
+        dell'admin restano gestibili solo dall'admin;
+      - SOLO se la sede dell'avviso interseca le sedi della maestra chiamante (un
+        avviso di maestra ha sempre target_sedi = [sede autrice]) → nessun accesso
+        cross-sede / cross-tenant.
+    Va invocato SOLO nei rami teacher: non concede nulla a genitori/admin perché
+    il ruolo del chiamante è già verificato a monte.
+    """
+    if avviso.get("author_role") != "teacher":
+        return False
+    sedi = set(teacher_sede_ids or [])
+    if not sedi:
+        return False
+    a_sede = avviso.get("sede_id")
+    a_sedi = set(avviso.get("target_sedi") or ([a_sede] if a_sede else []))
+    return bool(a_sedi & sedi)
+
+
 # ---------------------------------------------------------------------------
 # GET /api/avvisi
 # ---------------------------------------------------------------------------
@@ -141,6 +165,7 @@ async def get_avvisi(
         avvisi = [
             a for a in all_avvisi
             if a.get("author_id") == user_id
+            or _teacher_manage_ok(a, [sede_id])   # bacheca condivisa: ogni maestra della sede
             or _avviso_visible_to(a, "teacher", user_id, teacher_class_ids, [], sede_id)
         ]
 
@@ -211,8 +236,10 @@ async def get_avviso(
         legacy = current_user.get("class_id")
         if legacy and legacy not in teacher_class_ids:
             teacher_class_ids.append(legacy)
-        # L'autore vede sempre il proprio avviso (coerente con la lista).
+        # L'autore vede sempre il proprio avviso; inoltre ogni maestra della sede
+        # vede gli avvisi di una collega (bacheca condivisa) — coerente con la lista.
         visible = (avviso.get("author_id") == user_id) or \
+            _teacher_manage_ok(avviso, [sede_id]) or \
             _avviso_visible_to(avviso, "teacher", user_id, teacher_class_ids, [], sede_id)
     elif role == "parent":
         child_ids = list(current_user.get("child_ids") or [])
@@ -368,8 +395,14 @@ async def update_avviso(
     if role == "admin":
         if not ctx.all_access and avviso.get("sede_id") not in ctx.sede_ids:
             raise HTTPException(status_code=404, detail="Avviso non trovato")
-    elif avviso.get("author_id") != ctx.user_id:
-        raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
+    else:
+        # Autrice sempre; inoltre QUALSIASI maestra della stessa sede (bacheca condivisa).
+        # Il check sede_ids nel ramo teacher evita accessi cross-sede/cross-tenant.
+        allowed = avviso.get("author_id") == ctx.user_id
+        if not allowed and role == "teacher":
+            allowed = _teacher_manage_ok(avviso, ctx.sede_ids)
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Non puoi modificare questo avviso")
 
     updates = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
     _apply_attachment(updates)   # normalizza l'eventuale nuovo allegato
@@ -427,8 +460,13 @@ async def delete_avviso(
         sede_id = await validate_admin_sede_access(current_user, x_sede_id)
         if avviso.get("sede_id") != sede_id and sede_id not in (avviso.get("target_sedi") or []):
             raise HTTPException(status_code=404, detail="Avviso non trovato")   # 404 cross-tenant (convenzione uniforme)
-    elif avviso.get("author_id") != current_user.get("id"):
-        raise HTTPException(status_code=403, detail="Permesso negato")
+    else:
+        # Autrice sempre; inoltre QUALSIASI maestra della stessa sede (bacheca condivisa).
+        allowed = avviso.get("author_id") == current_user.get("id")
+        if not allowed and role == "teacher":
+            allowed = _teacher_manage_ok(avviso, [get_teacher_sede_id(current_user)])
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Permesso negato")
 
     await db.avvisi.delete_one({"id": avviso_id})
     return {"message": "Avviso eliminato"}

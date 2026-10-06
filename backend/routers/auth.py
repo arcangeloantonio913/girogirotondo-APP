@@ -1,5 +1,6 @@
 """Auth router — register (Firebase + MongoDB), login (legacy dev), me."""
 import os
+import re
 import uuid
 import logging
 from datetime import datetime, timezone
@@ -107,6 +108,11 @@ async def login(request: Request, payload: dict):
         raise HTTPException(status_code=400, detail="Email e password obbligatori")
 
     user = await db.users.find_one({"email": email, "active": True}, {"_id": 0})
+    if not user:
+        # Account storici salvati con maiuscole ("Mario@...") non trovavano mai il login.
+        user = await db.users.find_one(
+            {"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}, "active": True}, {"_id": 0}
+        )
     if not user:
         raise HTTPException(status_code=401, detail="Credenziali non valide")
 

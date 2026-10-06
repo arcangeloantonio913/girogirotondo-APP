@@ -1,4 +1,5 @@
 """Users router — CRUD + iscrizione bambino — multi-tenant."""
+import re
 import uuid
 import asyncio
 import logging
@@ -18,6 +19,13 @@ from services.email_service import (
 )
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+async def _find_user_by_email(db, email: str):
+    """Lookup case-insensitive: in DB ci sono email storiche salvate con maiuscole."""
+    if not email:
+        return None
+    return await db.users.find_one({"email": {"$regex": f"^{re.escape(email.strip())}$", "$options": "i"}})
 
 
 def _require_admin(current_user: dict):
@@ -192,7 +200,7 @@ async def create_user(
     sede_id = await validate_admin_sede_access(current_user, x_sede_id)
     db = get_db()
 
-    existing = await db.users.find_one({"email": payload.email})
+    existing = await _find_user_by_email(db, payload.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email già in uso")
 
@@ -336,12 +344,29 @@ async def iscrizione_bambino(
 
     # Valida l'email del genitore PRIMA di creare lo studente: se è di un account staff
     # (non genitore) rifiuta subito — altrimenti resterebbe uno STUDENTE ORFANO in DB.
-    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+    existing_parent = await _find_user_by_email(db, payload.genitore_email)
     if existing_parent and existing_parent.get("role") != "parent":
         raise HTTPException(
             status_code=400,
             detail="Email già in uso da un account staff. Usare un'email diversa per il genitore."
         )
+
+    # Bambino GIÀ iscritto nella sede (stesso nome+cognome) → stop. Un'iscrizione ripetuta
+    # (doppio tap, re-import, email digitata diversamente) creava un bambino doppione e un
+    # NUOVO account genitore con email di credenziali partita per sbaglio.
+    if not payload.consenti_omonimo:
+        def _ci(v: str) -> dict:
+            return {"$regex": f"^{re.escape(v.strip())}$", "$options": "i"}
+        dup = await db.students.find_one(
+            {"sede_id": sede_id, "name": _ci(payload.bambino_nome), "cognome": _ci(payload.bambino_cognome)},
+            {"_id": 0, "id": 1},
+        )
+        if dup:
+            raise HTTPException(
+                status_code=409,
+                detail=(f"{payload.bambino_nome} {payload.bambino_cognome} risulta già iscritto/a in questa sede. "
+                        "Per aggiungere un genitore usa 'Secondo genitore' dalla scheda del bambino."),
+            )
 
     # 1. Crea il record studente
     student_id = str(uuid.uuid4())
@@ -365,7 +390,7 @@ async def iscrizione_bambino(
     if existing_parent:
         sibling_mode = True
         await db.users.update_one(
-            {"email": payload.genitore_email},
+            {"id": existing_parent["id"]},
             {
                 "$addToSet": {"child_ids": student_id},
                 "$set":      {"child_id": student_id},  # aggiorna anche il legacy field
@@ -373,7 +398,7 @@ async def iscrizione_bambino(
         )
         # Ricarica il parent aggiornato
         parent = await db.users.find_one(
-            {"email": payload.genitore_email}, {"_id": 0, "password": 0, "admin_password": 0}
+            {"id": existing_parent["id"]}, {"_id": 0, "password": 0, "admin_password": 0}
         )
     else:
         # 2b. Nessun account esistente → crea account genitore nuovo
@@ -457,19 +482,19 @@ async def aggiungi_secondo_genitore(
         raise HTTPException(status_code=404, detail="Bambino non trovato")
 
     password_plain = payload.genitore_password or _generate_password()
-    existing_parent = await db.users.find_one({"email": payload.genitore_email})
+    existing_parent = await _find_user_by_email(db, payload.genitore_email)
 
     if existing_parent and existing_parent.get("role") == "parent":
         # Aggiungi bambino al genitore esistente
         await db.users.update_one(
-            {"email": payload.genitore_email},
+            {"id": existing_parent["id"]},
             {
                 "$addToSet": {"child_ids": payload.student_id},
                 "$set":      {"child_id": payload.student_id},
             }
         )
         parent = await db.users.find_one(
-            {"email": payload.genitore_email}, {"_id": 0, "password": 0, "admin_password": 0}
+            {"id": existing_parent["id"]}, {"_id": 0, "password": 0, "admin_password": 0}
         )
         email_inviata = False
         created = False
@@ -502,8 +527,8 @@ async def aggiungi_secondo_genitore(
         await db.users.insert_one(parent_doc)
         parent = {k: v for k, v in parent_doc.items() if k not in ("_id", "password", "admin_password")}
 
-        # Invia email con credenziali — sincrona
-        email_inviata = await send_credentials_email(
+        # Invia email con credenziali — sincrona (skip_email era accettato ma ignorato)
+        email_inviata = False if payload.skip_email else await send_credentials_email(
             payload.genitore_email,
             student.get("name", ""),
             student.get("cognome", ""),

@@ -9,6 +9,14 @@ class Role(str, Enum):
     parent = "parent"
 
 
+def _norm_email(v):
+    """Email in forma canonica (minuscolo, senza spazi): il login confronta in minuscolo,
+    quindi "Mario.Rossi@..." e "mario.rossi@..." sono la STESSA persona. Senza questo,
+    un'iscrizione con maiuscole diverse non trovava il genitore esistente → account
+    duplicato (inutilizzabile) + email di credenziali partita per sbaglio."""
+    return v.strip().lower() if isinstance(v, str) else v
+
+
 def _require_non_empty(v: str) -> str:
     """Reject missing/blank required strings (prevents garbage records, G-data)."""
     if v is None or not str(v).strip():
@@ -48,6 +56,11 @@ class UserCreate(BaseModel):
     @classmethod
     def _v_name(cls, v):
         return _require_non_empty(v)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _v_email(cls, v):
+        return _norm_email(v)
     sede_id: Optional[str] = None              # sede di appartenenza
     class_id: Optional[str] = None
     class_ids: Optional[List[str]] = None
@@ -78,6 +91,11 @@ class SecondoGenitoreCreate(BaseModel):
     genitore_password: Optional[str] = None
     skip_email: bool = False              # True = non invia email di benvenuto
 
+    @field_validator("genitore_email", mode="before")
+    @classmethod
+    def _v_email(cls, v):
+        return _norm_email(v)
+
 
 class IscrizioneCreate(BaseModel):
     """Iscrizione bambino: crea studente + genitore in un solo step."""
@@ -90,8 +108,14 @@ class IscrizioneCreate(BaseModel):
     genitore_nome: Optional[str] = None
     genitore_password: Optional[str] = None
     skip_email: bool = False              # True = non invia email di benvenuto
+    consenti_omonimo: bool = False        # True = iscrive anche se esiste già un bambino omonimo nella sede
 
     @field_validator("bambino_nome", "bambino_cognome", "class_id", "sede_id")
     @classmethod
     def _v_required(cls, v):
         return _require_non_empty(v)
+
+    @field_validator("genitore_email", mode="before")
+    @classmethod
+    def _v_email(cls, v):
+        return _norm_email(v)

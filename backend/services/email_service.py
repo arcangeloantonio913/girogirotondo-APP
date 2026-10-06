@@ -77,7 +77,7 @@ def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
     errore esplicito. MAI sostituirlo con un mittente generico (fallirebbe 403
     silenzioso) né con un valore di un altro tenant.
     """
-    fn = fe = se = pu = ios = android = None
+    fn = fe = se = pu = ios = android = bc = None
     if org_doc:
         fn = org_doc.get("from_name") or None
         fe = org_doc.get("from_email") or None
@@ -85,6 +85,7 @@ def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
         pu = org_doc.get("portal_url") or None
         ios = org_doc.get("ios_app_url") or None
         android = org_doc.get("android_app_url") or None
+        bc = org_doc.get("brand_color") or None   # colore brand dell'org (es. arancio DB); override del colore sede nelle email
 
     if not fe:
         logger.error(
@@ -104,6 +105,7 @@ def _org_identity(org_doc: dict | None, org_id: str | None) -> dict:
         "ios_app_url":   ios or _DEFAULT_IOS_APP_URL.get(org_id or "", ""),
         # Android → app web finché l'app Google Play non è pronta
         "android_app_url": android or pu or "",
+        "brand_color":   bc,               # None ⇒ si usa il colore della sede
     }
 
 
@@ -916,65 +918,79 @@ async def send_app_links_notice_email(
     school_name, brand_color, ident = await _resolve_email_context(sede_id, org_id)
     if not _sender_ready(ident):
         return False
-    links_html = _app_links_html(ident, brand_color)
+    brand = ident.get("brand_color") or brand_color   # colore brand org (arancio DB) o colore sede
+    links_html = _app_links_html(ident, brand)
     if not links_html:
         logger.warning("[EMAIL] avviso app NON inviato a %s: org %r senza link app", to_email, org_id)
         return False
     brand_header, _ = _brand_parts(school_name)
+    tint = _tint(brand)
+    support = ident["support_email"]
     saluto = f"Gentile {user_name}" if user_name else "Gentile famiglia"
 
-    subject = f"{brand_header} — Scarica l'app: scegli il pulsante per il tuo telefono"
+    subject = f"{brand_header} — Accedi all'app: istruzioni per entrare"
     plain = (
         f"{saluto},\n\n"
-        f"vi inviamo i link per usare il portale {brand_header} dal telefono.\n"
-        f"Cliccate SOLO il pulsante del vostro dispositivo:\n\n"
+        f"questa email è SOLO per chi non è ancora riuscito ad accedere all'app {brand_header}.\n"
+        f"Se siete già entrati e la usate, potete tranquillamente ignorarla.\n\n"
+        f"Come entrare, passo per passo:\n"
+        f"  1. Toccate il link del vostro telefono (iPhone oppure Android) e installate l'app.\n"
+        f"  2. Aprite l'app {brand_header}.\n"
+        f"  3. Accedete con l'email e la password che avete già ricevuto nella mail precedente.\n"
+        f"  4. Fatto: troverete avvisi, presenze, menù, diario e foto del vostro bambino.\n\n"
         f"{_app_links_text(ident)}"
-        f"Per entrare usate l'email e la password che avete già ricevuto.\n\n"
-        f"Se riuscite già ad accedere all'app, potete ignorare questa email.\n"
-        f"Se invece avete avuto problemi ad accedere, seguite le istruzioni qui sopra: toccate il\n"
-        f"pulsante giusto per il vostro telefono (iPhone oppure Android), installate l'app ed entrate\n"
-        f"con l'email e la password che avete già ricevuto.\n\n"
-        f"Per assistenza: {ident['support_email']}\n\n{school_name}"
+        f"Non trovate più la password? Scrivete a {support} e ve la reinviamo.\n\n"
+        f"{school_name}"
     )
     html = f"""<!DOCTYPE html>
-<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+<html lang="it"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FFF6EC;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
     <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0"
-             style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+      <table width="540" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,0.10);">
         <tr>
-          <td align="center" style="background:{brand_color};padding:28px 32px 24px;">
-            <h1 style="margin:0;font-size:26px;color:white;font-weight:900;">&#127897; {brand_header}</h1>
-            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">Scarica l'app</p>
+          <td align="center" style="background:{brand};padding:30px 32px 26px;">
+            <h1 style="margin:0;font-size:27px;color:#ffffff;font-weight:900;">{brand_header}</h1>
+            <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.9);font-weight:700;">Accedi all'app della scuola</p>
           </td>
         </tr>
         <tr>
-          <td style="padding:32px 32px 0;">
-            <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:700;">{saluto}! 👋</p>
-            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.75;">
-              vi inviamo i link per usare il portale <strong>{brand_header}</strong> dal telefono.<br>
-              <strong>Cliccate solo il pulsante del vostro dispositivo</strong>: iPhone oppure Android.
-            </p>
-{links_html}
-            <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.75;">
-              🔑 Per entrare usate <strong>l'email e la password che avete già ricevuto</strong>.
-            </p>
+          <td style="padding:30px 32px 0;">
+
             <table width="100%" cellpadding="0" cellspacing="0"
-                   style="background:{_tint(brand_color)};border-radius:12px;padding:14px 16px;margin-bottom:24px;">
-              <tr><td style="font-size:13px;color:#1A202C;line-height:1.7;">
-                ✅ <strong>Riuscite già ad accedere all'app?</strong> Potete tranquillamente ignorare questa email.<br><br>
-                ⚠️ <strong>Avete avuto problemi ad accedere?</strong> Seguite le istruzioni qui sopra: toccate il
-                <strong>pulsante giusto per il vostro telefono</strong> (iPhone oppure Android), installate l'app
-                ed entrate con l'email e la password che avete già ricevuto.
+                   style="background:{tint};border-radius:12px;padding:14px 16px;margin-bottom:22px;">
+              <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
+                &#8505;&#65039; <strong>Questa email è solo per chi non è ancora riuscito ad accedere all'app.</strong><br>
+                Se siete <strong>già entrati</strong> e la usate, potete tranquillamente <strong>ignorarla</strong>.
               </td></tr>
             </table>
+
+            <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:800;">{saluto},</p>
+            <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.75;">
+              ecco come entrare nell'app <strong>{brand_header}</strong> dal telefono, passo per passo.
+            </p>
+
+            <p style="margin:0 0 12px;font-size:14px;color:#1A202C;font-weight:800;">&#128242; Come entrare</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
+              <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>1.</strong> Toccate il pulsante del <strong>vostro</strong> telefono qui sotto (iPhone <em>oppure</em> Android).</td></tr>
+              <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>2.</strong> Nello store premete <strong>Installa</strong> e aspettate il download.</td></tr>
+              <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>3.</strong> Aprite l'app <strong>{brand_header}</strong>.</td></tr>
+              <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>4.</strong> Accedete con l'<strong>email</strong> e la <strong>password</strong> che avete <strong>già ricevuto</strong> nella mail precedente.</td></tr>
+              <tr><td style="font-size:14px;color:#444;line-height:1.7;"><strong>5.</strong> Fatto! Troverete avvisi, presenze, menù, diario e foto del vostro bambino.</td></tr>
+            </table>
+{links_html}
+            <p style="margin:2px 0 22px;font-size:13px;color:#777;line-height:1.7;text-align:center;">
+              Non trovate più la password? Scrivete a
+              <a href="mailto:{support}" style="color:{brand};font-weight:700;">{support}</a> e ve la reinviamo.
+            </p>
           </td>
         </tr>
         <tr>
-          <td style="padding:16px 32px 24px;background:#FAFAFA;text-align:center;">
-            <p style="margin:0;font-size:11px;color:#9CA3AF;">
+          <td style="padding:16px 32px 24px;background:#FFF6EC;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#B08A63;">
               &copy; {year} {school_name} &nbsp;|&nbsp;
-              <a href="mailto:{ident['support_email']}" style="color:{brand_color};">{ident['support_email']}</a>
+              <a href="mailto:{support}" style="color:{brand};">{support}</a>
             </p>
           </td>
         </tr>

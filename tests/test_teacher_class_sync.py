@@ -53,3 +53,21 @@ async def test_auth_me_exposes_effective_class_ids(client, drifted_teacher):
 async def test_teacher_does_not_gain_unrelated_classes(client, drifted_teacher):
     r = await client.get("/api/classes", headers=drifted_teacher)
     assert "ggt-class-1" not in [c["id"] for c in r.json()]
+
+
+@pytest.mark.asyncio
+async def test_teacher_without_sede_gets_sede_from_assigned_class(client):
+    db = get_db()
+    tid, cid = "teacher-nosede-id", "ggt-class-nosede"
+    await db.users.insert_one({"id": tid, "role": "teacher", "org_id": ORG1, "class_ids": [cid],
+                               "active": True, "email": "nosede@ggt.it"})
+    await db.classes.insert_one({"id": cid, "name": "Tigrotti", "sede_id": SEDE_GGT, "teacher_id": tid})
+    try:
+        h = _headers(tid, "teacher")
+        me = await client.get("/api/auth/me", headers=h)
+        assert me.json()["sede_id"] == SEDE_GGT
+        assert (await client.get("/api/meals", headers=h)).status_code == 200
+        assert (await client.get("/api/students", headers=h)).status_code == 200
+    finally:
+        await db.users.delete_one({"id": tid})
+        await db.classes.delete_one({"id": cid})

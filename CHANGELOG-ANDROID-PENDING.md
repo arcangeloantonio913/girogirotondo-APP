@@ -10,6 +10,8 @@
 
 ## Da portare su Android (OTA e/o nuovo build) dopo l'OK Google
 
+- [ ] **Maestre: classi/menu sempre aggiornati** — `mobile/src/lib/AuthContext.tsx` riallinea il profilo dal backend all'avvio e al ritorno in primo piano (prima restava quello del login → maestre associate dopo non vedevano classi/menu). JS → via OTA Android.
+
 - [ ] **Push notifications native** — plugin `expo-notifications` + `getExpoPushTokenAsync(projectId)` + versione 1.0.3 (commit 1f08038). Android richiede inoltre **FCM** (`google-services.json` + chiave FCM v1 su EAS) + nuovo build Android.
 - [ ] **Griglia ↔ Mensa coerenti** — 6 categorie identiche al menù (Merenda mattina/Primo/Secondo/Contorno/Frutta/Merenda pomeriggio) nelle schermate mobile maestra + genitore + dashboard (commit f1da35c). JS → via OTA Android.
 - [ ] **Galleria Direzione (tutte le classi)** — nuova schermata `mobile/src/screens/admin/GalleryScreen.tsx` (vista di TUTTE le foto di TUTTE le classi, filtro per classe + "Tutte", download) + voce menu admin + rotta AdminNavigator. JS → via OTA Android. (Web già fatto: AdminGallery con "Tutte le classi" + paginazione.)

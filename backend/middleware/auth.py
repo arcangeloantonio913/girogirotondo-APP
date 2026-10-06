@@ -68,6 +68,14 @@ async def with_teacher_classes(db, user: dict) -> dict:
     user["class_ids"] = ids
     if ids and not user.get("class_id"):
         user["class_id"] = ids[0]
+    # Profilo senza sede (dati importati): get_teacher_sede_id rispondeva 403 su menu,
+    # bambini, presenze… → la maestra "non vedeva niente". La sede si ricava dalle classi
+    # che la direzione le ha assegnato (solo se UNIVOCA: niente scelta arbitraria).
+    if not user.get("sede_id") and ids:
+        cls = await db.classes.find({"id": {"$in": ids}}, {"_id": 0, "sede_id": 1}).to_list(100)
+        sedi = {c["sede_id"] for c in cls if c.get("sede_id")}
+        if len(sedi) == 1:
+            user["sede_id"] = sedi.pop()
     return user
 
 

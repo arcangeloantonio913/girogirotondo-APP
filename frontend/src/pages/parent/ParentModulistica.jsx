@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import api from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { FileText, CheckCircle2, Circle, Shield, Download } from 'lucide-react';
+import { FileText, CheckCircle2, Circle, Shield, Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function ParentModulistica() {
@@ -37,6 +37,7 @@ export default function ParentModulistica() {
   const isAcknowledged = (docId) => receipts.some(r => r.document_id === docId);
 
   const [downloadingId, setDownloadingId] = useState(null);
+  const [previewingId, setPreviewingId] = useState(null);
 
   // Scarica il file. PERF: la lista NON porta più il base64 (troppo pesante), quindi il
   // file vero si recupera on-demand con GET /documents/{id} solo al momento del download.
@@ -67,6 +68,40 @@ export default function ParentModulistica() {
     } else {
       // URL remoto (Firebase Storage, ecc.) → apri in nuova scheda
       window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Anteprima: apre il documento in una nuova scheda (il browser mostra PDF/immagini
+  // inline). Per i data: URL base64 passa da un Blob URL (la navigazione diretta a data:
+  // è bloccata da molti browser per i file grandi).
+  const handlePreview = async (doc) => {
+    setDownloadError('');
+    let fileUrl = doc.file_url;
+    if (!fileUrl) {
+      try {
+        setPreviewingId(doc.id);
+        const res = await api.get(`/documents/${doc.id}`);
+        fileUrl = res.data?.file_url;
+      } catch (e) {
+        console.error(e);
+        setDownloadError('Impossibile aprire l\'anteprima. Riprova.');
+      } finally {
+        setPreviewingId(null);
+      }
+    }
+    if (!fileUrl) { setDownloadError('Impossibile aprire l\'anteprima. Riprova.'); return; }
+    try {
+      if (fileUrl.startsWith('data:')) {
+        const blob = await (await fetch(fileUrl)).blob();
+        const u = URL.createObjectURL(blob);
+        window.open(u, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(u), 60000);
+      } else {
+        window.open(fileUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (e) {
+      console.error(e);
+      setDownloadError('Impossibile aprire l\'anteprima. Riprova.');
     }
   };
 
@@ -144,15 +179,26 @@ export default function ParentModulistica() {
                   {/* Pulsante download — se il documento ha un file (has_file: la lista non
                       porta più il base64, quindi ci si basa sul flag; file_url per retro-compat) */}
                   {(doc.has_file || doc.file_url) && (
-                    <button
-                      data-testid={`document-download-${doc.id}`}
-                      onClick={() => handleDownload(doc)}
-                      disabled={downloadingId === doc.id}
-                      title="Scarica documento"
-                      className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-blue-50 transition-colors disabled:opacity-50"
-                      style={{ color: C.primary }}>
-                      <Download className="w-4.5 h-4.5" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        data-testid={`document-preview-${doc.id}`}
+                        onClick={() => handlePreview(doc)}
+                        disabled={previewingId === doc.id}
+                        title="Anteprima documento"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
+                        style={{ color: C.primary }}>
+                        <Eye className="w-4.5 h-4.5" />
+                      </button>
+                      <button
+                        data-testid={`document-download-${doc.id}`}
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        title="Scarica documento"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-50"
+                        style={{ color: C.primary }}>
+                        <Download className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
 

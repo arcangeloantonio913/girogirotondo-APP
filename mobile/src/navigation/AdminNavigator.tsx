@@ -12,6 +12,7 @@ import AdminAvvisi        from '../screens/admin/AvvisiScreen';
 import AdminProfile       from '../screens/admin/ProfileScreen';
 import AdminModulistica   from '../screens/admin/ModulisticaScreen';
 import AdminAppuntamenti  from '../screens/admin/AppuntamentiScreen';
+import AdminGallery       from '../screens/admin/GalleryScreen';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -52,6 +53,7 @@ export default function AdminNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown:false }}>
       <Stack.Screen name="AdminTabs"      component={AdminTabs}/>
+      <Stack.Screen name="Galleria"       component={AdminGallery}/>
       <Stack.Screen name="Mensa"          component={AdminMensa}/>
       <Stack.Screen name="Modulistica"    component={AdminModulistica}/>
       <Stack.Screen name="Appuntamenti"   component={AdminAppuntamenti}/>

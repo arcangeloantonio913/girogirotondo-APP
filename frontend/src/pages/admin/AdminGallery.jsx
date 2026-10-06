@@ -12,35 +12,49 @@ import { Image as ImageIcon, Trash2, X, Check } from 'lucide-react';
  */
 export default function AdminGallery() {
   const { sede } = useAuth();
+  const PAGE = 48;
   const [classes, setClasses] = useState([]);
-  const [classId, setClassId] = useState('');
+  const [classId, setClassId] = useState('all');   // 'all' = TUTTE le classi (default direzione)
   const [items, setItems] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [confirmId, setConfirmId] = useState(null);   // foto in attesa di conferma eliminazione
   const [deletingId, setDeletingId] = useState(null);
 
   // Carica le classi della sede attiva (la dirigente cambia sede dallo switcher in alto)
   useEffect(() => {
-    setLoading(true);
     api.get('/classes')
       .then(r => {
         const cs = r.data || [];
         setClasses(cs);
-        setClassId(prev => (cs.some(c => c.id === prev) ? prev : (cs[0]?.id || '')));
+        setClassId(prev => (prev === 'all' || cs.some(c => c.id === prev)) ? prev : 'all');
       })
-      .catch(() => setError('Impossibile caricare le classi.'))
-      .finally(() => setLoading(false));
+      .catch(() => setError('Impossibile caricare le classi.'));
   }, [sede]);
 
-  // Carica le foto della classe selezionata
-  useEffect(() => {
-    if (!classId) { setItems([]); return; }
+  // Carica le foto: 'all' = TUTTE le classi accessibili (il backend scopa per sede/org della
+  // direzione — per una superadmin: tutte le sedi dell'org); altrimenti la singola classe.
+  const loadPhotos = (reset) => {
+    const off = reset ? 0 : offset;
+    const q = classId === 'all'
+      ? `/gallery?limit=${PAGE}&offset=${off}`
+      : `/gallery?class_id=${classId}&limit=${PAGE}&offset=${off}`;
     setError('');
-    api.get(`/gallery?class_id=${classId}&limit=50&offset=0`)
-      .then(r => setItems(r.data || []))
-      .catch(() => setError('Impossibile caricare le foto.'));
-  }, [classId]);
+    reset ? setLoading(true) : setLoadingMore(true);
+    api.get(q)
+      .then(r => {
+        const data = r.data || [];
+        setItems(prev => reset ? data : [...prev, ...data]);
+        setOffset(off + data.length);
+        setHasMore(data.length === PAGE);
+      })
+      .catch(() => setError('Impossibile caricare le foto.'))
+      .finally(() => { setLoading(false); setLoadingMore(false); });
+  };
+  useEffect(() => { loadPhotos(true); /* eslint-disable-next-line */ }, [classId, sede]);
 
   const handleDelete = async (id) => {
     setDeletingId(id);
@@ -65,25 +79,23 @@ export default function AdminGallery() {
           </span>
           <div>
             <h1 className="text-lg font-bold" style={{ fontFamily: 'Nunito', color: '#1A202C' }}>Galleria foto</h1>
-            <p className="text-xs text-gray-500">Rivedi ed elimina le foto pubblicate per ogni sezione.</p>
+            <p className="text-xs text-gray-500">Tutte le foto di tutte le classi. Rivedi ed elimina.</p>
           </div>
         </div>
 
-        {/* Selettore classe */}
-        {classes.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap" data-testid="admin-gallery-classes">
-            {classes.map(c => {
-              const active = c.id === classId;
-              return (
-                <button key={c.id} onClick={() => setClassId(c.id)} data-testid={`gallery-class-${c.id}`}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
-                  style={active ? { backgroundColor: C.accentPink, borderColor: 'transparent', color: '#fff' } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
-                  {c.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* Selettore classe — "Tutte le classi" + ogni sezione */}
+        <div className="flex gap-1.5 flex-wrap" data-testid="admin-gallery-classes">
+          {[{ id: 'all', name: '🏫 Tutte le classi' }, ...classes].map(c => {
+            const active = c.id === classId;
+            return (
+              <button key={c.id} onClick={() => setClassId(c.id)} data-testid={`gallery-class-${c.id}`}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                style={active ? { backgroundColor: C.accentPink, borderColor: 'transparent', color: '#fff' } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
 
         {error && <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2" data-testid="admin-gallery-error">{error}</p>}
 
@@ -92,9 +104,10 @@ export default function AdminGallery() {
         ) : items.length === 0 ? (
           <div className="p-8 text-center">
             <ImageIcon className="w-10 h-10 mx-auto text-gray-200 mb-2" />
-            <p className="text-sm text-gray-400">Nessuna foto in questa sezione</p>
+            <p className="text-sm text-gray-400">Nessuna foto</p>
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-3 gap-2" data-testid="admin-gallery-grid">
             {items.map(item => (
               <div key={item.id} className="aspect-square rounded-xl overflow-hidden relative bg-gray-100" data-testid={`gallery-item-${item.id}`}>
@@ -126,6 +139,15 @@ export default function AdminGallery() {
               </div>
             ))}
           </div>
+          {hasMore && (
+            <button onClick={() => loadPhotos(false)} disabled={loadingMore}
+              data-testid="admin-gallery-more"
+              className="w-full mt-3 py-2.5 rounded-xl text-sm font-bold border"
+              style={{ borderColor: '#E5E7EB', color: '#6B7280' }}>
+              {loadingMore ? 'Caricamento…' : 'Carica altre foto'}
+            </button>
+          )}
+          </>
         )}
       </div>
     </AppLayout>

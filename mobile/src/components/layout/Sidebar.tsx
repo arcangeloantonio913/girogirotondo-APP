@@ -46,6 +46,7 @@ const NAV: Record<string, { icon: string; label: string; screen: string; isTab: 
     { icon: 'people-outline',         label: 'Gestione Utenti', screen: 'Utenti',        isTab: true  },
     { icon: 'book-outline',           label: 'Gestione Classi', screen: 'Classi',        isTab: true  },
     { icon: 'megaphone-outline',      label: 'Avvisi',          screen: 'Avvisi',        isTab: true  },
+    { icon: 'images-outline',         label: 'Galleria Foto',   screen: 'Galleria',      isTab: false },
     { icon: 'calendar-outline',       label: 'Appuntamenti',    screen: 'Appuntamenti',  isTab: false },
     { icon: 'restaurant-outline',     label: 'Menu Mensa',      screen: 'Mensa',         isTab: false },
     { icon: 'document-text-outline',  label: 'Modulistica',     screen: 'Modulistica',   isTab: false },

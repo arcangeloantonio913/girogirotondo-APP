@@ -46,6 +46,31 @@ def _decode_custom_jwt(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Token non valido")
 
 
+async def with_teacher_classes(db, user: dict) -> dict:
+    """Maestra: class_ids = class_ids del profilo ∪ classi con classes.teacher_id = lei.
+
+    L'associazione maestra↔classe vive in DUE posti (users.class_ids e classes.teacher_id)
+    e possono disallinearsi (script di import/ripristino, assegnazione da "Classi" vs
+    "Utenti"). La direzione vede la maestra associata in "Classi" (teacher_id) ma, se
+    class_ids era vuoto, la maestra non vedeva né classi né bambini. Unione = fonte unica
+    per TUTTI i router (scope via current_user/get_tenant_context) e per /auth/me.
+    """
+    if not user or user.get("role") != "teacher" or not user.get("id"):
+        return user
+    ids = list(user.get("class_ids") or [])
+    legacy = user.get("class_id")
+    if legacy and legacy not in ids:
+        ids.append(legacy)
+    owned = await db.classes.find({"teacher_id": user["id"]}, {"_id": 0, "id": 1}).to_list(100)
+    for c in owned:
+        if c.get("id") and c["id"] not in ids:
+            ids.append(c["id"])
+    user["class_ids"] = ids
+    if ids and not user.get("class_id"):
+        user["class_id"] = ids[0]
+    return user
+
+
 async def get_current_user(authorization: Optional[str] = Header(None)):
     """FastAPI dependency that returns the authenticated MongoDB user dict."""
     if not authorization or not authorization.startswith("Bearer "):
@@ -68,7 +93,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
                     status_code=401,
                     detail="Profilo utente non trovato. Registrarsi prima con /api/auth/register.",
                 )
-            return user
+            return await with_teacher_classes(db, user)
         except HTTPException:
             raise
         except Exception as exc:
@@ -82,7 +107,7 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             {"_id": 0, "password": 0, "admin_password": 0},
         )
         if user:
-            return user
+            return await with_teacher_classes(db, user)
 
     raise HTTPException(status_code=401, detail="Token non valido o Firebase non configurato")
 

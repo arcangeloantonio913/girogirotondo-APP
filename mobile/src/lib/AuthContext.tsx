@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -230,23 +231,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Profilo AUTORITATIVO dal backend (MongoDB): classi, sede e funzioni_disabilitate le
+  // gestisce la direzione lì. Prima si leggeva Firestore (snapshot mai aggiornato dal
+  // backend) e il refresh non partiva mai per le maestre → dopo l'associazione a una
+  // classe la maestra continuava a non vedere classi e voci di menu. Firestore = fallback.
   const refreshUser = async () => {
     try {
+      const hasJwt = await SecureStore.getItemAsync('ggt_token');
+      if (!auth.currentUser && !hasJwt) return;
+      let fresh: User | null = null;
+      try {
+        const res = await api.get('/auth/me');
+        if (res.data?.role) fresh = auth.currentUser ? { uid: auth.currentUser.uid, ...res.data } : res.data;
+      } catch {}
       const fbUser = auth.currentUser;
-      if (fbUser) {
+      if (!fresh && fbUser) {
         const snap = await getDoc(doc(firestoreDb, 'users', fbUser.uid));
-        if (snap.exists()) {
-          const fresh = { uid: fbUser.uid, email: fbUser.email || '', ...snap.data(), role: snap.data().role } as User;
-          await SecureStore.setItemAsync('ggt_user', JSON.stringify(fresh));
-          setUser(fresh); return;
-        }
+        if (snap.exists()) fresh = { uid: fbUser.uid, email: fbUser.email || '', ...snap.data(), role: snap.data().role } as User;
       }
-      const res = await api.get('/auth/me');
-      const fresh: User = res.data;
-      await SecureStore.setItemAsync('ggt_user', JSON.stringify(fresh));
-      setUser(fresh);
+      if (!fresh) return;
+      await saveUser(fresh, setSede);
+      setUser(prev => (JSON.stringify(prev) === JSON.stringify(fresh) ? prev : fresh));
     } catch {}
   };
+
+  // Riallinea il profilo all'avvio (sessione salvata) e ad ogni ritorno in primo piano
+  // (throttle 60s), come il web: niente più logout/login per vedere le nuove assegnazioni.
+  const lastRefreshRef = useRef(0);
+  useEffect(() => {
+    if (loading || !user) return;
+    const run = () => {
+      const now = Date.now();
+      if (now - lastRefreshRef.current < 60_000) return;
+      lastRefreshRef.current = now;
+      refreshUser();
+    };
+    run();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') run(); });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, !!user]);
 
   const updateSede = async (s: string) => {
     await SecureStore.setItemAsync('ggt_sede', s); setSede(s);

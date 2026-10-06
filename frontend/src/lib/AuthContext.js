@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebas
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import axios from 'axios';
+import api from './api';
 import { SEDI as TENANT_SEDI } from '@/config/tenant';
 
 // Import dinamico — evita crash se firebase/messaging non è disponibile
@@ -30,6 +31,17 @@ function buildUserFromProfile(fbUser, data) {
     ...data,
     role: data.role,
   };
+}
+
+// Profilo AUTORITATIVO dal backend (MongoDB): classi, sede, funzioni_disabilitate sono
+// gestite dalla direzione lì. Il profilo Firestore / la copia in localStorage sono solo
+// snapshot e possono essere stantii → la maestra non vedeva classi né voci di menu anche
+// dopo essere stata associata. `api` allega da sé il token (Firebase o JWT backend).
+async function fetchBackendProfile() {
+  const res = await api.get('/auth/me');
+  const fresh = res.data;
+  if (!fresh || !VALID_ROLES.includes(fresh.role)) throw new Error('INVALID_ROLE');
+  return auth.currentUser ? { uid: auth.currentUser.uid, ...fresh } : fresh;
 }
 
 async function loginWithBackend(email, password) {
@@ -101,7 +113,8 @@ export function AuthProvider({ children }) {
           setLoading(false);
           return;
         }
-        const userData = buildUserFromProfile(fbUser, data);
+        let userData = buildUserFromProfile(fbUser, data);
+        try { userData = await fetchBackendProfile(); } catch { /* fallback: Firestore */ }
         localStorage.setItem('ggt_user', JSON.stringify(userData));
         setUser(userData);
       } catch {
@@ -126,7 +139,8 @@ export function AuthProvider({ children }) {
         await signOut(auth);
         throw new Error('INVALID_ROLE');
       }
-      const userData = buildUserFromProfile(cred.user, data);
+      let userData = buildUserFromProfile(cred.user, data);
+      try { userData = await fetchBackendProfile(); } catch { /* fallback: Firestore */ }
       localStorage.setItem('ggt_user', JSON.stringify(userData));
       setUser(userData);
 
@@ -180,20 +194,22 @@ export function AuthProvider({ children }) {
 
   // ── refreshUser: aggiorna il profilo dal backend senza logout ────────────
   // Risolve il problema "devo scollegarmi per vedere i nuovi dati"
+  // Prima richiedeva ggt_token → le sessioni Firebase non si aggiornavano MAI.
   const refreshUser = async () => {
-    const token = localStorage.getItem('ggt_token');
-    if (!token) return;
+    if (!auth.currentUser && !localStorage.getItem('ggt_token')) return;
     try {
-      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || '';
-      const res = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const fresh = res.data;
+      const fresh = await fetchBackendProfile();
       localStorage.setItem('ggt_user', JSON.stringify(fresh));
       // Evita un re-render dell'intera app se il profilo non è cambiato (focus ripetuti).
       setUser(prev => (JSON.stringify(fresh) === JSON.stringify(prev) ? prev : fresh));
     } catch { /* ignora errori di rete — usa i dati esistenti */ }
   };
+
+  // Riallinea il profilo all'avvio: prima la sessione salvata (ggt_user) restava quella
+  // del login finché l'utente non cambiava tab → classi/menu assegnati dopo non comparivano.
+  useEffect(() => {
+    if (localStorage.getItem('ggt_token')) refreshUser();
+  }, []); // eslint-disable-line
 
   // Auto-refresh quando l'utente torna sulla tab/app (visibilitychange)
   // → i genitori non devono più fare logout/login per vedere dati aggiornati.

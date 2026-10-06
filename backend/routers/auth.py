@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends, Request
 
 from services.database import get_db
 from models.user import UserRegister
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, with_teacher_classes
 from middleware.rate_limiter import limiter
 from utils.firebase_client import get_auth, is_initialized
 from services.email_service import send_reset_password_email
@@ -132,6 +132,8 @@ async def login(request: Request, payload: dict):
     }
     token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     safe_user = {k: v for k, v in user.items() if k not in ("password", "admin_password")}
+    # Maestra: include anche le classi assegnate via classes.teacher_id (vedi middleware).
+    safe_user = await with_teacher_classes(db, safe_user)
     return {"token": token, "user": safe_user}
 
 

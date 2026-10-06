@@ -903,6 +903,86 @@ async def send_appointment_email(
                                 reply_to=ident["reply_to"])
 
 
+async def send_set_password_email(
+    to_email: str,
+    user_name: str,
+    token: str,
+    sede_id: str | None = None,
+    org_id: str | None = None,
+) -> bool:
+    """Onboarding: link PERSONALE per impostare la propria password ed entrare.
+    NESSUNA password nel testo. Richiede portal_url (destinazione del link)."""
+    year = datetime.now().year
+    school_name, brand_color, ident = await _resolve_email_context(sede_id, org_id)
+    if not _sender_ready(ident):
+        return False
+    if not ident["portal_url"]:
+        logger.error("[SETPW] Invio ANNULLATO: org %r senza portal_url (link non recapitabile)", ident.get("org_id"))
+        return False
+    brand = ident.get("brand_color") or brand_color
+    tint = _tint(brand)
+    brand_header, _ = _brand_parts(school_name)
+    support = ident["support_email"]
+    link = f"{ident['portal_url']}/reset-password?token={token}"
+    saluto = f"Gentile {user_name}" if user_name else "Gentile famiglia"
+    subject = f"{brand_header} — Imposta la tua password e accedi all'app"
+    plain = (
+        f"{saluto},\n\n"
+        f"per accedere all'app {brand_header} dovete impostare la vostra password.\n\n"
+        f"1. Aprite questo link personale:\n   {link}\n"
+        f"2. Scegliete una password a vostra scelta (minimo 6 caratteri).\n"
+        f"3. Accedete con la vostra email e la password appena scelta.\n\n"
+        f"Il link e' personale: non condividetelo. Se gia' entrate nell'app, ignorate questa email.\n"
+        f"Per assistenza: {support}\n\n{school_name}"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FFF6EC;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,0.10);">
+        <tr><td align="center" style="background:{brand};padding:30px 32px 26px;">
+          <h1 style="margin:0;font-size:27px;color:#ffffff;font-weight:900;">{brand_header}</h1>
+          <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.9);font-weight:700;">Imposta la tua password</p>
+        </td></tr>
+        <tr><td style="padding:30px 32px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:{tint};border-radius:12px;padding:14px 16px;margin-bottom:22px;">
+            <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
+              &#8505;&#65039; Se <strong>riuscite già ad accedere</strong> all'app, potete <strong>ignorare</strong> questa email.
+            </td></tr>
+          </table>
+          <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:800;">{saluto},</p>
+          <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.75;">
+            per accedere all'app <strong>{brand_header}</strong> impostate la vostra password in un minuto:
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>1.</strong> Toccate il pulsante qui sotto.</td></tr>
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>2.</strong> Scegliete una <strong>password a vostra scelta</strong> (minimo 6 caratteri).</td></tr>
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;"><strong>3.</strong> Accedete con la <strong>vostra email</strong> e la password scelta.</td></tr>
+          </table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;"><tr><td align="center">
+            <a href="{link}" style="display:inline-block;background:{brand};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:800;font-size:15px;">Imposta la mia password</a>
+          </td></tr></table>
+          <p style="margin:0 0 22px;font-size:12px;color:#999;line-height:1.6;text-align:center;">
+            Il link è personale: non condividetelo. Problemi? Scrivete a <a href="mailto:{support}" style="color:{brand};font-weight:700;">{support}</a>.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 32px 24px;background:#FFF6EC;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#B08A63;">&copy; {year} {school_name} &nbsp;|&nbsp; <a href="mailto:{support}" style="color:{brand};">{support}</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+    if await _send_via_resend(to_email, subject, html, plain,
+                              from_name=ident["from_name"], from_email=ident["from_email"],
+                              reply_to=ident["reply_to"]):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain,
+                                from_name=ident["from_name"], from_email=ident["from_email"],
+                                reply_to=ident["reply_to"])
+
+
 async def send_app_links_notice_email(
     to_email: str,
     user_name: str,

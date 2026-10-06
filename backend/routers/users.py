@@ -5,7 +5,8 @@ import logging
 import bcrypt
 import random
 import string
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends, Header, BackgroundTasks
@@ -15,6 +16,7 @@ from models.user import UserCreate, UserUpdate, IscrizioneCreate, SecondoGenitor
 from middleware.auth import get_current_user, validate_admin_sede_access, get_valid_sede_ids
 from services.email_service import (
     send_credentials_email, send_resend_credentials_email, send_app_links_notice_email,
+    send_set_password_email,
 )
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -725,6 +727,94 @@ async def notify_app_links(
         "already_sent": already,
         "sedi":         sede_ids,
         "message": (f"{len(recipients)} famiglie riceveranno l'email" if dry_run
+                    else f"Invio avviato a {len(recipients)} famiglie (circa {max(1, round(len(recipients) * 0.6 / 60))} min)"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/users/send-set-password  — link "imposta la tua password" (admin)
+# ---------------------------------------------------------------------------
+
+_SETPW_FIELD = "set_password_sent_at"
+
+
+async def _send_set_password_links(recipients: list[dict]):
+    """Per ogni genitore: genera un token (valido 30 giorni), lo salva in password_resets
+    (stesso schema di /auth/reset-password, keyed per email) e invia la mail col link
+    personale 'imposta la tua password'. Rate-limited. Marca set_password_sent_at."""
+    db = get_db()
+    sent = failed = 0
+    for u in recipients:
+        try:
+            token = secrets.token_urlsafe(32)
+            expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+            await db.password_resets.update_one(
+                {"email": u["email"]},
+                {"$set": {"token": token, "expires": expires, "used": False}},
+                upsert=True,
+            )
+            ok = await send_set_password_email(
+                u["email"], u.get("name", ""), token,
+                sede_id=u.get("sede_id"), org_id=u.get("org_id"),
+            )
+        except Exception as exc:
+            _logger.error("[SETPW] invio a %s fallito: %s", u.get("email"), exc)
+            ok = False
+        if ok:
+            sent += 1
+            await db.users.update_one(
+                {"id": u["id"]},
+                {"$set": {_SETPW_FIELD: datetime.now(timezone.utc).isoformat()}},
+            )
+        else:
+            failed += 1
+        await asyncio.sleep(0.6)
+    _logger.info("[SETPW] completato: %d inviate, %d fallite", sent, failed)
+
+
+@router.post("/send-set-password")
+async def send_set_password_links(
+    payload: dict,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+    x_sede_id: Optional[str] = Header(None),
+):
+    """Invia ai GENITORI attivi un link PERSONALE per impostare la propria password
+    (risolve i lockout da reset: ognuno sceglie la sua, nessuna password in chiaro).
+
+    Body: dry_run (default true), all_sedi (superadmin), include_already_sent (default false).
+    """
+    _require_admin(current_user)
+    sede_id = await validate_admin_sede_access(current_user, x_sede_id)
+    db = get_db()
+
+    if payload.get("all_sedi") and current_user.get("is_superadmin"):
+        sede_ids = list(await get_valid_sede_ids(db, current_user.get("org_id")))
+    else:
+        sede_ids = [sede_id]
+
+    query: dict = {"role": "parent", "active": True, "sede_id": {"$in": sede_ids},
+                   "email": {"$nin": [None, ""]}}
+    if not payload.get("include_already_sent"):
+        query[_SETPW_FIELD] = {"$exists": False}
+
+    recipients = await db.users.find(
+        query, {"_id": 0, "id": 1, "email": 1, "name": 1, "sede_id": 1, "org_id": 1}
+    ).to_list(5000)
+    already = await db.users.count_documents(
+        {"role": "parent", "active": True, "sede_id": {"$in": sede_ids}, _SETPW_FIELD: {"$exists": True}}
+    )
+
+    dry_run = payload.get("dry_run", True) is not False
+    if not dry_run and recipients:
+        background_tasks.add_task(_send_set_password_links, recipients)
+
+    return {
+        "dry_run":      dry_run,
+        "recipients":   len(recipients),
+        "already_sent": already,
+        "sedi":         sede_ids,
+        "message": (f"{len(recipients)} famiglie riceveranno il link imposta-password" if dry_run
                     else f"Invio avviato a {len(recipients)} famiglie (circa {max(1, round(len(recipients) * 0.6 / 60))} min)"),
     }
 

@@ -14,7 +14,14 @@
 - [ ] **Griglia ↔ Mensa coerenti** — 6 categorie identiche al menù (Merenda mattina/Primo/Secondo/Contorno/Frutta/Merenda pomeriggio) nelle schermate mobile maestra + genitore + dashboard (commit f1da35c). JS → via OTA Android.
 - [ ] **Galleria Direzione (tutte le classi)** — nuova schermata `mobile/src/screens/admin/GalleryScreen.tsx` (vista di TUTTE le foto di TUTTE le classi, filtro per classe + "Tutte", download) + voce menu admin + rotta AdminNavigator. JS → via OTA Android. (Web già fatto: AdminGallery con "Tutte le classi" + paginazione.)
 - [x] **Download foto** — già esistente su mobile (pulsante "Scarica" nel visore) e web ("Scarica foto"). Nessuna azione Android necessaria.
+- [ ] **Anteprima documento IN-APP** — oggi i documenti con URL firmato si aprono già in anteprima nel browser; per un'anteprima *dentro* l'app serve `expo-web-browser` (nuova dipendenza nativa → NON OTA). Da aggiungere al prossimo BUILD (iOS 1.0.4 + Android).
+- [ ] **Tocco notifica push → apre l'avviso** — manca `addNotificationResponseReceivedListener` (deep-link al tap). JS, ma utile solo con le push attive → aggiungere col prossimo build push. (iOS + Android)
 - [ ] (eventuali altre modifiche mobile successive: aggiungere qui)
+
+## ⚠️ Richiede un NUOVO BUILD NATIVO (non basta OTA) — iOS 1.0.4 + Android
+- Push: plugin già in 1.0.3 (iOS in review). Android: + FCM (google-services.json + chiave FCM su EAS).
+- Tocco notifica → deep-link all'avviso (listener JS, da includere nel build push).
+- Anteprima documento in-app (expo-web-browser).
 
 ## Già fatto lato iOS/Web in questa sessione (riferimento)
 - iOS: build 1.0.3 Giro+DB creati e submittati ad App Store Connect (in attesa versione in review).

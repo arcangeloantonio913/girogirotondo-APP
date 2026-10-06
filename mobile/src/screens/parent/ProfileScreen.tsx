@@ -15,8 +15,13 @@ export default function ParentProfile() {
   const [emailMsg, setEmailMsg]         = useState('');
   const [saving, setSaving]             = useState(false);
 
-  const sedePhone = sede === 'il-magico-mondo' ? '+39 081 000 0002' : '+39 081 000 0001';
-  const sedeEmail = sede === 'il-magico-mondo' ? 'info@ilmagicomondo.it' : 'info@girogirotondo.it';
+  // Contatti scuola REALI per sede/tenant (niente più placeholder 081 000 000x).
+  const _isDB = tenant.appName === 'Dimensione Bimbo';
+  const _PHONES: Record<string, string> = _isDB
+    ? { 'db-centrale': '091 424631', 'db-nido': '091 594416', 'db-micronido': '091 8435272', 'db-succursale': '091 485846' }
+    : { 'girogirotondo': '350 16 76 101', 'il-magico-mondo': '392 41 79 110' };
+  const sedePhone = _PHONES[sede] || (_isDB ? '091 424631' : '350 16 76 101');
+  const sedeEmail = _isDB ? 'info@dimensionebimbo.it' : 'scuolagirogirotondo@libero.it';
 
   const handleSaveEmail = async () => {
     if (!newEmail.trim() || newEmail === user?.email) { setEditingEmail(false); return; }

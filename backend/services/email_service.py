@@ -925,50 +925,59 @@ async def send_set_password_email(
     support = ident["support_email"]
     link = f"{ident['portal_url']}/reset-password?token={token}"
     saluto = f"Gentile {user_name}" if user_name else "Gentile famiglia"
-    subject = f"{brand_header} — Imposta la tua password e accedi all'app"
+    app_block = _app_links_html(ident, brand)
+    subject = f"{brand_header} è ufficiale! Attiva il tuo accesso"
     plain = (
         f"{saluto},\n\n"
-        f"per accedere all'app {brand_header} dovete impostare la vostra password.\n\n"
+        f"l'app {brand_header} e' ora ufficialmente disponibile su App Store e Google Play.\n"
+        f"Con l'ufficializzazione, per sicurezza ogni famiglia attiva il proprio accesso impostando una password personale.\n"
+        f"Il vostro account e' gia' pronto: dovete solo impostare la password.\n\n"
         f"1. Aprite questo link personale:\n   {link}\n"
-        f"2. Scegliete una password a vostra scelta (minimo 6 caratteri).\n"
-        f"3. Accedete con la vostra email e la password appena scelta.\n\n"
-        f"Il link e' personale: non condividetelo. Se gia' entrate nell'app, ignorate questa email.\n"
-        f"Per assistenza: {support}\n\n{school_name}"
+        f"2. Scegliete e SALVATE una password a vostra scelta (minimo 6 caratteri).\n"
+        f"3. Accedete all'app con la vostra email e la password scelta.\n\n"
+        f"{_app_links_text(ident)}"
+        f"Il link e' personale: non condividetelo. Per assistenza: {support}\n\n{school_name}"
     )
     html = f"""<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#FFF6EC;font-family:Arial,Helvetica,sans-serif;">
+<body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
     <tr><td align="center">
       <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,0.10);">
         <tr><td align="center" style="background:{brand};padding:30px 32px 26px;">
           <h1 style="margin:0;font-size:27px;color:#ffffff;font-weight:900;">{brand_header}</h1>
-          <p style="margin:8px 0 0;font-size:13px;color:rgba(255,255,255,0.9);font-weight:700;">Imposta la tua password</p>
+          <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.9);font-weight:700;">La tua app è ufficiale! 🎉</p>
         </td></tr>
         <tr><td style="padding:30px 32px 0;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:{tint};border-radius:12px;padding:14px 16px;margin-bottom:22px;">
-            <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
-              &#8505;&#65039; Se <strong>riuscite già ad accedere</strong> all'app, potete <strong>ignorare</strong> questa email.
-            </td></tr>
-          </table>
           <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:800;">{saluto},</p>
           <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.75;">
-            per accedere all'app <strong>{brand_header}</strong> impostate la vostra password in un minuto:
+            siamo felici di annunciarvi che l'app <strong>{brand_header}</strong> è ora <strong>ufficialmente disponibile</strong>
+            su App Store e Google Play. 🎉<br><br>
+            Con questo passaggio ufficiale, per garantire la massima <strong>sicurezza</strong>, ogni famiglia attiva il proprio
+            accesso impostando una <strong>password personale</strong>. Le comunicazioni ricevute nei giorni scorsi facevano parte
+            di questa fase di avvio: da adesso è tutto <strong>ufficiale e definitivo</strong>.
           </p>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
-            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>1.</strong> Toccate il pulsante qui sotto.</td></tr>
-            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>2.</strong> Scegliete una <strong>password a vostra scelta</strong> (minimo 6 caratteri).</td></tr>
-            <tr><td style="font-size:14px;color:#444;line-height:1.7;"><strong>3.</strong> Accedete con la <strong>vostra email</strong> e la password scelta.</td></tr>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:{tint};border-radius:12px;padding:14px 16px;margin-bottom:22px;">
+            <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
+              &#9989; <strong>Il vostro account è già pronto.</strong> Dovete solo impostare la password — bastano 30 secondi.
+            </td></tr>
           </table>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;"><tr><td align="center">
-            <a href="{link}" style="display:inline-block;background:{brand};color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:800;font-size:15px;">Imposta la mia password</a>
+          <p style="margin:0 0 12px;font-size:14px;color:#1A202C;font-weight:800;">🔑 Come attivare l'accesso</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>1.</strong> Toccate il pulsante «Imposta la mia password» qui sotto.</td></tr>
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;padding-bottom:6px;"><strong>2.</strong> Scegliete una <strong>password a vostra scelta</strong> e <strong>salvatela</strong>.</td></tr>
+            <tr><td style="font-size:14px;color:#444;line-height:1.7;"><strong>3.</strong> Accedete con la <strong>vostra email</strong> e la password appena scelta.</td></tr>
+          </table>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px;"><tr><td align="center">
+            <a href="{link}" style="display:inline-block;background:{brand};color:#ffffff;text-decoration:none;padding:15px 34px;border-radius:12px;font-weight:800;font-size:16px;">Imposta la mia password</a>
           </td></tr></table>
+{app_block}
           <p style="margin:0 0 22px;font-size:12px;color:#999;line-height:1.6;text-align:center;">
             Il link è personale: non condividetelo. Problemi? Scrivete a <a href="mailto:{support}" style="color:{brand};font-weight:700;">{support}</a>.
           </p>
         </td></tr>
-        <tr><td style="padding:16px 32px 24px;background:#FFF6EC;text-align:center;">
-          <p style="margin:0;font-size:11px;color:#B08A63;">&copy; {year} {school_name} &nbsp;|&nbsp; <a href="mailto:{support}" style="color:{brand};">{support}</a></p>
+        <tr><td style="padding:16px 32px 24px;background:#FFFDD0;text-align:center;">
+          <p style="margin:0;font-size:11px;color:#9A8C5A;">&copy; {year} {school_name} &nbsp;|&nbsp; <a href="mailto:{support}" style="color:{brand};">{support}</a></p>
         </td></tr>
       </table>
     </td></tr>

@@ -66,7 +66,8 @@ export default function AdminUsers() {
     // Secondo genitore (opzionale)
     genitore2_nome: '', genitore2_cognome: '', genitore2_email: '', genitore2_password: '',
     show_second_parent: false,
-    bambino2_nome: '', bambino2_cognome: '', bambino2_class_id: '',
+    // Figli aggiuntivi oltre al primo (famiglie con più bambini): lista dinamica.
+    extra_children: [] as { nome: string; cognome: string; class_id: string }[],
   });
   // Edit form
   const [editForm, setEdit] = useState({ name: '', cognome: '', email: '', password: '', class_id: '', funz_disabled: [] as string[] });
@@ -182,19 +183,26 @@ export default function AdminUsers() {
         }
       }
 
-      // Secondo bambino (opzionale) — la dedup del genitore avviene per email lato backend
-      if (iscForm.bambino2_nome && res.data.parent?.id && iscForm.bambino2_class_id) {
-        try {
-          await api.post('/users/iscrizione', {
-            bambino_nome: iscForm.bambino2_nome,
-            bambino_cognome: iscForm.bambino2_cognome || iscForm.bambino_cognome,
-            class_id: iscForm.bambino2_class_id,
-            genitore_email: iscForm.genitore_email,
-            genitore_nome: iscForm.genitore_nome,
-            sede_id: sede,
-          });
-        } catch (e: any) {
-          subErrors.push(`secondo bambino non iscritto (${e?.response?.data?.detail || 'errore di rete'})`);
+      // Figli aggiuntivi (famiglie con più bambini) — stesso account genitore (dedup per email lato backend)
+      if (res.data.parent?.id && iscForm.extra_children.length) {
+        for (let i = 0; i < iscForm.extra_children.length; i++) {
+          const ch = iscForm.extra_children[i];
+          if (!ch.nome.trim() || !ch.class_id) {
+            subErrors.push(`bambino #${i + 2} saltato (manca nome o classe)`);
+            continue;
+          }
+          try {
+            await api.post('/users/iscrizione', {
+              bambino_nome: ch.nome,
+              bambino_cognome: ch.cognome || iscForm.bambino_cognome,
+              class_id: ch.class_id,
+              genitore_email: iscForm.genitore_email,
+              genitore_nome: iscForm.genitore_nome,
+              sede_id: sede,
+            });
+          } catch (e: any) {
+            subErrors.push(`${ch.nome} non iscritto (${e?.response?.data?.detail || 'errore di rete'})`);
+          }
         }
       }
 
@@ -257,8 +265,14 @@ export default function AdminUsers() {
       genitore_nome:'',genitore_cognome:'',genitore_email:'',genitore_password:genPwd(),
       genitore2_nome:'',genitore2_cognome:'',genitore2_email:'',genitore2_password:'',
       show_second_parent: false,
-      bambino2_nome:'',bambino2_cognome:'',bambino2_class_id:'' });
+      extra_children: [] });
   };
+
+  // Gestione lista figli aggiuntivi
+  const addChild    = () => setIsc(p => ({ ...p, extra_children: [...p.extra_children, { nome:'', cognome:'', class_id:'' }] }));
+  const removeChild = (i: number) => setIsc(p => ({ ...p, extra_children: p.extra_children.filter((_, idx) => idx !== i) }));
+  const updateChild = (i: number, key: 'nome'|'cognome'|'class_id', val: string) =>
+    setIsc(p => ({ ...p, extra_children: p.extra_children.map((c, idx) => idx === i ? { ...c, [key]: val } : c) }));
 
   return (
     <ScreenLayout title="Gestione Utenti" showBack color={C.primary} loading={loading} scrollable={false}>
@@ -343,7 +357,7 @@ export default function AdminUsers() {
             <Text style={s.modalTitle}>Modifica Utente</Text>
             <TouchableOpacity onPress={() => setModal(null)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
-          <ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 48 }}>
             {(() => {
               const rc = ROLE_COLORS[editUser?.role] || ROLE_COLORS.parent;
               return (
@@ -432,7 +446,7 @@ export default function AdminUsers() {
             <Text style={s.modalTitle}>Aggiungi Secondo Genitore</Text>
             <TouchableOpacity onPress={() => setSpVisible(false)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
-          <ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 48 }}>
             <Text style={s.fl}>Email del secondo genitore</Text>
             <TextInput style={s.input} value={spEmail} onChangeText={setSpEmail}
               placeholder="genitore2@email.it" placeholderTextColor={C.muted}
@@ -453,7 +467,7 @@ export default function AdminUsers() {
             <Text style={s.modalTitle}>Nuovo Account Staff</Text>
             <TouchableOpacity onPress={() => setModal(null)}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
-          <ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 48 }}>
             {[
               { key: 'name',     label: 'Nome *',   ph: 'Mario' },
               { key: 'cognome',  label: 'Cognome',  ph: 'Rossi' },
@@ -505,7 +519,7 @@ export default function AdminUsers() {
             <TouchableOpacity onPress={closeIsc}><Ionicons name="close" size={24} color={C.text}/></TouchableOpacity>
           </View>
           {iscResult ? (
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 48 }}>
               <View style={{ alignItems: 'center', padding: 20 }}>
                 <Text style={{ fontSize: 52 }}>🎉</Text>
                 <Text style={[s.modalTitle, { marginTop: 12 }]}>Iscrizione completata!</Text>
@@ -530,7 +544,7 @@ export default function AdminUsers() {
               </View>
             </ScrollView>
           ) : (
-            <ScrollView>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 48 }}>
               {/* BAMBINO */}
               <Text style={[s.sectionHead, { color: C.accentGreen }]}>👶 Dati bambino</Text>
               {[
@@ -599,38 +613,36 @@ export default function AdminUsers() {
                 </>
               )}
 
-              {/* Secondo bambino (opzionale) */}
-              <Text style={[s.sectionHead, { color: '#FF9500', marginTop: 16 }]}>👶 Secondo bambino (opzionale)</Text>
-              <Text style={{fontSize:11,color:C.muted,marginBottom:8}}>Se la famiglia ha un altro bambino nella stessa scuola, aggiungilo qui e riceverà lo stesso account genitore.</Text>
-              {[
-                { key: 'bambino2_nome',    label: 'Nome secondo bambino',  ph: 'Sofia' },
-                { key: 'bambino2_cognome', label: 'Cognome',               ph: 'Rossi' },
-                { key: 'bambino2_class_id',label: 'Classe',                ph: '' },
-              ].filter(f => f.ph !== 'SKIP').map(f => (
-                f.key === 'bambino2_class_id' ? (
-                  <View key={f.key}>
-                    <Text style={s.fl}>Classe secondo bambino</Text>
-                    <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
-                      <TouchableOpacity onPress={() => setIsc(p => ({ ...p, bambino2_class_id: '' }))}
-                        style={[s.chip, !iscForm.bambino2_class_id && { backgroundColor: '#E5E7EB' }]}>
-                        <Text style={s.chipText}>—</Text>
+              {/* Figli aggiuntivi (famiglie con più bambini) — lista dinamica */}
+              <Text style={[s.sectionHead, { color: '#FF9500', marginTop: 16 }]}>👶 Altri figli (opzionale)</Text>
+              <Text style={{fontSize:11,color:C.muted,marginBottom:8}}>Se la famiglia ha più figli nella stessa scuola, aggiungili qui: riceveranno lo stesso account genitore.</Text>
+              {iscForm.extra_children.map((ch, i) => (
+                <View key={i} style={{ borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 10, marginBottom: 10 }}>
+                  <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: 4 }}>
+                    <Text style={{ fontWeight:'800', color:C.text, fontSize:13 }}>Bambino #{i + 2}</Text>
+                    <TouchableOpacity onPress={() => removeChild(i)} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+                      <Ionicons name="trash-outline" size={18} color={C.red} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={s.fl}>Nome</Text>
+                  <TextInput style={s.input} value={ch.nome} onChangeText={t => updateChild(i,'nome',t)} placeholder="Sofia" />
+                  <Text style={s.fl}>Cognome</Text>
+                  <TextInput style={s.input} value={ch.cognome} onChangeText={t => updateChild(i,'cognome',t)} placeholder={iscForm.bambino_cognome || 'Rossi'} />
+                  <Text style={s.fl}>Classe</Text>
+                  <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
+                    {classes.map(cls => (
+                      <TouchableOpacity key={cls.id} onPress={() => updateChild(i,'class_id',cls.id)}
+                        style={[s.chip, ch.class_id === cls.id && { backgroundColor: '#FF9500', borderColor: '#FF9500' }]}>
+                        <Text style={[s.chipText, ch.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                       </TouchableOpacity>
-                      {classes.map(cls => (
-                        <TouchableOpacity key={cls.id} onPress={() => setIsc(p => ({ ...p, bambino2_class_id: cls.id }))}
-                          style={[s.chip, iscForm.bambino2_class_id === cls.id && { backgroundColor: '#FF9500', borderColor: '#FF9500' }]}>
-                          <Text style={[s.chipText, iscForm.bambino2_class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    ))}
                   </View>
-                ) : (
-                  <View key={f.key}>
-                    <Text style={s.fl}>{f.label}</Text>
-                    <TextInput style={s.input} value={(iscForm as any)[f.key] || ''}
-                      onChangeText={t => setIsc(p => ({ ...p, [f.key]: t }))} placeholder={f.ph} />
-                  </View>
-                )
+                </View>
               ))}
+              <TouchableOpacity onPress={addChild} style={[s.toggleBtn, { borderColor: '#FF9500' }]}>
+                <Ionicons name="add-circle-outline" size={18} color="#FF9500" />
+                <Text style={{ fontSize: 13, color: '#FF9500', fontWeight: '700' }}>+ Aggiungi un altro figlio</Text>
+              </TouchableOpacity>
 
               <TouchableOpacity style={[s.submitBtn, { backgroundColor: C.accentGreen }, saving && { opacity: 0.6 }]}
                 onPress={handleIscrizione} disabled={saving}>

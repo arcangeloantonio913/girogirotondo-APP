@@ -926,12 +926,42 @@ async def send_set_password_email(
     link = f"{ident['portal_url']}/reset-password?token={token}"
     saluto = f"Gentile {user_name}" if user_name else "Gentile famiglia"
     app_block = _app_links_html(ident, brand)
-    subject = f"{brand_header} è ufficiale! Attiva il tuo accesso"
+
+    # COPY per-org: Dimensione Bimbo vuole un messaggio SEMPLICE ("imposta la password
+    # e accedi"), senza il racconto dell'"ufficializzazione" usato per il lancio di Giro.
+    is_db = (ident.get("org_id") == "dimensione-bimbo")
+    page_bg = "#FFF4E8" if is_db else "#FFFDD0"   # sfondo caldo DB / crema Giro
+    if is_db:
+        header_sub = "Imposta la password e accedi 🧡"
+        subject = f"{brand_header} — imposta la password e accedi all'app"
+        intro_html = (
+            f"per usare l'app <strong>{brand_header}</strong> sul telefono e sul web, "
+            f"ogni famiglia accede con una <strong>password personale</strong>.<br><br>"
+            f"Il vostro <strong>account è già pronto</strong>: dovete solo scegliere la vostra password. "
+            f"Bastano pochi secondi e potrete <strong>entrare subito e in tutta tranquillità</strong>."
+        )
+        intro_plain = (
+            f"per usare l'app {brand_header} sul telefono e sul web, ogni famiglia accede con una password personale.\n"
+            f"Il vostro account e' gia' pronto: dovete solo scegliere la vostra password e potrete entrare subito.\n\n"
+        )
+    else:
+        header_sub = "La tua app è ufficiale! 🎉"
+        subject = f"{brand_header} è ufficiale! Attiva il tuo accesso"
+        intro_html = (
+            f"siamo felici di annunciarvi che l'app <strong>{brand_header}</strong> è ora <strong>ufficialmente disponibile</strong>"
+            f" su App Store e Google Play. 🎉<br><br>"
+            f"Con questo passaggio ufficiale, per garantire la massima <strong>sicurezza</strong>, ogni famiglia attiva il proprio"
+            f" accesso impostando una <strong>password personale</strong>. Le comunicazioni ricevute nei giorni scorsi facevano parte"
+            f" di questa fase di avvio: da adesso è tutto <strong>ufficiale e definitivo</strong>."
+        )
+        intro_plain = (
+            f"l'app {brand_header} e' ora ufficialmente disponibile su App Store e Google Play.\n"
+            f"Con l'ufficializzazione, per sicurezza ogni famiglia attiva il proprio accesso impostando una password personale.\n"
+            f"Il vostro account e' gia' pronto: dovete solo impostare la password.\n\n"
+        )
     plain = (
         f"{saluto},\n\n"
-        f"l'app {brand_header} e' ora ufficialmente disponibile su App Store e Google Play.\n"
-        f"Con l'ufficializzazione, per sicurezza ogni famiglia attiva il proprio accesso impostando una password personale.\n"
-        f"Il vostro account e' gia' pronto: dovete solo impostare la password.\n\n"
+        f"{intro_plain}"
         f"1. Aprite questo link personale:\n   {link}\n"
         f"2. Scegliete e SALVATE una password a vostra scelta (minimo 6 caratteri).\n"
         f"3. Accedete all'app con la vostra email e la password scelta.\n\n"
@@ -940,22 +970,18 @@ async def send_set_password_email(
     )
     html = f"""<!DOCTYPE html>
 <html lang="it"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,Helvetica,sans-serif;">
+<body style="margin:0;padding:0;background:{page_bg};font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
     <tr><td align="center">
       <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,0.10);">
         <tr><td align="center" style="background:{brand};padding:30px 32px 26px;">
           <h1 style="margin:0;font-size:27px;color:#ffffff;font-weight:900;">{brand_header}</h1>
-          <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.9);font-weight:700;">La tua app è ufficiale! 🎉</p>
+          <p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.9);font-weight:700;">{header_sub}</p>
         </td></tr>
         <tr><td style="padding:30px 32px 0;">
           <p style="margin:0 0 16px;font-size:15px;color:#1A202C;font-weight:800;">{saluto},</p>
           <p style="margin:0 0 18px;font-size:14px;color:#555;line-height:1.75;">
-            siamo felici di annunciarvi che l'app <strong>{brand_header}</strong> è ora <strong>ufficialmente disponibile</strong>
-            su App Store e Google Play. 🎉<br><br>
-            Con questo passaggio ufficiale, per garantire la massima <strong>sicurezza</strong>, ogni famiglia attiva il proprio
-            accesso impostando una <strong>password personale</strong>. Le comunicazioni ricevute nei giorni scorsi facevano parte
-            di questa fase di avvio: da adesso è tutto <strong>ufficiale e definitivo</strong>.
+            {intro_html}
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:{tint};border-radius:12px;padding:14px 16px;margin-bottom:22px;">
             <tr><td style="font-size:13px;color:#1A202C;line-height:1.6;">
@@ -976,7 +1002,7 @@ async def send_set_password_email(
             Il link è personale: non condividetelo. Problemi? Scrivete a <a href="mailto:{support}" style="color:{brand};font-weight:700;">{support}</a>.
           </p>
         </td></tr>
-        <tr><td style="padding:16px 32px 24px;background:#FFFDD0;text-align:center;">
+        <tr><td style="padding:16px 32px 24px;background:{page_bg};text-align:center;">
           <p style="margin:0;font-size:11px;color:#9A8C5A;">&copy; {year} {school_name} &nbsp;|&nbsp; <a href="mailto:{support}" style="color:{brand};">{support}</a></p>
         </td></tr>
       </table>

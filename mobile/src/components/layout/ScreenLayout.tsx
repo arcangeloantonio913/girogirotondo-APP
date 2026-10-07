@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
 import { navigate as globalNavigate } from '../../navigation/NavigationService';
 import Sidebar from './Sidebar';
+import ChildSwitcherBar from '../ChildSwitcherBar';
 import { tenant } from '../../config/tenant';
 
 const C = { ...tenant.colors, border: tenant.colors.divider };
@@ -96,6 +97,9 @@ export default function ScreenLayout({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Selettore figli (solo genitori con più di un bambino) */}
+      <ChildSwitcherBar />
 
       {/* ── Contenuto ──────────────────────────────────────────────────── */}
       {loading

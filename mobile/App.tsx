@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, View, Text, StyleSheet } from 'react-native';
+import { AppState, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Updates from 'expo-updates';
 import { AuthProvider } from './src/lib/AuthContext';
@@ -11,6 +11,22 @@ function AppContent() {
   const appState = useRef(AppState.currentState);
   const lastUpdateCheck = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
+
+  // Controlla se c'è un OTA, lo scarica e — se nuovo — MOSTRA L'AVVISO (non ricarica da solo:
+  // l'utente tocca il banner quando vuole). Usato sia all'apertura a freddo sia al rientro.
+  const prepareOtaNotice = async () => {
+    if (__DEV__ || !Updates.isEnabled) return;
+    try {
+      const res = await Updates.checkForUpdateAsync();
+      if (!res.isAvailable) return;
+      const fetched = await Updates.fetchUpdateAsync();
+      if (fetched.isNew) setUpdateReady(true);
+    } catch {}   // rete assente / server OTA irraggiungibile: si riprova dopo
+  };
+
+  // Apertura a FREDDO: appena si apre l'app, controlla e prepara l'avviso di aggiornamento.
+  useEffect(() => { lastUpdateCheck.current = Date.now(); prepareOtaNotice(); }, []);
 
   useEffect(() => {
     // OTA (EAS Update): di default l'aggiornamento scaricato si applica solo al riavvio "a freddo".
@@ -23,12 +39,7 @@ function AppContent() {
       if (!cameBack || __DEV__ || !Updates.isEnabled) return;
       if (Date.now() - lastUpdateCheck.current < 10 * 60 * 1000) return;   // max 1 check / 10 min
       lastUpdateCheck.current = Date.now();
-      try {
-        const res = await Updates.checkForUpdateAsync();
-        if (!res.isAvailable) return;
-        const fetched = await Updates.fetchUpdateAsync();
-        if (fetched.isNew) await Updates.reloadAsync();
-      } catch {}   // rete assente / server OTA irraggiungibile: si riprova al prossimo foreground
+      await prepareOtaNotice();   // mostra l'AVVISO (banner) invece di ricaricare in silenzio
     });
     return () => sub.remove();
   }, []);
@@ -61,6 +72,11 @@ function AppContent() {
 
   return (
     <>
+      {updateReady && (
+        <TouchableOpacity style={banner.update} onPress={() => Updates.reloadAsync()} activeOpacity={0.85} testID="ota-update-banner">
+          <Text style={banner.updateText}>✨ Aggiornamento disponibile — tocca qui per applicarlo</Text>
+        </TouchableOpacity>
+      )}
       {isOffline && (
         <View style={banner.wrap}>
           <Text style={banner.text}>📵 Connessione assente — alcune funzioni non disponibili</Text>
@@ -84,4 +100,6 @@ export default function App() {
 const banner = StyleSheet.create({
   wrap: { backgroundColor: '#F59E0B', paddingVertical: 6, paddingHorizontal: 16, alignItems: 'center' },
   text: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  update: { backgroundColor: '#16A34A', paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center' },
+  updateText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
 });

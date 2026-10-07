@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
+import ChildSwitcherBar from '../../components/ChildSwitcherBar';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
@@ -218,6 +219,9 @@ export default function ParentDashboard({ navigation }: any) {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Selettore figli sempre visibile (genitori con più di un bambino) */}
+        <ChildSwitcherBar />
 
         {/* DIARIO */}
         <Card onPress={() => navigation.navigate('Diario')} testID="parent-card-diario">

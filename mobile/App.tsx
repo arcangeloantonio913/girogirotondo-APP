@@ -2,12 +2,14 @@ import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import { AuthProvider } from './src/lib/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 
 // Componente interno che usa il context
 function AppContent() {
+  const insets = useSafeAreaInsets();
   const appState = useRef(AppState.currentState);
   const lastUpdateCheck = useRef(0);
   const [isOffline, setIsOffline] = useState(false);
@@ -73,7 +75,7 @@ function AppContent() {
   return (
     <>
       {updateReady && (
-        <TouchableOpacity style={banner.update} onPress={() => Updates.reloadAsync()} activeOpacity={0.85} testID="ota-update-banner">
+        <TouchableOpacity style={[banner.update, { paddingTop: insets.top + 10 }]} onPress={() => Updates.reloadAsync()} activeOpacity={0.85} testID="ota-update-banner">
           <Text style={banner.updateText}>✨ Aggiornamento disponibile — tocca qui per applicarlo</Text>
         </TouchableOpacity>
       )}
@@ -90,9 +92,11 @@ function AppContent() {
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

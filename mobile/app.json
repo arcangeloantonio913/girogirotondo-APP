@@ -2,7 +2,7 @@
   "expo": {
     "name": "Girogirotondo",
     "slug": "girogirotondo-app",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -82,7 +82,8 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/625a201a-6822-4c37-af2e-ffaa3afa03cf"
+      "url": "https://u.expo.dev/625a201a-6822-4c37-af2e-ffaa3afa03cf",
+      "fallbackToCacheTimeout": 10000
     }
   }
 }

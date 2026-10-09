@@ -811,6 +811,88 @@ async def send_reset_password_email(
     return False
 
 
+async def send_password_changed_email(
+    to_email: str,
+    user_name: str,
+    sede_id: str | None = None,
+    org_id: str | None = None,
+) -> bool:
+    """Conferma che la password è stata CAMBIATA con successo.
+
+    Inviata dopo /auth/reset-password: rassicura l'utente che il reset è andato a buon
+    fine e — sicurezza — lo avvisa se il cambio non è stato lui. Brand (nome+colore)
+    dal DB via _resolve_email_context (org-aware, mai literal "Girogirotondo").
+    NON richiede portal_url: è una notifica, il pulsante "accedi" si mostra solo se c'è.
+    """
+    year = datetime.now().year
+    school_name, brand_color, ident = await _resolve_email_context(sede_id, org_id)
+    if not _sender_ready(ident):
+        return False
+    brand_header, _ = _brand_parts(school_name)
+    login_url = ident.get("portal_url") or ""
+
+    subject = f"{brand_header} — Password aggiornata"
+    plain = (
+        f"Ciao {user_name},\n\n"
+        f"Ti confermiamo che la password del tuo account è stata aggiornata con successo.\n"
+        + (f"Puoi accedere qui: {login_url}\n" if login_url else "")
+        + f"\nSe NON sei stato tu a modificarla, contatta subito la scuola.\n\n{school_name}"
+    )
+    button = (
+        f'<tr><td style="padding:20px 0;" align="center">'
+        f'<a href="{login_url}" style="display:inline-block;background:{brand_color};color:white;'
+        f'text-decoration:none;padding:14px 32px;border-radius:12px;font-weight:bold;font-size:15px;">'
+        f'Vai all\'accesso</a></td></tr>'
+    ) if login_url else ""
+
+    html = f"""<!DOCTYPE html>
+<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td align="center" style="padding-bottom:20px;border-bottom:1px solid #F0F0F0;">
+            <h1 style="margin:0;font-size:22px;color:{brand_color};font-weight:800;">&#127897; {brand_header}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 0 0;">
+            <p style="font-size:15px;color:#1A202C;">Ciao <strong>{user_name}</strong>,</p>
+            <p style="font-size:14px;color:#555;line-height:1.7;">
+              Ti confermiamo che la password del tuo account è stata
+              <strong style="color:{brand_color};">aggiornata con successo</strong> &#9989;.<br>
+              Da ora puoi accedere con la nuova password.
+            </p>
+          </td>
+        </tr>
+        {button}
+        <tr>
+          <td style="padding-bottom:20px;">
+            <p style="font-size:12px;color:#888;">
+              Se <strong>non</strong> sei stato tu a modificare la password, contatta subito la scuola.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="border-top:1px solid #F0F0F0;padding-top:16px;">
+            <p style="font-size:11px;color:#bbb;">&copy; {year} {school_name}</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    if await _send_via_resend(to_email, subject, html, plain,
+                              from_name=ident["from_name"], from_email=ident["from_email"],
+                              reply_to=ident["reply_to"]):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain,
+                                from_name=ident["from_name"], from_email=ident["from_email"],
+                                reply_to=ident["reply_to"])
+
+
 async def send_appointment_email(
     to_email: str,
     parent_name: str,

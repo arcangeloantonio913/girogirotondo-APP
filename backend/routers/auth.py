@@ -16,7 +16,7 @@ from models.user import UserRegister
 from middleware.auth import get_current_user, with_teacher_classes
 from middleware.rate_limiter import limiter
 from utils.firebase_client import get_auth, is_initialized
-from services.email_service import send_reset_password_email
+from services.email_service import send_reset_password_email, send_password_changed_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -214,6 +214,22 @@ async def reset_password(request: Request, payload: dict):
         {"$set": {"password": new_hash}}
     )
     await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
+
+    # Email di CONFERMA "password aggiornata" — brand del tenant del destinatario.
+    # Non blocca mai la risposta: se l'invio fallisce il reset è comunque riuscito.
+    try:
+        user = await db.users.find_one(
+            {"email": record["email"]},
+            {"_id": 0, "name": 1, "sede_id": 1, "org_id": 1},
+        )
+        if user:
+            await send_password_changed_email(
+                record["email"], user.get("name", ""),
+                sede_id=user.get("sede_id"), org_id=user.get("org_id"),
+            )
+    except Exception:
+        logger.warning("[RESET] conferma password non inviata (non bloccante)", exc_info=True)
+
     return {"message": "Password aggiornata con successo"}
 
 

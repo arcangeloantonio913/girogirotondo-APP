@@ -132,6 +132,43 @@ export default function AdminUsers() {
     finally { setSaving(false); }
   };
 
+  // Invia (o ri-invia) le credenziali al singolo utente via email. Se nel campo
+  // "Nuova password" è stato digitato qualcosa, usa quella; altrimenti ne genera una
+  // nuova. In entrambi i casi la password viene aggiornata e spedita via email.
+  const handleSendCredentials = () => {
+    if (!editUser?.id) { Alert.alert('Errore', 'ID mancante su questo record'); return; }
+    const typed = editForm.password.trim();
+    const msg = typed
+      ? `Verrà impostata la password digitata e inviata via email a:\n${editForm.email || editUser.email}\n\nProcedere?`
+      : `Verrà generata una NUOVA password e inviata via email a:\n${editForm.email || editUser.email}\n\n⚠️ La password precedente non funzionerà più. Procedere?`;
+    Alert.alert('Invia credenziali', msg, [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Invia', onPress: async () => {
+        setSaving(true);
+        try {
+          // Se è stata cambiata anche l'email, aggiornala prima così la mail parte al nuovo indirizzo.
+          if (editForm.email && editForm.email !== editUser.email) {
+            await api.put(`/users/${editUser.id}/credentials`, { email: editForm.email });
+            setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, email: editForm.email } : u));
+          }
+          const body: any = {};
+          if (typed) body.password = typed;
+          const { data } = await api.post(`/users/${editUser.id}/resend-credentials`, body);
+          Alert.alert(
+            data?.email_sent ? 'Credenziali inviate ✅' : 'Password aggiornata ⚠️',
+            `Email: ${data?.email}\nPassword: ${data?.new_password}\n\n` +
+            (data?.email_sent
+              ? 'Il genitore ha ricevuto le nuove credenziali via email.'
+              : 'Email NON inviata — comunica tu la password al genitore.'),
+          );
+          setModal(null);
+        } catch (e: any) {
+          Alert.alert('Errore', e?.response?.data?.detail || 'Impossibile inviare le credenziali');
+        } finally { setSaving(false); }
+      } },
+    ]);
+  };
+
   const handleCreateStaff = async () => {
     if (!staffForm.name || !staffForm.email) { Alert.alert('Attenzione', 'Nome e email obbligatori'); return; }
     setSaving(true);
@@ -423,6 +460,12 @@ export default function AdminUsers() {
             <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSaveEdit} disabled={saving}>
               <Text style={s.submitText}>{saving ? 'Salvataggio...' : 'Salva Modifiche'}</Text>
             </TouchableOpacity>
+            {(editUser?.role === 'parent' || editUser?.role === 'teacher') && !editUser?.is_superadmin && (
+              <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#32CD32', marginTop: 8 }, saving && { opacity: 0.6 }]}
+                onPress={handleSendCredentials} disabled={saving}>
+                <Text style={s.submitText}>📧 Invia credenziali via email</Text>
+              </TouchableOpacity>
+            )}
             {editUser?.role === 'parent' && (
               <TouchableOpacity style={[s.submitBtn, { backgroundColor: '#FF9500', marginTop: 8 }]}
                 onPress={() => {

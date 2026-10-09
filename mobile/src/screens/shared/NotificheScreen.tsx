@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -13,6 +13,7 @@ export default function NotificheScreen() {
   const [avvisi,     setAvvisi]     = useState<any[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expanded,   setExpanded]   = useState<Record<number, boolean>>({});
   const role = user?.role || 'parent';
   const accentColor = role === 'teacher' ? C.accentPink : C.babyBlue;
 
@@ -39,22 +40,35 @@ export default function NotificheScreen() {
             <Text style={s.emptySub}>Qui appariranno avvisi, aggiornamenti e comunicazioni dalla scuola</Text>
           </View>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const dateStr = item.created_at
             ? new Date(item.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
             : '';
+          const open = !!expanded[index];
+          const text = item.testo || item.body || item.message || '';
+          // Testo lungo → mostra l'affordance "Leggi tutto". Soglia prudente (≈3 righe).
+          const isLong = text.length > 110 || text.split('\n').length > 3;
           return (
-            <View style={s.card}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setExpanded(p => ({ ...p, [index]: !p[index] }))}
+              style={s.card}
+            >
               <View style={s.iconBox}><Ionicons name="megaphone-outline" size={20} color={accentColor} /></View>
               <View style={{ flex: 1 }}>
-                <View style={s.row}><Text style={s.title} numberOfLines={1}>{item.titolo || item.title}</Text><Text style={s.date}>{dateStr}</Text></View>
-                {(item.testo || item.body || item.message) && <Text style={s.body} numberOfLines={3}>{item.testo || item.body || item.message}</Text>}
+                <View style={s.row}><Text style={s.title} numberOfLines={open ? undefined : 1}>{item.titolo || item.title}</Text><Text style={s.date}>{dateStr}</Text></View>
+                {!!text && <Text style={s.body} numberOfLines={open ? undefined : 3}>{text}</Text>}
+                {isLong && (
+                  <Text style={[s.readMore, { color: accentColor }]}>
+                    {open ? '▴ Mostra meno' : '▾ Leggi tutto'}
+                  </Text>
+                )}
                 {item.attachment_name && (
                   <View style={s.attach}><Ionicons name="attach-outline" size={12} color={C.muted} /><Text style={s.attachText}>{item.attachment_name}</Text></View>
                 )}
                 <Text style={s.author}>{item.author_name ? `da ${item.author_name}` : ''}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
@@ -72,6 +86,7 @@ const s = StyleSheet.create({
   title:     { flex: 1, fontSize: 14, fontWeight: '700', color: C.text },
   date:      { fontSize: 10, color: C.muted, marginTop: 2 },
   body:      { fontSize: 12, color: '#374151', lineHeight: 18, marginBottom: 4 },
+  readMore:  { fontSize: 12, fontWeight: '700', marginBottom: 6 },
   attach:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
   attachText:{ fontSize: 11, color: C.muted },
   author:    { fontSize: 10, color: C.muted },

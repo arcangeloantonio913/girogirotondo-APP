@@ -20,7 +20,7 @@ from services.database import get_db
 from models.gallery import MediaUpload
 from middleware.auth import get_tenant_context, TenantContext, _resolve_class
 from middleware.rate_limiter import limiter
-from utils.storage_helper import upload_file, get_signed_url, delete_file, generate_thumbnail
+from utils.storage_helper import upload_file, get_signed_url, delete_file, generate_thumbnail, to_web_safe_image
 from utils.push_notifications import notify_class
 try:
     from utils.expo_push import notify_parents_of_class as expo_notify_class
@@ -151,6 +151,24 @@ def _decode_data_url(data_url: str):
     except Exception:
         logger.warning("[GALLERY] decode data URL fallito", exc_info=True)
         return None, None, None
+
+
+def _ensure_web_safe_data_url(data_url: str) -> str:
+    """Se il data URL è una foto HEIC/HEIF (iPhone) la riconverte in JPEG, così si apre
+    ovunque (Android/web). Non solleva mai: in caso di problema lascia il data URL com'è."""
+    try:
+        raw, mime, _ext = _decode_data_url(data_url)
+        if raw is None:
+            return data_url
+        new_bytes, new_ct, converted = to_web_safe_image(raw, mime)
+        if not converted:
+            return data_url
+        import base64
+        b64 = base64.b64encode(new_bytes).decode()
+        return f"data:{new_ct};base64,{b64}"
+    except Exception:
+        logger.warning("[GALLERY] conversione HEIC data URL fallita", exc_info=True)
+        return data_url
 
 
 def _slim_list_item(item: dict) -> dict:
@@ -311,11 +329,17 @@ async def upload_media_file(
     file_bytes = await file.read()
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
     ext = re.sub(r"[^A-Za-z0-9]", "", ext) or "bin"   # sanitize: no path traversal via filename
+    content_type = file.content_type
+    # HEIC (iPhone) → JPEG, così la foto si apre su Android e web.
+    if media_type == "photo":
+        file_bytes, content_type, conv_ext = to_web_safe_image(file_bytes, content_type)
+        if conv_ext:
+            ext = conv_ext
     media_id = str(uuid.uuid4())
     storage_path = f"gallery/{class_id}/{media_id}.{ext}"
 
     signed_url, path = await upload_file(
-        file_bytes, storage_path, file.content_type, media_type
+        file_bytes, storage_path, content_type, media_type
     )
 
     thumbnail_url = None
@@ -325,7 +349,7 @@ async def upload_media_file(
         if thumb_bytes:
             thumb_path = f"gallery/{class_id}/thumbs/{media_id}.{ext}"
             thumbnail_url, thumbnail_path = await upload_file(
-                thumb_bytes, thumb_path, file.content_type, "photo"
+                thumb_bytes, thumb_path, "image/jpeg", "photo"
             )
 
     doc = {
@@ -394,6 +418,8 @@ async def upload_media_base64(
     # Corregge il MIME se l'app ha etichettato male i byte (Android PNG/WebP marcati jpeg
     # → invisibili su iPhone). Safety net per le build già installate negli store.
     media_url = _fix_data_url_mime(media_url)
+    # HEIC (iPhone) → JPEG, così la foto si apre su Android e web.
+    media_url = _ensure_web_safe_data_url(media_url)
 
     # Caller must own the target class
     ctx.assert_class(class_id)
@@ -496,6 +522,8 @@ async def upload_media_url(
     # Corregge il MIME se i byte non combaciano con l'etichetta (foto Android non visibili su iPhone)
     if isinstance(doc.get("media_url"), str):
         doc["media_url"] = _fix_data_url_mime(doc["media_url"])
+        # HEIC (iPhone) → JPEG, così la foto si apre su Android e web.
+        doc["media_url"] = _ensure_web_safe_data_url(doc["media_url"])
     # Guardia dimensione: se media_url è un data URL base64, non deve superare 12MB
     # (limite documento MongoDB 16MB) — altrimenti l'insert fallisce con 500. Stesso
     # limite di /upload-b64, così l'app che usa questo endpoint non genera errori opachi.

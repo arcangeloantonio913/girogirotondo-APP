@@ -15,6 +15,53 @@ from utils.firebase_client import get_bucket, is_initialized
 
 logger = logging.getLogger(__name__)
 
+# HEIC/HEIF (formato foto iPhone) non è apribile su Android né sul web. Registriamo il
+# decoder così PIL può aprirlo e noi lo riconvertiamo in JPEG in fase di upload. Se la
+# libreria manca, HEIF_OK resta False e le foto HEIC NON vengono transcodificate (ma non
+# si rompe nulla: il resto funziona come prima).
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    HEIF_OK = True
+except Exception as _heif_exc:  # pragma: no cover
+    HEIF_OK = False
+    logger.warning("[STORAGE] pillow-heif non disponibile (%s) — niente conversione HEIC", _heif_exc)
+
+
+def _is_heic_bytes(data: bytes, content_type: Optional[str] = None) -> bool:
+    """True se i byte sono HEIC/HEIF (da magic number) o il content_type lo dichiara."""
+    ct = (content_type or "").lower()
+    if "heic" in ct or "heif" in ct:
+        return True
+    head = data[:12] if data else b""
+    return head[4:8] == b"ftyp" and head[8:12] in (b"heic", b"heix", b"mif1", b"msf1", b"hevc")
+
+
+def to_web_safe_image(file_bytes: bytes, content_type: Optional[str] = None):
+    """Se i byte sono HEIC/HEIF, li riconverte in JPEG (web-safe). Altrimenti li lascia
+    invariati. Restituisce (bytes, content_type, ext) dove ext='jpg' SOLO se ha convertito
+    (così il chiamante sa che deve cambiare estensione). Non solleva mai: in caso di
+    problema restituisce l'input originale (fail-open, nessun upload perso)."""
+    if not file_bytes or not _is_heic_bytes(file_bytes, content_type):
+        return file_bytes, content_type, None
+    if not HEIF_OK:
+        logger.warning("[STORAGE] foto HEIC ricevuta ma pillow-heif assente — salvata grezza")
+        return file_bytes, content_type, None
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(file_bytes))
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        jpeg = buf.getvalue()
+        logger.info("[STORAGE] HEIC→JPEG riuscita: %dKB → %dKB",
+                    len(file_bytes) // 1024, len(jpeg) // 1024)
+        return jpeg, "image/jpeg", "jpg"
+    except Exception as exc:
+        logger.warning("[STORAGE] HEIC→JPEG fallita, uso originale: %s", exc)
+        return file_bytes, content_type, None
+
 MAX_PHOTO_BYTES = 10 * 1024 * 1024   # 10 MB
 MAX_VIDEO_BYTES = 100 * 1024 * 1024  # 100 MB
 MAX_BASE64_BYTES = 2 * 1024 * 1024   # 2 MB — soglia oltre cui comprimiamo

@@ -220,6 +220,17 @@ async def get_gallery(
             if class_id not in ctx.allowed_class_ids:
                 raise HTTPException(status_code=404, detail="Risorsa non trovata")
             query["class_id"] = class_id
+            # PRIVACY (minori): nella galleria di classe il genitore vede le foto NON taggate
+            # (di tutta la classe) + le foto personali DEI PROPRI figli, MAI le foto personali
+            # taggate ad ALTRI bambini. Prima il solo class_id mostrava tutto → leak.
+            query["$or"] = [
+                {"student_ids": {"$in": list(allowed)}},   # personali dei miei figli (lista)
+                {"student_id":  {"$in": list(allowed)}},   # personali dei miei figli (legacy singolo)
+                {"$and": [                                  # foto di classe NON taggata
+                    {"$or": [{"student_ids": {"$exists": False}}, {"student_ids": []}, {"student_ids": None}]},
+                    {"$or": [{"student_id":  {"$exists": False}}, {"student_id":  None}, {"student_id":  ""}]},
+                ]},
+            ]
         else:
             query["student_ids"] = {"$in": list(allowed)}
         # Il genitore vede SOLO i media pubblicati: se la maestra "nasconde" una foto

@@ -94,10 +94,10 @@ export default function AdminProfile() {
 
 const s = StyleSheet.create({
   avatarSection:{ alignItems: 'center', paddingVertical: 20 },
-  avatar:       { width: 72, height: 72, borderRadius: 36, backgroundColor: '#EBF0FF', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  avatar:       { width: 72, height: 72, borderRadius: 36, backgroundColor: C.primary + '14', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   avatarText:   { fontSize: 28, fontWeight: '800', color: '#1a3a9e' },
   userName:     { fontSize: 18, fontWeight: '700', color: C.text },
-  roleBadge:    { backgroundColor: '#EBF0FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, marginTop: 4 },
+  roleBadge:    { backgroundColor: C.primary + '14', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, marginTop: 4 },
   roleText:     { fontSize: 11, fontWeight: '700', color: '#1a3a9e' },
   section:      { marginBottom: 16 },
   sectionTitle: { fontSize: 12, fontWeight: '700', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },

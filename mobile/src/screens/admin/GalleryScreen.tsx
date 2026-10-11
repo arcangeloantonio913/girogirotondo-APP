@@ -95,7 +95,7 @@ export default function AdminGallery() {
   const chips = [{ id: 'all', name: '🏫 Tutte' }, ...classes];
 
   return (
-    <ScreenLayout title="Galleria (tutte le classi)" showBack color={C.babyBlue} loading={false} scrollable={false}>
+    <ScreenLayout title="Galleria (tutte le classi)" showBack color={C.primary} loading={false} scrollable={false}>
       {/* Filtro classe */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabs} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
         {chips.map(c => (
@@ -107,7 +107,7 @@ export default function AdminGallery() {
       </ScrollView>
 
       {loading
-        ? <ActivityIndicator size="large" color={C.babyBlue} style={{ flex: 1 }} />
+        ? <ActivityIndicator size="large" color={C.primary} style={{ flex: 1 }} />
         : <FlatList
             data={items}
             numColumns={2}
@@ -115,7 +115,7 @@ export default function AdminGallery() {
             contentContainerStyle={s.grid}
             onEndReached={() => load(false)}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={loadingMore ? <ActivityIndicator color={C.babyBlue} style={{ padding: 10 }} /> : null}
+            ListFooterComponent={loadingMore ? <ActivityIndicator color={C.primary} style={{ padding: 10 }} /> : null}
             ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 48 }}>📷</Text><Text style={s.emptyText}>Nessuna foto</Text></View>}
             renderItem={({ item, index }) => (
               <TouchableOpacity onPress={() => openPreview(index)} style={s.thumb}>
@@ -158,7 +158,7 @@ export default function AdminGallery() {
 const s = StyleSheet.create({
   tabs:       { maxHeight: 48, marginVertical: 10 },
   chip:       { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: C.white, borderWidth: 0.5, borderColor: C.border },
-  chipActive: { backgroundColor: C.babyBlue, borderColor: 'transparent' },
+  chipActive: { backgroundColor: C.primary, borderColor: 'transparent' },
   chipText:   { fontSize: 13, fontWeight: '600', color: C.muted },
   chipTextActive: { color: C.white, fontWeight: '700' },
   grid:       { paddingHorizontal: 10, paddingBottom: 20 },

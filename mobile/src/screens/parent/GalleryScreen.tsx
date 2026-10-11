@@ -127,7 +127,7 @@ export default function ParentGallery() {
   const current = preview !== null ? items[preview] : null;
 
   return (
-    <ScreenLayout title="Galleria Foto" showBack color={C.babyPink} loading={false} scrollable={false}>
+    <ScreenLayout title="Galleria Foto" showBack color={C.primary} loading={false} scrollable={false}>
       {/* Tabs */}
       <View style={s.tabs}>
         {(['personale','classe'] as const).map(t => (
@@ -138,7 +138,7 @@ export default function ParentGallery() {
       </View>
 
       {loading
-        ? <ActivityIndicator size="large" color={C.babyPink} style={{flex:1}}/>
+        ? <ActivityIndicator size="large" color={C.primary} style={{flex:1}}/>
         : <FlatList
             data={items}
             numColumns={2}
@@ -146,7 +146,7 @@ export default function ParentGallery() {
             contentContainerStyle={s.grid}
             onEndReached={()=>load(false)}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={loadingMore?<ActivityIndicator color={C.babyPink} style={{padding:10}}/>:null}
+            ListFooterComponent={loadingMore?<ActivityIndicator color={C.primary} style={{padding:10}}/>:null}
             ListEmptyComponent={<View style={s.empty}><Text style={{fontSize:48}}>📷</Text><Text style={s.emptyText}>Nessuna foto disponibile</Text></View>}
             renderItem={({item,index})=>(
               <TouchableOpacity onPress={()=>openPreview(index)} style={s.thumb}>
@@ -200,7 +200,7 @@ export default function ParentGallery() {
 const s = StyleSheet.create({
   tabs:       {flexDirection:'row',margin:12,backgroundColor:C.white,borderRadius:12,padding:4,borderWidth:0.5,borderColor:C.border},
   tab:        {flex:1,paddingVertical:8,alignItems:'center',borderRadius:10},
-  tabActive:  {backgroundColor:C.babyPink},
+  tabActive:  {backgroundColor:C.primary},
   tabText:    {fontSize:13,fontWeight:'600',color:C.muted},
   tabTextActive:{color:C.white,fontWeight:'700'},
   grid:       {paddingHorizontal:10,paddingBottom:20},

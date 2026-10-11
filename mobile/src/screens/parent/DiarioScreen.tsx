@@ -48,7 +48,7 @@ export default function ParentDiario() {
   const today = todayLocal();
 
   return (
-    <ScreenLayout title="Diario di Bordo" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+    <ScreenLayout title="Diario di Bordo" showBack color={C.primary} loading={loading} scrollable={false}>
       {/* Toggle: giorno singolo / storico completo */}
       <View style={s.modeRow}>
         <TouchableOpacity onPress={() => setViewAll(false)}
@@ -100,7 +100,7 @@ export default function ParentDiario() {
               {/* Header card */}
               <View style={s.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.cardDate, isToday && { color: C.babyBlue }]}>
+                  <Text style={[s.cardDate, isToday && { color: C.primary }]}>
                     {isToday ? '📅 Oggi — ' : ''}{formatItDate(item.date || item.created_at, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </Text>
                 </View>
@@ -142,25 +142,25 @@ export default function ParentDiario() {
 const s = StyleSheet.create({
   modeRow:      { flexDirection: 'row', margin: 12, backgroundColor: C.white, borderRadius: 12, padding: 4, borderWidth: 0.5, borderColor: C.border },
   modeBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, borderRadius: 10 },
-  modeBtnActive:{ backgroundColor: C.babyBlue },
+  modeBtnActive:{ backgroundColor: C.primary },
   modeBtnText:  { fontSize: 13, fontWeight: '600', color: C.muted },
   dateNav:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 8 },
   navBtn:       { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   dateText:     { fontSize: 14, fontWeight: '700', color: C.text, textTransform: 'capitalize', textAlign: 'center' },
-  todayBadge:   { backgroundColor: C.babyBlue, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 3 },
+  todayBadge:   { backgroundColor: C.primary, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 3 },
   todayText:    { fontSize: 10, color: C.white, fontWeight: '700' },
   empty:        { alignItems: 'center', paddingTop: 60 },
   emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.text, marginTop: 14 },
   emptySub:     { fontSize: 13, color: C.muted, marginTop: 6, textAlign: 'center' },
   card:         { backgroundColor: C.white, borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 0.5, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  cardToday:    { borderColor: C.babyBlue, borderWidth: 1.5 },
+  cardToday:    { borderColor: C.primary, borderWidth: 1.5 },
   cardHeader:   { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   cardDate:     { fontSize: 13, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
   moodBox:      { alignItems: 'center', minWidth: 60 },
   moodLabel:    { fontSize: 9, color: C.muted, marginTop: 2, textAlign: 'center', maxWidth: 60 },
   activitiesRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  actTag:       { backgroundColor: '#EBF0FF', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  actTagText:   { fontSize: 11, color: C.babyBlue, fontWeight: '700' },
-  noteBox:      { backgroundColor: '#F8FBFF', padding: 12, borderLeftWidth: 3, borderLeftColor: C.babyBlue, borderRadius: 0 },
+  actTag:       { backgroundColor: C.primary + '14', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+  actTagText:   { fontSize: 11, color: C.primary, fontWeight: '700' },
+  noteBox:      { backgroundColor: C.primary + '0A', padding: 12, borderLeftWidth: 3, borderLeftColor: C.primary, borderRadius: 0 },
   noteText:     { fontSize: 13, color: '#374151', lineHeight: 20 },
 });

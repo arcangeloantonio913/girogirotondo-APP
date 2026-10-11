@@ -39,7 +39,7 @@ export default function ParentProfile() {
   const child = user; // il profilo genitore include i dati del figlio tramite child_ids
 
   return (
-    <ScreenLayout title="Il mio Profilo" showBack color={C.accentGreen}>
+    <ScreenLayout title="Il mio Profilo" showBack color={C.primary}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         {/* Avatar */}
@@ -77,7 +77,7 @@ export default function ParentProfile() {
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => { setEditingEmail(true); setNewEmail(user?.email || ''); }}>
-                  <Ionicons name="pencil-outline" size={18} color={C.accentGreen} />
+                  <Ionicons name="pencil-outline" size={18} color={C.primary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -127,8 +127,8 @@ const s = StyleSheet.create({
   row:          { flexDirection: 'row', alignItems: 'center' },
   label:        { fontSize: 11, color: C.muted, fontWeight: '500' },
   value:        { fontSize: 14, color: C.text, fontWeight: '600', marginTop: 1 },
-  input:        { fontSize: 14, color: C.text, borderBottomWidth: 1, borderBottomColor: C.accentGreen, paddingBottom: 2, marginTop: 1 },
-  saveBtn:      { backgroundColor: C.accentGreen, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  input:        { fontSize: 14, color: C.text, borderBottomWidth: 1, borderBottomColor: C.primary, paddingBottom: 2, marginTop: 1 },
+  saveBtn:      { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   cancelBtn:    { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   msg:          { fontSize: 12, marginTop: 8 },
   privacyBox:   { flexDirection: 'row', gap: 8, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 12, marginTop: 8 },

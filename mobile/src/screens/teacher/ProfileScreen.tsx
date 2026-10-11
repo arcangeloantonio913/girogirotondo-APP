@@ -41,7 +41,7 @@ export default function TeacherProfile() {
   };
 
   return (
-    <ScreenLayout title="Il mio Profilo" showBack color={C.accentPink}>
+    <ScreenLayout title="Il mio Profilo" showBack color={C.primary}>
       <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
 
         <View style={s.avatarSection}>
@@ -108,7 +108,7 @@ const s = StyleSheet.create({
   avatar:       { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFE4F0', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   avatarText:   { fontSize: 28, fontWeight: '800', color: '#BE185D' },
   userName:     { fontSize: 18, fontWeight: '700', color: '#1A202C' },
-  roleBadge:    { backgroundColor: '#FFF0F7', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, marginTop: 4 },
+  roleBadge:    { backgroundColor: C.primary + '14', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 3, marginTop: 4 },
   roleText:     { fontSize: 11, fontWeight: '700', color: '#BE185D' },
   section:      { marginBottom: 16 },
   sectionTitle: { fontSize: 12, fontWeight: '700', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   inputRow:     { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, height: 44 },
   input:        { flex: 1, fontSize: 14, color: '#1A202C' },
   msg:          { fontSize: 12, marginTop: 8 },
-  saveBtn:      { backgroundColor: C.accentPink, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
+  saveBtn:      { backgroundColor: C.primary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 14 },
   saveBtnText:  { color: C.white, fontWeight: '700', fontSize: 14 },
   logoutBtn:    { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center', marginTop: 8, padding: 14, backgroundColor: '#FEF2F2', borderRadius: 14, borderWidth: 0.5, borderColor: '#FECACA' },
   logoutText:   { color: C.red, fontWeight: '700', fontSize: 14 },

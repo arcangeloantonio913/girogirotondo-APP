@@ -15,7 +15,7 @@ export default function NotificheScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [expanded,   setExpanded]   = useState<Record<number, boolean>>({});
   const role = user?.role || 'parent';
-  const accentColor = role === 'teacher' ? C.accentPink : C.babyBlue;
+  const accentColor = C.primary;
 
   const load = async () => {
     try {

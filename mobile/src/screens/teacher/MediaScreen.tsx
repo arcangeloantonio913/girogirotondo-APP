@@ -138,13 +138,13 @@ export default function TeacherMedia() {
   };
 
   return (
-    <ScreenLayout title="Carica Media" showBack color={C.accentGreen} loading={loading} scrollable={false}>
+    <ScreenLayout title="Carica Media" showBack color={C.primary} loading={loading} scrollable={false}>
       {/* Selettore classe (solo se la maestra ha più classi) */}
       {classes.length > 1 && (
         <View style={s.classRow}>
           {classes.map(c => (
             <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)}
-              style={[s.classChip, classId === c.id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }]}>
+              style={[s.classChip, classId === c.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
               <Text style={[s.classChipTxt, classId === c.id && { color: C.white }]}>{c.name}</Text>
             </TouchableOpacity>
           ))}
@@ -200,12 +200,12 @@ export default function TeacherMedia() {
             <Text style={s.fl}>Visibile a</Text>
             <TouchableOpacity onPress={() => { setAllStudents(true); setSelStudents([]); }}
               style={[s.optBtn, allStudents && s.optBtnActive]}>
-              <Ionicons name="people-outline" size={18} color={allStudents ? C.white : C.accentGreen} />
+              <Ionicons name="people-outline" size={18} color={allStudents ? C.white : C.primary} />
               <Text style={[s.optText, allStudents && { color: C.white }]}>Tutta la classe ({students.length} bambini)</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setAllStudents(false)}
               style={[s.optBtn, !allStudents && s.optBtnActive]}>
-              <Ionicons name="person-outline" size={18} color={!allStudents ? C.white : C.accentGreen} />
+              <Ionicons name="person-outline" size={18} color={!allStudents ? C.white : C.primary} />
               <Text style={[s.optText, !allStudents && { color: C.white }]}>Bambini specifici</Text>
             </TouchableOpacity>
 
@@ -242,7 +242,7 @@ const s = StyleSheet.create({
   classRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 4 },
   classChip:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
   classChipTxt:    { fontSize: 13, fontWeight: '600', color: C.text },
-  uploadBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, justifyContent: 'center' },
+  uploadBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, justifyContent: 'center' },
   uploadBtnText:   { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:           { alignItems: 'center', paddingTop: 60 },
   emptyText:       { fontSize: 14, color: C.muted, marginTop: 12 },
@@ -253,13 +253,13 @@ const s = StyleSheet.create({
   modalHeader:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle:      { fontSize: 20, fontWeight: '800', color: C.text },
   fl:              { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8, marginTop: 14 },
-  optBtn:          { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: C.accentGreen, backgroundColor: C.white, marginBottom: 8 },
-  optBtnActive:    { backgroundColor: C.accentGreen, borderColor: C.accentGreen },
-  optText:         { fontSize: 14, fontWeight: '600', color: C.accentGreen, flex: 1 },
+  optBtn:          { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: C.primary, backgroundColor: C.white, marginBottom: 8 },
+  optBtnActive:    { backgroundColor: C.primary, borderColor: C.primary },
+  optText:         { fontSize: 14, fontWeight: '600', color: C.primary, flex: 1 },
   studentsGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   studentChip:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
-  studentChipActive:{ backgroundColor: C.accentGreen, borderColor: C.accentGreen },
+  studentChipActive:{ backgroundColor: C.primary, borderColor: C.primary },
   studentChipText: { fontSize: 13, fontWeight: '600', color: C.text },
-  uploadFinalBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, justifyContent: 'center', marginTop: 20 },
+  uploadFinalBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, justifyContent: 'center', marginTop: 20 },
   uploadFinalText: { color: C.white, fontWeight: '700', fontSize: 15 },
 });

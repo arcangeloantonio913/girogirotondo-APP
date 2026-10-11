@@ -31,7 +31,7 @@ export default function ParentAvvisi() {
   }, []);
 
   return (
-    <ScreenLayout title="Avvisi" showBack color={C.babyPink} loading={loading} scrollable={false}>
+    <ScreenLayout title="Avvisi" showBack color={C.primary} loading={loading} scrollable={false}>
       <FlatList
         data={avvisi}
         keyExtractor={(_, i) => String(i)}
@@ -64,11 +64,11 @@ const s = StyleSheet.create({
   emptyText:{ fontSize: 14, color: C.muted, marginTop: 12 },
   card:     { backgroundColor: C.white, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   cardTop:  { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  badge:    { backgroundColor: C.babyPink + '40', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
-  badgeText:{ fontSize: 10, fontWeight: '700', color: '#BE185D' },
+  badge:    { backgroundColor: C.primary + '40', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeText:{ fontSize: 10, fontWeight: '700', color: C.primary },
   date:     { fontSize: 11, color: C.muted },
   cardTitle:{ fontSize: 14, fontWeight: '700', color: C.text },
   cardBody: { fontSize: 12, color: '#374151', lineHeight: 18, marginTop: 4 },
-  attachChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start', backgroundColor: C.babyPink + '30', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '95%' },
-  attachChipText: { fontSize: 12, color: '#BE185D', fontWeight: '600', flexShrink: 1 },
+  attachChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, alignSelf: 'flex-start', backgroundColor: C.primary + '30', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '95%' },
+  attachChipText: { fontSize: 12, color: C.primary, fontWeight: '600', flexShrink: 1 },
 });

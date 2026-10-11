@@ -34,17 +34,17 @@ function Card({ children, onPress, testID }: any) {
   );
 }
 
-function CardHeader({ icon, iconBg, iconColor, title, subtitle }: any) {
+function CardHeader({ icon, title, subtitle }: any) {
   return (
     <View style={s.cardHeader}>
-      <View style={[s.iconBox, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
+      <View style={s.iconBox}>
+        <Ionicons name={icon} size={21} color={C.primary} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.cardTitle}>{title}</Text>
         <Text style={s.cardSubtitle}>{subtitle}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={C.muted} />
+      <Ionicons name="chevron-forward" size={18} color={C.muted} />
     </View>
   );
 }
@@ -336,18 +336,18 @@ const s = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 80 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   greeting: { fontSize: 13, color: C.muted, fontWeight: '500' },
-  userName: { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
-  childRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  childBadge: { backgroundColor: C.babyBlue, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-  childBadgeText: { color: C.white, fontSize: 11, fontWeight: '700' },
+  userName: { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2, letterSpacing: -0.3 },
+  childRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  childBadge: { backgroundColor: C.primary + '14', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  childBadgeText: { color: C.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   childClass: { fontSize: 11, color: C.gray, fontWeight: '600' },
   dateText: { fontSize: 11, color: C.muted, marginTop: 4, textTransform: 'capitalize' },
   avatar:   { width: 48, height: 48, borderRadius: 24, backgroundColor: C.babyPink, alignItems: 'center', justifyContent: 'center' },
   avatarText:{ color: C.white, fontSize: 18, fontWeight: '800' },
   avatarSwitch:{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: '#32CD32', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg },
-  card:     { backgroundColor: C.white, borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.border },
+  card:     { backgroundColor: C.white, borderRadius: 14, padding: 15, marginBottom: 10, borderWidth: 1, borderColor: C.border },
   cardHeader:{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  iconBox:  { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconBox:  { width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: C.primary + '12' },
   cardTitle:{ fontSize: 13, fontWeight: '800', color: C.text },
   cardSubtitle:{ fontSize: 10, color: C.muted, marginTop: 1 },
   diaryPreview:{ backgroundColor: '#EBF0FF30', borderRadius: 12, padding: 12 },

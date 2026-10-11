@@ -76,7 +76,7 @@ export default function TeacherDashboard({ navigation }: any) {
             <Text style={s.greeting}>Ciao Maestra,</Text>
             <Text style={s.name}>{user?.name}</Text>
             <View style={s.row}>
-              <View style={[s.badge, { backgroundColor: C.babyPink }]}>
+              <View style={s.badge}>
                 <Text style={s.badgeText}>{className ? `Classe ${className}` : 'Nessuna classe'}</Text>
               </View>
               <Text style={s.subText}>{studentCount} alunni</Text>
@@ -92,15 +92,15 @@ export default function TeacherDashboard({ navigation }: any) {
           return !disabled.includes(mod);
         }).map(card => (
           <TouchableOpacity key={card.id} onPress={() => navigation.navigate(card.tab)}
-            style={s.card} activeOpacity={0.9}>
-            <View style={[s.iconBox, { backgroundColor: card.bg }]}>
-              <Ionicons name={card.icon as any} size={24} color={card.color} />
+            style={s.card} activeOpacity={0.7}>
+            <View style={s.iconBox}>
+              <Ionicons name={card.icon as any} size={21} color={C.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.cardTitle}>{card.title}</Text>
               <Text style={s.cardSub}>{card.sub}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={C.muted} />
+            <Ionicons name="chevron-forward" size={18} color={C.muted} />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -114,16 +114,16 @@ const s = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   greeting:{ fontSize: 13, color: C.muted, fontWeight: '500' },
-  name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
-  row:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  badge:  { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeText:{ color: C.white, fontSize: 11, fontWeight: '700' },
+  name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2, letterSpacing: -0.3 },
+  row:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  badge:  { backgroundColor: C.primary + '14', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText:{ color: C.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   subText:{ fontSize: 12, color: C.gray, fontWeight: '600' },
   logoutBtn:{ padding: 8 },
-  sectionTitle:{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 12 },
-  card:   { backgroundColor: C.white, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: C.border },
-  iconBox:{ width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  cardTitle:{ fontSize: 14, fontWeight: '800', color: C.text },
+  sectionTitle:{ fontSize: 13, fontWeight: '700', color: C.muted, marginBottom: 12, letterSpacing: 0.3, textTransform: 'uppercase' },
+  card:   { backgroundColor: C.white, borderRadius: 14, padding: 13, marginBottom: 9, flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  iconBox:{ width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: C.primary + '12' },
+  cardTitle:{ fontSize: 14.5, fontWeight: '700', color: C.text },
   cardSub:{ fontSize: 11, color: C.muted, marginTop: 2 },
   topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, height: 52, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#F3F4F6' },
   topCenter: { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },

@@ -92,7 +92,8 @@ export default function AdminDashboard({ navigation }: any) {
           <View>
             <Text style={s.greeting}>Benvenuto/a,</Text>
             <Text style={s.name}>{user?.name}</Text>
-            <View style={[s.badge, { backgroundColor: C.babyBlue }]}>
+            <View style={s.badge}>
+              <View style={s.badgeDot} />
               <Text style={s.badgeText}>Amministratore</Text>
             </View>
           </View>
@@ -101,12 +102,12 @@ export default function AdminDashboard({ navigation }: any) {
         {/* Stats */}
         <View style={s.statsRow}>
           {[
-            { label: 'Utenti',  value: stats.users,    color: C.primary },
-            { label: 'Bambini', value: stats.students,  color: C.accentPink },
-            { label: 'Classi',  value: stats.classes,   color: C.accentGreen },
+            { label: 'Utenti',  value: stats.users },
+            { label: 'Bambini', value: stats.students },
+            { label: 'Classi',  value: stats.classes },
           ].map((st, i) => (
-            <View key={i} style={[s.statCard, { borderTopColor: st.color, borderTopWidth: 3 }]}>
-              <Text style={[s.statValue, { color: st.color }]}>{st.value}</Text>
+            <View key={i} style={s.statCard}>
+              <Text style={s.statValue}>{st.value}</Text>
               <Text style={s.statLabel}>{st.label}</Text>
             </View>
           ))}
@@ -115,12 +116,12 @@ export default function AdminDashboard({ navigation }: any) {
         {/* Cards */}
         {CARDS.map(card => (
           <TouchableOpacity key={card.id} onPress={() => navigation.navigate(card.tab)}
-            style={s.card} activeOpacity={0.9}>
-            <View style={[s.iconBox, { backgroundColor: card.bg }]}>
-              <Ionicons name={card.icon as any} size={24} color={card.color} />
+            style={s.card} activeOpacity={0.7}>
+            <View style={s.iconBox}>
+              <Ionicons name={card.icon as any} size={21} color={C.primary} />
             </View>
             <Text style={s.cardTitle}>{card.title}</Text>
-            <Ionicons name="chevron-forward" size={16} color={C.muted} />
+            <Ionicons name="chevron-forward" size={18} color={C.muted} />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -134,19 +135,20 @@ const s = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   greeting:{ fontSize: 13, color: C.muted, fontWeight: '500' },
-  name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2 },
-  badge:  { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, marginTop: 6 },
-  badgeText:{ color: C.white, fontSize: 11, fontWeight: '700' },
+  name:   { fontSize: 24, fontWeight: '800', color: C.text, marginTop: 2, letterSpacing: -0.3 },
+  badge:  { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: C.primary + '14', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8 },
+  badgeDot:{ width: 5, height: 5, borderRadius: 3, backgroundColor: C.primary },
+  badgeText:{ color: C.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   topBar:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.divider },
   topCenter: { alignItems: 'center', flex: 1 },
   topLogo:   { width: 36, height: 36, borderRadius: 18 },
   topSede:   { fontSize: 10, fontWeight: '700', color: C.muted, marginTop: 2 },
   menuBtn:   { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center' },
-  statsRow:{ flexDirection: 'row', gap: 10, marginBottom: 16 },
-  statCard:{ flex: 1, backgroundColor: C.white, borderRadius: 14, padding: 14, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  statValue:{ fontSize: 24, fontWeight: '900' },
+  statsRow:{ flexDirection: 'row', gap: 10, marginBottom: 18 },
+  statCard:{ flex: 1, backgroundColor: C.white, borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  statValue:{ fontSize: 23, fontWeight: '800', color: C.text },
   statLabel:{ fontSize: 11, color: C.muted, marginTop: 2, fontWeight: '600' },
-  card:   { backgroundColor: C.white, borderRadius: 16, padding: 16, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 14, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2, borderWidth: 1, borderColor: C.border },
-  iconBox:{ width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  cardTitle:{ flex: 1, fontSize: 15, fontWeight: '800', color: C.text },
+  card:   { backgroundColor: C.white, borderRadius: 14, padding: 13, marginBottom: 9, flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  iconBox:{ width: 40, height: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: C.primary + '12' },
+  cardTitle:{ flex: 1, fontSize: 15, fontWeight: '700', color: C.text },
 });

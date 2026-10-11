@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, SafeAreaView,
+  View, Text, TouchableOpacity, ScrollView,
   StatusBar, StyleSheet, ActivityIndicator, Image, Modal, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import ChildSwitcherBar from '../../components/ChildSwitcherBar';
@@ -111,7 +112,7 @@ export default function ParentDashboard({ navigation }: any) {
   }, [childIds.join(',')]);
 
   if (loading) return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       <ActivityIndicator size="large" color={C.babyBlue} style={{ flex: 1 }} />
           {/* Child Switcher Modal */}
       <Modal visible={childSwitcherOpen} transparent animationType="fade" onRequestClose={() => setChildSwitcherOpen(false)}>
@@ -147,7 +148,7 @@ export default function ParentDashboard({ navigation }: any) {
   ] : [];
 
   return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
       {/* ── Top bar: campanella sx | logo+sede centro | hamburger dx ── */}
       <View style={s.topBar}>

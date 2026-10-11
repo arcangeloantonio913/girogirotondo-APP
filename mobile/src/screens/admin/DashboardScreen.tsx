@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, StyleSheet, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import { useScreenRefresh } from '../../lib/useScreenRefresh';
@@ -55,8 +56,8 @@ export default function AdminDashboard({ navigation }: any) {
   }, [sede, refreshTick]);
 
   return (
-    <SafeAreaView style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} translucent={false} />
       
       {/* ── Top bar ── */}
             <View style={s.topBar}>

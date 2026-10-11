@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import ParentDashboard    from '../screens/parent/DashboardScreen';
@@ -30,14 +31,15 @@ const TABS: { name: string; component: React.ComponentType<any>; icon: IName; ic
 ];
 
 function ParentTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor:   COLORS.active,
         tabBarInactiveTintColor: COLORS.inactive,
-        tabBarStyle: { backgroundColor:'#FFF', borderTopColor:'#F3F4F6', height:60, paddingBottom:8 },
-        tabBarLabelStyle: { fontSize:10, fontWeight:'600' },
+        tabBarStyle: { backgroundColor:'#FFF', borderTopColor:'#EEF0F3', borderTopWidth:1, height:58+insets.bottom, paddingBottom:6+insets.bottom, paddingTop:6 },
+        tabBarLabelStyle: { fontSize:10, fontWeight:'600', marginTop:1 },
         tabBarIcon: ({ focused, color }) => {
           const tab = TABS.find(t => t.name === route.name);
           return <Ionicons name={focused ? tab?.iconActive! : tab?.icon!} size={22} color={color}/>;

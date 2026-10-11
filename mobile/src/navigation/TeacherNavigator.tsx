@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import TeacherDashboard from '../screens/teacher/DashboardScreen';
@@ -35,6 +36,7 @@ const TABS: { name:string; component:React.ComponentType<any>; icon:IName; iconA
 
 function TeacherTabs() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const disabled: string[] = Array.isArray(user?.funzioni_disabilitate) ? user!.funzioni_disabilitate : [];
   const tabs = TABS.filter(t => { const m = TAB_MODULE[t.name]; return !(m && disabled.includes(m)); });
   return (
@@ -43,8 +45,8 @@ function TeacherTabs() {
         headerShown: false,
         tabBarActiveTintColor:   COLORS.active,
         tabBarInactiveTintColor: COLORS.inactive,
-        tabBarStyle: { backgroundColor:'#FFF', borderTopColor:'#F3F4F6', height:60, paddingBottom:8 },
-        tabBarLabelStyle: { fontSize:10, fontWeight:'600' },
+        tabBarStyle: { backgroundColor:'#FFF', borderTopColor:'#EEF0F3', borderTopWidth:1, height:58+insets.bottom, paddingBottom:6+insets.bottom, paddingTop:6 },
+        tabBarLabelStyle: { fontSize:10, fontWeight:'600', marginTop:1 },
         tabBarIcon: ({ focused, color }) => {
           const tab = TABS.find(t => t.name === route.name);
           return <Ionicons name={focused ? tab?.iconActive! : tab?.icon!} size={22} color={color}/>;

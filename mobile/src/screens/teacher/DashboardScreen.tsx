@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, StatusBar, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, StyleSheet, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Sidebar from '../../components/layout/Sidebar';
 import { useScreenRefresh } from '../../lib/useScreenRefresh';
@@ -40,7 +41,7 @@ export default function TeacherDashboard({ navigation }: any) {
   }, [user, refreshTick]);
 
   return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
             <View style={s.topBar}>
         {/* Sinistra: campanella */}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StatusBar, SafeAreaView,
+  View, Text, TouchableOpacity, StatusBar,
   ScrollView, ActivityIndicator, StyleSheet, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/AuthContext';
@@ -55,8 +56,8 @@ export default function ScreenLayout({
     : { style: { flex: 1 } };
 
   return (
-    <SafeAreaView style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} translucent={false} />
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={s.header}>

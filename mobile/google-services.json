@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "481357222661",
+    "firebase_url": "https://girogirotondo-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "girogirotondo",
+    "storage_bucket": "girogirotondo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:481357222661:android:a1a39c0d49f894da005d6c",
+        "android_client_info": {
+          "package_name": "it.dimensionebimbo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtexM36ncXvS8E_TSVUYJwv_9J5cJRmzM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:481357222661:android:ec31d8c5c06c3257005d6c",
+        "android_client_info": {
+          "package_name": "it.girogirotondo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtexM36ncXvS8E_TSVUYJwv_9J5cJRmzM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

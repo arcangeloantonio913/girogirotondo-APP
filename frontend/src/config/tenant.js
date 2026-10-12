@@ -122,6 +122,55 @@ const TENANTS = {
       email: 'info@dimensionebimbo.it',
     },
   },
+
+  // ── Linea prodotto FISM (scuole paritarie) ──
+  // Build dedicato: NON tocca gli altri tenant. `features.rette` accende le sezioni
+  // Rette/Pagamenti (gestionale amministrativo) solo qui. Il branding della singola
+  // scuola arriva a runtime dalla sede (sede.color); qui c'è il default della scuola demo.
+  fism: {
+    appName: 'Santa Teresa',
+    tagline: 'La scuola in un touch',
+    footer:
+      '© 2026 Santa Teresa — in collaborazione con FISM — Realizzato da Omnia. Conforme GDPR e normative EU',
+    logo: '/logo-fism.png',
+    favicon: '/logo-fism.png',
+    // Abilita il modulo amministrativo (voci menu Rette/Pagamenti). Assente sugli altri
+    // tenant → per loro le voci restano nascoste.
+    features: { rette: true },
+    manifest: {
+      name: 'Santa Teresa - La scuola in un touch',
+      shortName: 'Santa Teresa',
+      description:
+        "La scuola dell'infanzia in un'app: comunicazioni, presenze, mensa, rette e pagamenti — per famiglie e maestre.",
+      title: "Santa Teresa - La scuola in un touch",
+    },
+    colors: {
+      primary: '#7A5CFF',
+      bg: '#F6F4FF',
+      babyBlue: '#A9C9FF',
+      babyPink: '#FFC2E2',
+      babyGreen: '#B7F0D8',
+      accentPink: '#FF6FB5',
+      accentGreen: '#34D399',
+      tintBlue: '#EEF1FF',
+      tintGreen: '#ECFDF5',
+      tintPink: '#FDF0F8',
+    },
+    sedi: [
+      { id: 'santa-teresa', label: 'Santa Teresa', color: '#7A5CFF', logo: '/logo-fism.png' },
+    ],
+    contacts: {
+      email: null,
+      phoneBySede: {},
+      phoneDefault: '',
+    },
+    legal: {
+      ragioneSociale: "Scuola dell'Infanzia Santa Teresa",
+      piva: '',
+      indirizzo: 'Palermo',
+      email: '',
+    },
+  },
 };
 
 const activeKey = process.env.REACT_APP_TENANT || 'girogirotondo';

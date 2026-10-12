@@ -25,7 +25,7 @@ function getNavItems(role) {
       { path: '/parent/diario',       icon: BookMarked,     label: 'Diario' },
       // ── Solo sidebar ────────────────────────────────────────────────────
       { path: '/parent/presenze',     icon: ClipboardList,  label: 'Presenze' },
-      { path: '/parent/pagamenti',    icon: Receipt,        label: 'Pagamenti' },
+      ...(tenant.features?.rette ? [{ path: '/parent/pagamenti', icon: Receipt, label: 'Pagamenti' }] : []),
       { path: '/parent/avvisi',       icon: Megaphone,      label: 'Avvisi' },
       { path: '/parent/appuntamenti', icon: Calendar,       label: 'Prenotazioni' },
       { path: '/parent/modulistica',  icon: FileText,       label: 'Documenti' },
@@ -57,7 +57,7 @@ function getNavItems(role) {
       { path: '/admin/gallery',       icon: Camera,         label: 'Foto' },
       // ── Solo sidebar ──────────────────────────────────────────────────────
       { path: '/admin/mensa',         icon: UtensilsCrossed,label: 'Mensa' },
-      { path: '/admin/rette',         icon: Euro,           label: 'Rette' },
+      ...(tenant.features?.rette ? [{ path: '/admin/rette', icon: Euro, label: 'Rette' }] : []),
       { path: '/admin/appointments',  icon: Calendar,       label: 'Appuntamenti' },
       { path: '/admin/modulistica',   icon: FileText,       label: 'Modulistica' },
       { path: '/admin/profile',       icon: User,           label: 'Profilo' },

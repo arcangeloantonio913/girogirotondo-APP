@@ -331,6 +331,9 @@ async def ensure_indexes(db=None):
         ("payments", "sede_id", {}),
         ("payments", "charge_id", {}),
         ("payments", [("student_id", 1), ("paid_at", 1)], {}),
+        ("fatture", "id", {}),
+        ("fatture", [("sede_id", 1), ("anno", 1)], {}),
+        ("fatture", "student_id", {}),
     ]
 
     for coll_name, keys, options in index_specs:

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Euro, Plus, Trash2, Wallet, BellRing, FileClock, CalendarClock } from 'lucide-react';
+import { Euro, Plus, Trash2, Wallet, BellRing, FileClock, CalendarClock, Download } from 'lucide-react';
 
 const eur = (n) => `€ ${Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const thisMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
@@ -86,6 +86,18 @@ export default function AdminRette() {
     finally { setBusy(false); }
   };
 
+  const downloadCsv = async (path, filename) => {
+    setError('');
+    try {
+      const r = await api.get(path, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([r.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url; link.setAttribute('download', filename);
+      document.body.appendChild(link); link.click();
+      link.remove(); window.URL.revokeObjectURL(url);
+    } catch (e) { setError('Errore nel download del file.'); }
+  };
+
   const openPay = (a) => { setPayFor(a); setPayAmount(String(a.residuo ?? a.amount ?? '')); setPayMethod('bonifico'); };
   const salvaIncasso = async () => {
     if (!payFor) return;
@@ -153,6 +165,27 @@ export default function AdminRette() {
 
         {msg && <p className="text-xs rounded-xl px-3 py-2" style={{ backgroundColor: `${C.accentGreen}1a`, color: '#166534' }} data-testid="rette-msg">{msg}</p>}
         {error && <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2" data-testid="rette-error">{error}</p>}
+
+        {/* Export CSV */}
+        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="w-4 h-4" style={{ color: C.primary }} />
+            <span className="text-sm font-bold text-gray-700">Esporta per segreteria / commercialista</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['/export/addebiti.csv', 'addebiti.csv', 'Addebiti'],
+              ['/export/pagamenti.csv', 'pagamenti.csv', 'Pagamenti'],
+              ['/export/anagrafiche.csv', 'anagrafiche.csv', 'Anagrafiche'],
+              ['/export/sidi-alunni.csv', 'sidi-alunni.csv', 'Anagrafe SIDI'],
+            ].map(([path, file, label]) => (
+              <Button key={path} onClick={() => downloadCsv(path, file)} variant="outline"
+                className="rounded-2xl font-semibold h-9 text-sm" data-testid={`export-${file}`}>
+                <Download className="w-4 h-4 mr-1" />{label}
+              </Button>
+            ))}
+          </div>
+        </div>
 
         {/* Tab switch */}
         <div className="flex gap-2">

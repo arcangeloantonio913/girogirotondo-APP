@@ -40,7 +40,8 @@ export default function TeacherMedia() {
   const [selStudents, setSelStudents] = useState<string[]>([]);
   const [allStudents, setAllStudents] = useState(true);
   const [caption,     setCaption]     = useState('');
-  const [pickedImage, setPickedImage] = useState<{ uri: string; base64: string; mime: string } | null>(null);
+  const [pickedImages, setPickedImages] = useState<{ uri: string; base64: string; mime: string }[]>([]);
+  const [uploadProg, setUploadProg] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   // Nomi classi per il selettore (solo quelle della maestra)
   useEffect(() => {
@@ -71,16 +72,19 @@ export default function TeacherMedia() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.4, // bassa qualità per upload veloce
+        allowsMultipleSelection: true,   // più foto in una volta sola
+        selectionLimit: 10,
       });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      const base64 = await new FileSystem.File(uri).base64();
+      if (result.canceled || !result.assets?.length) return;
       // MIME REALE dal picker. Su Android la foto scelta può essere PNG/WebP/HEIC:
       // etichettarla a forza come image/jpeg la rende illeggibile su iPhone (iOS è
       // rigoroso sul match tipo↔byte, Android è tollerante) → "foto non visualizzabili".
-      const mime = asset.mimeType || 'image/jpeg';
-      setPickedImage({ uri, base64, mime });
+      const imgs = await Promise.all(result.assets.map(async (asset) => ({
+        uri: asset.uri,
+        base64: await new FileSystem.File(asset.uri).base64(),
+        mime: asset.mimeType || 'image/jpeg',
+      })));
+      setPickedImages(imgs);
       setShowModal(true);
     } catch (e: any) {
       if(__DEV__) console.log('[MEDIA] pickImage error:', e?.message);
@@ -94,40 +98,49 @@ export default function TeacherMedia() {
   };
 
   const handleUpload = async () => {
-    if (!pickedImage) { Alert.alert('Seleziona una foto prima'); return; }
+    if (!pickedImages.length) { Alert.alert('Seleziona almeno una foto'); return; }
     if (!classId) { Alert.alert('Nessuna classe assegnata'); return; }
     setUploading(true);
-    try {
-      // student_ids: se non seleziona nessuno → foto a TUTTA la classe (caso comune:
-      // foto di gruppo). Niente più blocco "seleziona almeno un bambino".
-      const studentIds = (allStudents || selStudents.length === 0)
-        ? students.map(s => s.id)
-        : selStudents;
+    // student_ids: se non seleziona nessuno → foto a TUTTA la classe (caso comune:
+    // foto di gruppo). Niente più blocco "seleziona almeno un bambino".
+    const studentIds = (allStudents || selStudents.length === 0)
+      ? students.map(s => s.id)
+      : selStudents;
 
-      const payload = {
-        class_id: classId,
-        student_ids: studentIds,
-        media_url: `data:${pickedImage.mime || 'image/jpeg'};base64,${pickedImage.base64}`,
-        media_type: 'photo',
-        caption: caption || new Date().toLocaleDateString('it-IT'),
-      };
-      // Timeout esteso: le foto degli iPhone possono essere pesanti e superare i 20s di default
-      const res = await api.post('/gallery/upload-b64', payload, { timeout: 90000 });
-      setItems(prev => [res.data, ...prev]);
-      setShowModal(false);
-      setPickedImage(null);
-      setCaption('');
-      setSelStudents([]);
-      setAllStudents(true);
-    } catch (e: any) {
-      const isTimeout = e?.code === 'ECONNABORTED';
-      const msg = isTimeout
-        ? 'Upload troppo lento: la foto è pesante o la connessione è debole. Riprova con una connessione migliore.'
-        : (e?.response?.data?.detail || e?.message || 'Errore sconosciuto');
-      if(__DEV__) console.log('[MEDIA] Upload error:', e?.response?.status, e?.code, msg);
-      Alert.alert('Errore upload', msg);
+    const uploaded: any[] = [];
+    let failures = 0;
+    setUploadProg({ done: 0, total: pickedImages.length });
+    // Caricamento SEQUENZIALE (una foto alla volta) per non saturare la connessione.
+    for (let i = 0; i < pickedImages.length; i++) {
+      const img = pickedImages[i];
+      try {
+        const payload = {
+          class_id: classId,
+          student_ids: studentIds,
+          media_url: `data:${img.mime || 'image/jpeg'};base64,${img.base64}`,
+          media_type: 'photo',
+          caption: caption || new Date().toLocaleDateString('it-IT'),
+        };
+        // Timeout esteso: le foto degli iPhone possono essere pesanti e superare i 20s di default
+        const res = await api.post('/gallery/upload-b64', payload, { timeout: 90000 });
+        uploaded.push(res.data);
+      } catch (e: any) {
+        failures++;
+        if(__DEV__) console.log('[MEDIA] Upload error:', e?.response?.status, e?.code);
+      }
+      setUploadProg({ done: i + 1, total: pickedImages.length });
     }
-    finally { setUploading(false); }
+
+    if (uploaded.length) setItems(prev => [...uploaded, ...prev]);
+    setShowModal(false);
+    setPickedImages([]);
+    setCaption('');
+    setSelStudents([]);
+    setAllStudents(true);
+    setUploading(false);
+    if (failures) {
+      Alert.alert('Caricamento parziale', `${uploaded.length} foto caricate, ${failures} non riuscite (foto pesanti o connessione debole). Riprova con quelle mancanti.`);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -193,11 +206,26 @@ export default function TeacherMedia() {
           </View>
 
           <ScrollView>
-            {/* Preview */}
-            {pickedImage && (
-              <Image source={{ uri: pickedImage.uri }}
-                style={{ width: '100%', height: 180, borderRadius: 14, marginBottom: 16 }}
-                resizeMode="cover" />
+            {/* Preview (una o più foto) */}
+            {pickedImages.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                {pickedImages.length === 1 ? (
+                  <Image source={{ uri: pickedImages[0].uri }}
+                    style={{ width: '100%', height: 180, borderRadius: 14 }}
+                    resizeMode="cover" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {pickedImages.map((img, i) => (
+                      <Image key={i} source={{ uri: img.uri }}
+                        style={{ width: 96, height: 96, borderRadius: 12, marginRight: 8 }}
+                        resizeMode="cover" />
+                    ))}
+                  </ScrollView>
+                )}
+                <Text style={{ fontSize: 12, color: C.muted, marginTop: 6, fontWeight: '600' }}>
+                  {pickedImages.length} foto selezionate
+                </Text>
+              </View>
             )}
 
             <Text style={s.fl}>Visibile a</Text>
@@ -218,7 +246,7 @@ export default function TeacherMedia() {
                   <TouchableOpacity key={st.id} onPress={() => toggleStudent(st.id)}
                     style={[s.studentChip, selStudents.includes(st.id) && s.studentChipActive]}>
                     <Text style={[s.studentChipText, selStudents.includes(st.id) && { color: C.white }]}>
-                      {st.name}
+                      {st.name} {st.cognome || ''}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -228,9 +256,11 @@ export default function TeacherMedia() {
             <TouchableOpacity style={[s.uploadFinalBtn, uploading && { opacity: 0.6 }]}
               onPress={handleUpload} disabled={uploading}>
               {uploading
-                ? <ActivityIndicator color={C.white} size="small" />
+                ? <><ActivityIndicator color={C.white} size="small" />
+                    <Text style={s.uploadFinalText}>  Caricamento {uploadProg.done}/{uploadProg.total}…</Text>
+                  </>
                 : <><Ionicons name="cloud-upload-outline" size={18} color={C.white} />
-                    <Text style={s.uploadFinalText}>Pubblica Foto</Text>
+                    <Text style={s.uploadFinalText}>Pubblica {pickedImages.length > 1 ? `${pickedImages.length} foto` : 'Foto'}</Text>
                   </>
               }
             </TouchableOpacity>

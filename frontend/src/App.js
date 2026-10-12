@@ -38,6 +38,8 @@ const ResetPasswordPage   = lazy(() => import("@/pages/ResetPasswordPage"));
 const ParentNotifiche     = lazy(() => import("@/pages/parent/ParentNotifiche"));
 const ParentAppuntamenti  = lazy(() => import("@/pages/parent/ParentAppuntamenti"));
 const ParentPresenze      = lazy(() => import("@/pages/parent/ParentPresenze"));
+const AdminRette          = lazy(() => import("@/pages/admin/AdminRette"));
+const ParentPagamenti     = lazy(() => import("@/pages/parent/ParentPagamenti"));
 
 // ─── Spinner pagina (mostrato durante il lazy load) ───────────────────────────
 function PageLoader() {
@@ -136,6 +138,7 @@ function AppRoutes() {
         <Route path="/parent/notifiche"    element={<ProtectedRoute allowedRoles={['parent']}><ParentNotifiche /></ProtectedRoute>} />
         <Route path="/parent/appuntamenti" element={<ProtectedRoute allowedRoles={['parent']}><ParentAppuntamenti /></ProtectedRoute>} />
         <Route path="/parent/presenze"      element={<ProtectedRoute allowedRoles={['parent']}><ParentPresenze /></ProtectedRoute>} />
+        <Route path="/parent/pagamenti"     element={<ProtectedRoute allowedRoles={['parent']}><ParentPagamenti /></ProtectedRoute>} />
 
         {/* Teacher */}
         <Route path="/teacher"          element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
@@ -158,6 +161,7 @@ function AppRoutes() {
         <Route path="/admin/profile"    element={<ProtectedRoute allowedRoles={['admin']}><AdminProfile /></ProtectedRoute>} />
         <Route path="/admin/presenze"   element={<ProtectedRoute allowedRoles={['admin']}><AdminPresenze /></ProtectedRoute>} />
         <Route path="/admin/gallery"    element={<ProtectedRoute allowedRoles={['admin']}><AdminGallery /></ProtectedRoute>} />
+        <Route path="/admin/rette"      element={<ProtectedRoute allowedRoles={['admin']}><AdminRette /></ProtectedRoute>} />
 
         {/* Pagina pubblica — nessuna autenticazione richiesta */}
         <Route path="/privacy" element={<PrivacyPolicy />} />

@@ -67,6 +67,7 @@ from routers.sedi import router as sedi_router
 from routers.presenze import router as presenze_router
 from routers.rette import router as rette_router
 from routers.pagamenti import router as pagamenti_router
+from routers.orgs import router as orgs_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -127,6 +128,7 @@ app.include_router(sedi_router)
 app.include_router(presenze_router)
 app.include_router(rette_router)
 app.include_router(pagamenti_router)
+app.include_router(orgs_router)
 
 
 # --- Security headers middleware ---

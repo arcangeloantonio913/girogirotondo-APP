@@ -88,6 +88,8 @@ frontend/node_modules/@next/swc-darwin-arm64/next-swc.darwin-arm64.node
 # Credentials files (SECURITY - NEVER COMMIT THESE)
 backend/scripts/credenziali_staff.txt
 backend/credenziali_staff.txt
+backend/credenziali_staff.csv
+backend/scripts/credenziali_staff.csv
 backend/.env
 frontend/.env
 frontend/.env.production

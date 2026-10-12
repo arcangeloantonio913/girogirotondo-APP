@@ -1,6 +1,7 @@
 """Database service — Motor async client + multi-tenant seed."""
 import os
 import uuid
+import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -397,7 +398,9 @@ async def seed_database():
             "name": "Mariagrazia",
             "cognome": "Direttrice",
             "email": "mariucciasc@gmail.com",
-            "password": hash_password("Mariagrazia2026!"),
+            # Password da env (SUPERADMIN_MARIAGRAZIA_PASSWORD); se assente, casuale
+            # non nota (il reset va fatto via ensure_superadmins / reset password).
+            "password": hash_password(os.environ.get("SUPERADMIN_MARIAGRAZIA_PASSWORD") or secrets.token_urlsafe(18)),
             "role": "admin",
             "is_superadmin": True,
             "org_id": "girogirotondo-group",
@@ -416,7 +419,7 @@ async def seed_database():
             "name": "Teresa",
             "cognome": "Coordinatrice",
             "email": "melignanoteresa@gmail.com",
-            "password": hash_password("Teresa2026!"),
+            "password": hash_password(os.environ.get("SUPERADMIN_TERESA_PASSWORD") or secrets.token_urlsafe(18)),
             "role": "admin",
             "is_superadmin": True,
             "org_id": "girogirotondo-group",

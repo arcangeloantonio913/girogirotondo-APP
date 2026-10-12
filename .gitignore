@@ -90,6 +90,9 @@ backend/scripts/credenziali_staff.txt
 backend/credenziali_staff.txt
 backend/credenziali_staff.csv
 backend/scripts/credenziali_staff.csv
+# Chiavi App Store Connect API (private) — mai versionare
+*.p8
+AuthKey_*.p8
 backend/.env
 frontend/.env
 frontend/.env.production

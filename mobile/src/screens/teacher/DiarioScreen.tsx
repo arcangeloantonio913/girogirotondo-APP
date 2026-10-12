@@ -28,6 +28,8 @@ export default function TeacherDiario() {
   const [classes,   setClasses]   = useState<any[]>([]);
   const [entries,   setEntries]   = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
+  const [loadErr,   setLoadErr]   = useState<string | null>(null);
+  const [retry,     setRetry]     = useState(0);
   const [showForm,  setShowForm]  = useState(false);
   const [editEntry, setEditEntry] = useState<any>(null);
 
@@ -44,15 +46,16 @@ export default function TeacherDiario() {
   // Nomi classi per il selettore (solo quelle della maestra)
   useEffect(() => {
     if (!classIds.length) { setLoading(false); return; }
-    api.get('/classes').then(r => setClasses((r.data || []).filter((c: any) => classIds.includes(c.id)))).catch(() => {});
-  }, [classIds]);
+    setLoadErr(null);
+    api.get('/classes').then(r => { setClasses((r.data || []).filter((c: any) => classIds.includes(c.id))); setLoadErr(null); }).catch(() => { setLoadErr('Impossibile caricare le classi. Verifica la connessione e riprova.'); setLoading(false); });
+  }, [classIds, retry]);
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
     api.get(`/diary?class_id=${classId}`)
-      .then(r => setEntries(r.data || []))
-      .catch(() => {}).finally(() => setLoading(false));
-  }, [classId, refreshTick]);
+      .then(r => { setEntries(r.data || []); setLoadErr(null); })
+      .catch(() => setLoadErr('Impossibile caricare il diario. Verifica la connessione e riprova.')).finally(() => setLoading(false));
+  }, [classId, refreshTick, retry]);
 
   const resetForm = () => {
     setNote(''); setMood(''); setActs([]); setDate(todayLocal()); setEditEntry(null);
@@ -103,13 +106,13 @@ export default function TeacherDiario() {
   };
 
   return (
-    <ScreenLayout title="Diario di Bordo" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+    <ScreenLayout title="Diario di Bordo" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Selettore classe (solo se la maestra ha più classi) */}
       {classes.length > 1 && (
         <View style={s.classRow}>
           {classes.map(c => (
             <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)}
-              style={[s.classChip, classId === c.id && { backgroundColor: C.babyBlue, borderColor: C.babyBlue }]}>
+              style={[s.classChip, classId === c.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
               <Text style={[s.classChipTxt, classId === c.id && { color: C.white }]}>{c.name}</Text>
             </TouchableOpacity>
           ))}
@@ -149,7 +152,7 @@ export default function TeacherDiario() {
               </View>
               <View style={{ gap: 6 }}>
                 <TouchableOpacity onPress={() => openEdit(item)} style={s.editBtn}>
-                  <Ionicons name="pencil-outline" size={15} color={C.babyBlue} />
+                  <Ionicons name="pencil-outline" size={15} color={C.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item.id)} style={s.deleteBtn}>
                   <Ionicons name="trash-outline" size={15} color={C.red} />

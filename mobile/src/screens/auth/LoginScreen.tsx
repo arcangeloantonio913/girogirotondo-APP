@@ -69,8 +69,8 @@ export default function LoginScreen() {
       >
         {/* Cerchi decorativi */}
         <View style={[s.circle, { top: -40, left: -40, width: 160, height: 160, backgroundColor: C.primary }]} />
-        <View style={[s.circle, { bottom: 20, right: -30, width: 120, height: 120, backgroundColor: '#FF69B4' }]} />
-        <View style={[s.circle, { top: '35%', right: -20, width: 80, height: 80, backgroundColor: '#32CD32' }]} />
+        <View style={[s.circle, { bottom: 20, right: -30, width: 120, height: 120, backgroundColor: C.primary }]} />
+        <View style={[s.circle, { top: '35%', right: -20, width: 80, height: 80, backgroundColor: C.primary }]} />
 
         <View style={s.inner}>
           {/* School Selector con loghi reali */}
@@ -88,7 +88,7 @@ export default function LoginScreen() {
                   <View style={[
                     s.logoRing,
                     isSelected && {
-                      borderColor: C.babyBlue,
+                      borderColor: C.primary,
                       borderWidth: 3,
                       transform: [{ scale: 1.08 }],
                     },

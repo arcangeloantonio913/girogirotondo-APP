@@ -41,6 +41,8 @@ export default function TeacherMensa() {
   const [meals,   setMeals]   = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [retry,   setRetry]   = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [editId,  setEditId]  = useState<string | null>(null);  // menu in modifica
   const [saving,  setSaving]  = useState(false);
@@ -57,13 +59,16 @@ export default function TeacherMensa() {
   });
 
   useEffect(() => {
+    setLoading(true); setLoadErr(null);
     Promise.allSettled([api.get('/meals'), api.get('/classes')])
       .then(([mR, cR]) => {
         const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
-        setMeals(val(mR) || []); setClasses(val(cR) || []);
+        // Se entrambe falliscono mostro l'errore con "Riprova" invece di una schermata muta
+        if (mR.status === 'rejected' && cR.status === 'rejected') { setLoadErr('Impossibile caricare il menu. Verifica la connessione e riprova.'); }
+        else { setMeals(val(mR) || []); setClasses(val(cR) || []); }
       })
-      .catch(() => {}).finally(() => setLoading(false));
-  }, [sede]);
+      .finally(() => setLoading(false));
+  }, [sede, retry]);
 
   // Filtro per data selezionata. I menu a data SINGOLA (solo `date`, senza range) vanno
   // confrontati su `date`, altrimenti sparirebbero dalla lista.
@@ -121,7 +126,7 @@ export default function TeacherMensa() {
   };
 
   return (
-    <ScreenLayout title="Menu Mensa" showBack color={C.accentGreen} loading={loading} scrollable={false}>
+    <ScreenLayout title="Menu Mensa" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Navigazione date */}
       <View style={s.dateNav}>
         <TouchableOpacity onPress={() => {
@@ -200,13 +205,13 @@ export default function TeacherMensa() {
             {/* Classe */}
             <Text style={s.fl}>Classi</Text>
             <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_id: '' }))}
-              style={[s.chip, !form.class_id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }, { marginBottom: 6 }]}>
+              style={[s.chip, !form.class_id && { backgroundColor: C.primary, borderColor: C.primary }, { marginBottom: 6 }]}>
               <Text style={[s.chipText, !form.class_id && { color: C.white }]}>✓ Tutte le classi</Text>
             </TouchableOpacity>
             <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
               {classes.map(cls => (
                 <TouchableOpacity key={cls.id} onPress={() => setForm(p => ({ ...p, class_id: cls.id }))}
-                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }]}>
+                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
                   <Text style={[s.chipText, form.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -261,9 +266,9 @@ const s = StyleSheet.create({
   dateNav:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.border },
   navBtn:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   dateText:      { fontSize: 14, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
-  todayBadge:    { backgroundColor: C.accentGreen, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
+  todayBadge:    { backgroundColor: C.primary, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
   todayText:     { fontSize: 10, color: C.white, fontWeight: '700' },
-  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
+  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:    { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:         { alignItems: 'center', paddingTop: 50 },
   emptyText:     { fontSize: 14, color: C.muted, marginTop: 12, textAlign: 'center' },
@@ -284,12 +289,12 @@ const s = StyleSheet.create({
   chipRow:       { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip:          { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
   chipText:      { fontSize: 13, fontWeight: '600', color: C.text },
-  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.accentGreen, backgroundColor: C.white },
-  presetText:    { fontSize: 12, fontWeight: '600', color: C.accentGreen },
+  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.primary, backgroundColor: C.white },
+  presetText:    { fontSize: 12, fontWeight: '600', color: C.primary },
   pastoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   pastoInputIcon:{ fontSize: 24, width: 36, textAlign: 'center' },
   pastoInputLabel:{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 3 },
   pastoInput:    { borderWidth: 0.5, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: C.text, backgroundColor: C.white },
-  submitBtn:     { backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitBtn:     { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   submitText:    { color: C.white, fontWeight: '700', fontSize: 15 },
 });

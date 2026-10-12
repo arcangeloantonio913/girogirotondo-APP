@@ -113,7 +113,7 @@ export default function ParentDashboard({ navigation }: any) {
 
   if (loading) return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      <ActivityIndicator size="large" color={C.babyBlue} style={{ flex: 1 }} />
+      <ActivityIndicator size="large" color={C.primary} style={{ flex: 1 }} />
           {/* Child Switcher Modal */}
       <Modal visible={childSwitcherOpen} transparent animationType="fade" onRequestClose={() => setChildSwitcherOpen(false)}>
         <TouchableOpacity style={s.switOverlay} onPress={() => setChildSwitcherOpen(false)} activeOpacity={1}>
@@ -142,7 +142,7 @@ export default function ParentDashboard({ navigation }: any) {
 
   const grigliaItems = griglia ? [
     { label: 'Primo',   active: !!griglia.pasta,   color: C.babyPink },
-    { label: 'Secondo', active: !!griglia.secondo,  color: C.babyBlue },
+    { label: 'Secondo', active: !!griglia.secondo,  color: C.primary },
     { label: 'Contorno', active: !!griglia.contorno, color: '#86EFAC' },
     { label: 'Frutta',  active: !!griglia.frutta,   color: C.babyGreen },
   ] : [];
@@ -226,7 +226,7 @@ export default function ParentDashboard({ navigation }: any) {
 
         {/* DIARIO */}
         <Card onPress={() => navigation.navigate('Diario')} testID="parent-card-diario">
-          <CardHeader icon="book-outline" iconBg="#EBF0FF" iconColor={C.babyBlue} title="Diario di Bordo" subtitle="Aggiornamento di oggi" />
+          <CardHeader icon="book-outline" iconBg="#EBF0FF" iconColor={C.primary} title="Diario di Bordo" subtitle="Aggiornamento di oggi" />
           {diary
             ? <View style={s.diaryPreview}><Text style={s.diaryText} numberOfLines={3}>{diary.summary || diary.note}</Text></View>
             : <EmptyBear text="La maestra non ha ancora scritto il diario!" />
@@ -273,7 +273,7 @@ export default function ParentDashboard({ navigation }: any) {
             ? <View style={s.mealGrid}>
                 {[
                   { label: 'Primo', value: meal.primo, bg: C.babyPink + '20' },
-                  { label: 'Secondo', value: meal.secondo, bg: C.babyBlue + '20' },
+                  { label: 'Secondo', value: meal.secondo, bg: C.primary + '20' },
                   { label: 'Contorno', value: meal.contorno, bg: C.babyGreen + '20' },
                   { label: 'Frutta', value: meal.frutta, bg: '#FFFBEB' },
                 ].map((m, i) => (
@@ -362,7 +362,7 @@ const s = StyleSheet.create({
   mealItem:   { width: '47%', borderRadius: 12, padding: 10 },
   mealLabel:  { fontSize: 10, color: C.muted, fontWeight: '500' },
   mealValue:  { fontSize: 12, fontWeight: '700', color: C.text, marginTop: 2 },
-  fab: { position: 'absolute', bottom: 80, right: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: C.babyBlue, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  fab: { position: 'absolute', bottom: 80, right: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   childSwitcher: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FFF0', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 6, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#86EFAC' },
   childSwitcherText: { fontSize: 12, fontWeight: '700', color: '#32CD32' },
   switOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

@@ -4,6 +4,7 @@ import {
   Dimensions, ScrollView, Pressable, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useAuth } from '../../lib/AuthContext';
 import api from '../../lib/api';
 import { tenant } from '../../config/tenant';
@@ -11,6 +12,8 @@ import { navigate as globalNavigate, navigateToTab } from '../../navigation/Navi
 
 const { width: W } = Dimensions.get('window');
 const SIDEBAR_W = Math.min(300, W * 0.82);
+// Versione reale dell'app installata (niente stringa fissa che resta indietro)
+const APP_VERSION = Constants.expoConfig?.version ?? '';
 
 const LOGOS: Record<string, any> = {
   'girogirotondo':   require('../../../assets/logo-girogirotondo.png'),
@@ -215,7 +218,7 @@ export default function Sidebar({ visible, onClose, navigation, currentScreen }:
           </TouchableOpacity>
 
           <Text style={s.footer}>© 2026 {tenant.appName} — GDPR compliant</Text>
-          <Text style={s.footer}>v1.0.2 · aggiornamento 5 ottobre (menu mensa iPhone + dati sempre aggiornati)</Text>
+          <Text style={s.footer}>{tenant.appName} · v{APP_VERSION}</Text>
         </ScrollView>
       </Animated.View>
       </View>

@@ -11,12 +11,12 @@ import { tenant } from '../../config/tenant';
 const C = { ...tenant.colors, border: tenant.colors.divider };
 
 const CARDS = [
-  { id: 'griglia',  icon: 'grid-outline',       color: '#FF69B4', bg: '#FFF0F7', title: 'Griglia Giornaliera',   sub: 'Gestisci le attività quotidiane', tab: 'Griglia' },
-  { id: 'presenze', icon: 'clipboard-outline',  color: '#4169E1', bg: '#EBF0FF', title: 'Registro Presenze',     sub: 'Segna presenze e assenze',         tab: 'Presenze' },
-  { id: 'diario',   icon: 'book-outline',       color: '#A7C7E7', bg: '#EBF0FF', title: 'Diario di Bordo',       sub: 'Scrivi il diario della classe',    tab: 'Diario' },
-  { id: 'media',    icon: 'camera-outline',     color: '#32CD32', bg: '#F0FFF0', title: 'Carica Media',          sub: 'Aggiungi foto e video',            tab: 'Media' },
-  { id: 'avvisi',   icon: 'megaphone-outline',  color: '#FF69B4', bg: '#FFF0F7', title: 'Avvisi',                sub: 'Comunicazioni scuola',             tab: 'Avvisi' },
-  { id: 'profilo',  icon: 'person-outline',     color: '#A7C7E7', bg: '#EBF0FF', title: 'Il mio Profilo',        sub: 'Dati account e password',          tab: 'Profilo' },
+  { id: 'griglia',  icon: 'grid-outline',       color: C.primary, bg: C.primary + '12', title: 'Griglia Giornaliera',   sub: 'Gestisci le attività quotidiane', tab: 'Griglia' },
+  { id: 'presenze', icon: 'clipboard-outline',  color: C.primary, bg: C.primary + '12', title: 'Registro Presenze',     sub: 'Segna presenze e assenze',         tab: 'Presenze' },
+  { id: 'diario',   icon: 'book-outline',       color: C.primary, bg: C.primary + '12', title: 'Diario di Bordo',       sub: 'Scrivi il diario della classe',    tab: 'Diario' },
+  { id: 'media',    icon: 'camera-outline',     color: C.primary, bg: C.primary + '12', title: 'Carica Media',          sub: 'Aggiungi foto e video',            tab: 'Media' },
+  { id: 'avvisi',   icon: 'megaphone-outline',  color: C.primary, bg: C.primary + '12', title: 'Avvisi',                sub: 'Comunicazioni scuola',             tab: 'Avvisi' },
+  { id: 'profilo',  icon: 'person-outline',     color: C.primary, bg: C.primary + '12', title: 'Il mio Profilo',        sub: 'Dati account e password',          tab: 'Profilo' },
 ];
 
 export default function TeacherDashboard({ navigation }: any) {
@@ -45,14 +45,14 @@ export default function TeacherDashboard({ navigation }: any) {
       <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
             <View style={s.topBar}>
         {/* Sinistra: campanella */}
-        <TouchableOpacity onPress={() => navigation.navigate('Notifiche')} style={[s.menuBtn, {backgroundColor: '#FF69B418'}]}>
-          <Ionicons name="notifications-outline" size={22} color="#FF69B4" />
+        <TouchableOpacity onPress={() => navigation.navigate('Notifiche')} style={[s.menuBtn, {backgroundColor: C.primary + '18'}]}>
+          <Ionicons name="notifications-outline" size={22} color={C.primary} />
         </TouchableOpacity>
 
         {/* Centro: logo + sede */}
         <View style={s.topCenter}>
           <View style={{ width: 30, height: 30, borderRadius: 15, overflow: 'hidden',
-                         backgroundColor: C.babyBlue, alignItems: 'center', justifyContent: 'center' }}>
+                         backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}>
             {sedeInfo?.logo ? (
               <Image source={sedeInfo.logo} style={{ width: 30, height: 30 }} resizeMode="cover" />
             ) : (

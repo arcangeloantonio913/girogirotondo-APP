@@ -24,6 +24,8 @@ export default function ParentDiario() {
   const { activeChildId, user } = useAuth();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [retry,   setRetry]   = useState(0);
   // Refresh al ritorno sul tab / in foreground: le note della maestra compaiono senza riavviare l'app
   const refreshTick = useScreenRefresh();
   const isAutoRefresh = useIsAutoRefresh(refreshTick);
@@ -38,17 +40,17 @@ export default function ParentDiario() {
     const url = viewAll
       ? `/diary?student_id=${childId}`
       : `/diary?student_id=${childId}&date=${date}`;
-    if (!silent) setLoading(true);
+    if (!silent) { setLoading(true); setLoadErr(null); }
     api.get(url)
-      .then(r => setEntries(r.data || []))
-      .catch(() => { if (!silent) setEntries([]); })   // azzera: niente diario del fratello dopo cambio figlio + errore
+      .then(r => { setEntries(r.data || []); setLoadErr(null); })
+      .catch(() => { if (!silent) { setEntries([]); setLoadErr('Impossibile caricare il diario. Verifica la connessione e riprova.'); } })   // azzera: niente diario del fratello dopo cambio figlio + errore
       .finally(() => setLoading(false));
-  }, [childId, date, viewAll, refreshTick]);
+  }, [childId, date, viewAll, refreshTick, retry]);
 
   const today = todayLocal();
 
   return (
-    <ScreenLayout title="Diario di Bordo" showBack color={C.primary} loading={loading} scrollable={false}>
+    <ScreenLayout title="Diario di Bordo" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Toggle: giorno singolo / storico completo */}
       <View style={s.modeRow}>
         <TouchableOpacity onPress={() => setViewAll(false)}

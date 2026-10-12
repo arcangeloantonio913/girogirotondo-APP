@@ -15,27 +15,29 @@ export default function ParentPresenze() {
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
   const [rows, setRows]       = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [retry,   setRetry]   = useState(0);
 
   const now = new Date();
   const mese = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   useEffect(() => {
     if (!childId) { setRows([]); setLoading(false); return; }
-    setLoading(true);
+    setLoading(true); setLoadErr(null);
     api.get(`/presenze?student_id=${childId}&mese=${mese}`)
       .then(r => {
         const data = (r.data || []).sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
-        setRows(data);
+        setRows(data); setLoadErr(null);
       })
-      .catch(() => setRows([]))   // azzera: niente presenze del fratello dopo cambio figlio + errore
+      .catch(() => { setRows([]); setLoadErr('Impossibile caricare le presenze. Verifica la connessione e riprova.'); })   // azzera: niente presenze del fratello dopo cambio figlio + errore
       .finally(() => setLoading(false));
-  }, [childId, mese]);
+  }, [childId, mese, retry]);
 
   const presenti = rows.filter(r => r.presente).length;
   const assenti  = rows.length - presenti;
 
   return (
-    <ScreenLayout title="Presenze" showBack color={C.primary} loading={loading} scrollable={false}>
+    <ScreenLayout title="Presenze" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Riepilogo mese */}
       <View style={s.summary}>
         <Text style={s.summaryMonth}>{now.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}</Text>

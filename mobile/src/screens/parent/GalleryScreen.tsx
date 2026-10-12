@@ -20,6 +20,7 @@ export default function ParentGallery() {
   const [tab,         setTab]         = useState<'personale'|'classe'>('personale');
   const [items,       setItems]       = useState<any[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [loadErr,     setLoadErr]     = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page,        setPage]        = useState(0);
   const [hasMore,     setHasMore]     = useState(true);
@@ -66,7 +67,7 @@ export default function ParentGallery() {
     if (!reset && (loadingMore || loading)) return;
     const offset = reset ? 0 : page * PAGE;
     if(!reset && !hasMore) return;
-    if (!silent) { reset ? setLoading(true) : setLoadingMore(true); }
+    if (!silent) { reset ? setLoading(true) : setLoadingMore(true); if (reset) setLoadErr(null); }
     try {
       const url = tab==='personale'
         ? `/gallery?student_id=${childId}&limit=${PAGE}&offset=${offset}`
@@ -78,7 +79,8 @@ export default function ParentGallery() {
       setItems(prev => reset ? data : [...prev, ...data]);
       setPage(reset ? 1 : page + 1);
       setHasMore(data.length === PAGE);
-    } catch { if (reset && !silent) setItems([]); } finally {
+      if (reset) setLoadErr(null);
+    } catch { if (reset && !silent) { setItems([]); setLoadErr('Impossibile caricare le foto. Verifica la connessione e riprova.'); } } finally {
       setLoading(false); setLoadingMore(false);
     }
   }, [tab, childId, classId, page, hasMore, loading, loadingMore]);
@@ -127,7 +129,7 @@ export default function ParentGallery() {
   const current = preview !== null ? items[preview] : null;
 
   return (
-    <ScreenLayout title="Galleria Foto" showBack color={C.primary} loading={false} scrollable={false}>
+    <ScreenLayout title="Galleria Foto" showBack color={C.primary} loading={false} scrollable={false} error={loadErr} onRetry={() => load(true)}>
       {/* Tabs */}
       <View style={s.tabs}>
         {(['personale','classe'] as const).map(t => (

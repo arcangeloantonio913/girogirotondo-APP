@@ -57,6 +57,8 @@ export default function ParentGriglia() {
   const [menu,   setMenu]   = useState<any>(null);
   const [classId,setClassId]= useState<string | null>(null);
   const [loading,setLoading]= useState(true);
+  const [loadErr,setLoadErr]= useState<string | null>(null);
+  const [retry,  setRetry]  = useState(0);
   const childId = activeChildId || user?.child_ids?.[0] || user?.child_id;
 
   const today = todayLocal();
@@ -70,12 +72,12 @@ export default function ParentGriglia() {
   useEffect(() => {
     const silent = isAutoRefresh();
     if (!childId) { setLoading(false); setGriglia(null); return; }
-    if (!silent) setLoading(true);
+    if (!silent) { setLoading(true); setLoadErr(null); }
     api.get(`/griglia?student_id=${childId}&date=${date}`)
-      .then(r => setGriglia(r.data?.[0] || null))
-      .catch(() => { if (!silent) setGriglia(null); })   // azzera: dopo cambio figlio con errore rete non mostrare i dati del fratello
+      .then(r => { setGriglia(r.data?.[0] || null); setLoadErr(null); })
+      .catch(() => { if (!silent) { setGriglia(null); setLoadErr('Impossibile caricare la griglia. Verifica la connessione e riprova.'); } })   // azzera: dopo cambio figlio con errore rete non mostrare i dati del fratello
       .finally(() => setLoading(false));
-  }, [childId, date, refreshTick]);
+  }, [childId, date, refreshTick, retry]);
 
   // Menu del giorno DELLA CLASSE del figlio → etichette coerenti (piatti reali).
   useEffect(() => {
@@ -87,7 +89,7 @@ export default function ParentGriglia() {
   ));
 
   return (
-    <ScreenLayout title="Griglia Giornaliera" showBack color={C.babyPink} loading={loading}>
+    <ScreenLayout title="Griglia Giornaliera" showBack color={C.primary} loading={loading} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       <View style={{ padding: 14 }}>
         {/* Date nav */}
         <View style={s.dateNav}>

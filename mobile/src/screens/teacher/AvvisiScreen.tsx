@@ -39,6 +39,8 @@ export default function TeacherAvvisi() {
   const [avvisi,   setAvvisi]   = useState<any[]>([]);
   const [parents,  setParents]  = useState<any[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [loadErr,  setLoadErr]  = useState<string | null>(null);
+  const [retry,    setRetry]    = useState(0);
   const [showForm, setShowForm] = useState(false);
 
   // Form fields
@@ -56,6 +58,7 @@ export default function TeacherAvvisi() {
 
   useEffect(() => {
     const loadAll = async () => {
+      setLoadErr(null);
       // allSettled: la lista avvisi si carica anche se il recupero genitori fallisce.
       // I genitori vanno presi da /users/by-class (accessibile alle maestre), NON da
       // /users (admin-only → 403 che prima azzerava tutta la schermata).
@@ -64,11 +67,12 @@ export default function TeacherAvvisi() {
         classId ? api.get(`/users/by-class/${classId}`) : Promise.resolve({ data: [] } as any),
       ]);
       if (aR.status === 'fulfilled') setAvvisi(aR.value.data || []);
+      else setLoadErr('Impossibile caricare gli avvisi. Verifica la connessione e riprova.');
       if (pR.status === 'fulfilled') setParents((pR.value.data || []).filter((u: any) => u.role === 'parent'));
       setLoading(false);
     };
     loadAll();
-  }, [classId]);
+  }, [classId, retry]);
 
   const reset = () => {
     setTitle(''); setBody(''); setTargetType('class'); setSelParents([]);
@@ -112,7 +116,7 @@ export default function TeacherAvvisi() {
     setSelParents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   return (
-    <ScreenLayout title="Avvisi" showBack color={C.primary} loading={loading} scrollable={false}>
+    <ScreenLayout title="Avvisi" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Selettore classe (solo se la maestra ha più classi) */}
       {classes.length > 1 && (
         <View style={s.classRow}>

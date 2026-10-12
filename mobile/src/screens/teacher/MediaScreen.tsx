@@ -30,6 +30,8 @@ export default function TeacherMedia() {
   const [items,     setItems]     = useState<any[]>([]);
   const [students,  setStudents]  = useState<any[]>([]);
   const [loading,   setLoading]   = useState(true);
+  const [loadErr,   setLoadErr]   = useState<string | null>(null);
+  const [retry,     setRetry]     = useState(0);
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const refreshTick = useScreenRefresh();   // foto pubblicate da altre maestre / da web
@@ -43,8 +45,9 @@ export default function TeacherMedia() {
   // Nomi classi per il selettore (solo quelle della maestra)
   useEffect(() => {
     if (!classIds.length) { setLoading(false); return; }
-    api.get('/classes').then(r => setClasses((r.data || []).filter((c: any) => classIds.includes(c.id)))).catch(() => {});
-  }, [classIds]);
+    setLoadErr(null);
+    api.get('/classes').then(r => { setClasses((r.data || []).filter((c: any) => classIds.includes(c.id))); setLoadErr(null); }).catch(() => { setLoadErr('Impossibile caricare le classi. Verifica la connessione e riprova.'); setLoading(false); });
+  }, [classIds, retry]);
 
   useEffect(() => {
     if (!classId) { setLoading(false); return; }
@@ -55,8 +58,8 @@ export default function TeacherMedia() {
       const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
       setItems(val(gR) || []);
       setStudents(val(sR) || []);
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [classId, refreshTick]);
+    }).finally(() => setLoading(false));
+  }, [classId, refreshTick, retry]);
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -138,7 +141,7 @@ export default function TeacherMedia() {
   };
 
   return (
-    <ScreenLayout title="Carica Media" showBack color={C.primary} loading={loading} scrollable={false}>
+    <ScreenLayout title="Carica Media" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       {/* Selettore classe (solo se la maestra ha più classi) */}
       {classes.length > 1 && (
         <View style={s.classRow}>

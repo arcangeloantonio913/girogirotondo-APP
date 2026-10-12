@@ -72,8 +72,8 @@ export default function ParentDieta() {
 
   return (
     <ScreenLayout
-      title="Menu Mensa" showBack color={C.babyGreen} loading={loading}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.babyGreen} />}
+      title="Menu Mensa" showBack color={C.primary} loading={loading}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
     >
       <View style={{ padding: 16 }} testID="parent-dieta-screen">
         {/* Date nav */}
@@ -84,9 +84,9 @@ export default function ParentDieta() {
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={s.dateText}>{new Date(date + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
             {isToday
-              ? <Text style={[s.todayBadge, { backgroundColor: C.babyGreen }]}>Oggi</Text>
+              ? <Text style={[s.todayBadge, { backgroundColor: C.primary }]}>Oggi</Text>
               : <TouchableOpacity onPress={() => changeDate(todayLocal())} testID="dieta-go-today">
-                  <Text style={[s.todayLink, { color: C.babyGreen }]}>Torna a oggi</Text>
+                  <Text style={[s.todayLink, { color: C.primary }]}>Torna a oggi</Text>
                 </TouchableOpacity>}
           </View>
           <TouchableOpacity onPress={() => changeDate(addDays(date, 1))} style={s.navBtn} testID="dieta-next-day" accessibilityLabel="Giorno successivo">
@@ -98,7 +98,7 @@ export default function ParentDieta() {
           <View style={s.empty} testID="dieta-error">
             <Text style={{ fontSize: 48 }}>⚠️</Text>
             <Text style={s.emptyText}>{error}</Text>
-            <TouchableOpacity onPress={onRefresh} style={[s.retryBtn, { backgroundColor: C.babyGreen }]} testID="dieta-retry">
+            <TouchableOpacity onPress={onRefresh} style={[s.retryBtn, { backgroundColor: C.primary }]} testID="dieta-retry">
               <Text style={s.retryText}>Riprova</Text>
             </TouchableOpacity>
           </View>

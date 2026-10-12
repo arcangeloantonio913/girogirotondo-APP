@@ -14,6 +14,8 @@ export default function ParentAppuntamenti() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [retry,   setRetry]   = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [date,   setDate]   = useState('');
   const [slot,   setSlot]   = useState('');
@@ -24,8 +26,12 @@ export default function ParentAppuntamenti() {
   const today = todayLocal();
 
   useEffect(() => {
-    api.get('/appointments').then(r => setAppointments(r.data || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    setLoading(true); setLoadErr(null);
+    api.get('/appointments')
+      .then(r => { setAppointments(r.data || []); setLoadErr(null); })
+      .catch(() => setLoadErr('Impossibile caricare gli appuntamenti. Verifica la connessione e riprova.'))
+      .finally(() => setLoading(false));
+  }, [retry]);
 
   // Al cambio data (valida): carica gli slot già occupati per disabilitarli e non far
   // prenotare un orario preso (il backend rifiuta comunque con 409).
@@ -64,7 +70,7 @@ export default function ParentAppuntamenti() {
   };
 
   return (
-    <ScreenLayout title="Prenotazioni" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+    <ScreenLayout title="Prenotazioni" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       <FlatList
         data={appointments}
         keyExtractor={(_, i) => String(i)}
@@ -107,7 +113,7 @@ export default function ParentAppuntamenti() {
         ListEmptyComponent={<View style={s.empty}><Text style={{ fontSize: 48 }}>📅</Text><Text style={s.emptyText}>Nessuna prenotazione</Text></View>}
         renderItem={({ item }) => (
           <View style={s.card}>
-            <View style={[s.dot, { backgroundColor: item.status === 'confirmed' ? '#32CD32' : C.babyBlue }]} />
+            <View style={[s.dot, { backgroundColor: item.status === 'confirmed' ? '#32CD32' : C.primary }]} />
             <View style={{ flex: 1 }}>
               <Text style={s.cardDate}>{item.date} — {item.time_slot}</Text>
               <Text style={s.cardReason}>{item.reason}</Text>
@@ -132,12 +138,12 @@ const s = StyleSheet.create({
   input:     { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: C.text },
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   slotBtn:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: '#F9FAFB' },
-  slotBtnActive:{ backgroundColor: C.babyBlue, borderColor: C.babyBlue },
+  slotBtnActive:{ backgroundColor: C.primary, borderColor: C.primary },
   slotBtnBooked:{ backgroundColor: '#E5E7EB', borderColor: '#E5E7EB', opacity: 0.6 },
   slotText:  { fontSize: 13, fontWeight: '600', color: '#374151' },
   slotTextBooked:{ color: '#9CA3AF', textDecorationLine: 'line-through' },
   slotHint:  { fontSize: 11, color: C.muted, marginTop: 8 },
-  submitBtn: { backgroundColor: C.babyBlue, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
+  submitBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
   submitText:{ color: C.white, fontWeight: '700', fontSize: 14 },
   empty:     { alignItems: 'center', paddingTop: 60 },
   emptyText: { fontSize: 14, color: C.muted, marginTop: 12 },

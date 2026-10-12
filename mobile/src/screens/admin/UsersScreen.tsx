@@ -37,7 +37,8 @@ const STAFF_MODULES: { key: string; label: string; emoji: string }[] = [
   { key: 'avvisi',       label: 'Avvisi',              emoji: '🔔' },
   { key: 'menu',         label: 'Menù / Mensa',        emoji: '🍴' },
   { key: 'presenze',     label: 'Presenze',            emoji: '✅' },
-  { key: 'appuntamenti', label: 'Appuntamenti',        emoji: '📆' },
+  // 'appuntamenti' rimosso: le maestre non hanno una schermata Appuntamenti,
+  // quindi il toggle non aveva alcun effetto (confondeva la direzione).
 ];
 
 export default function AdminUsers() {

@@ -35,12 +35,15 @@ export default function TeacherPresenze() {
   const [saving, setSaving]   = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [retry,   setRetry]   = useState(0);
 
   // Nomi classi per il selettore (solo quelle della maestra)
   useEffect(()=>{
     if(!classIds.length){setLoading(false);return;}
-    api.get('/classes').then(r=>setClasses((r.data||[]).filter((c:any)=>classIds.includes(c.id)))).catch(()=>{});
-  },[classIds]);
+    setLoadErr(null);
+    api.get('/classes').then(r=>{setClasses((r.data||[]).filter((c:any)=>classIds.includes(c.id))); setLoadErr(null);}).catch(()=>{setLoadErr('Impossibile caricare le classi. Verifica la connessione e riprova.'); setLoading(false);});
+  },[classIds, retry]);
 
   useEffect(()=>{
     if(!classId){setLoading(false);return;}
@@ -109,7 +112,7 @@ export default function TeacherPresenze() {
 
   return (
     <ScreenLayout title="Registro Presenze" showBack color={C.primary} loading={loading} scrollable={false}
-
+      error={loadErr} onRetry={() => setRetry(x => x + 1)}
     >
       {/* Tabs */}
       <View style={s.tabs}>

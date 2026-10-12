@@ -32,11 +32,14 @@ interface Props {
   color?: string;
   scrollable?: boolean;
   refreshControl?: React.ReactElement; // pull-to-refresh (solo se scrollable)
+  error?: string | null;               // messaggio d'errore caricamento (distingue "vuoto" da "guasto")
+  onRetry?: () => void;                 // azione "Riprova" mostrata con l'errore
 }
 
 export default function ScreenLayout({
   title, showBack = false, rightAction, children,
   loading = false, color, scrollable = true, refreshControl,
+  error = null, onRetry,
 }: Props) {
   const nav        = useNavigation() as any;
   const { user, sede } = useAuth();
@@ -105,7 +108,21 @@ export default function ScreenLayout({
       {/* ── Contenuto ──────────────────────────────────────────────────── */}
       {loading
         ? <ActivityIndicator size="large" color={accentColor} style={{ flex: 1 }} />
-        : <Wrapper {...(wrapperProps as any)}>{children}</Wrapper>
+        : error
+          ? (
+            <View style={s.errBox}>
+              <Ionicons name="cloud-offline-outline" size={44} color={C.muted} />
+              <Text style={s.errTitle}>Qualcosa è andato storto</Text>
+              <Text style={s.errMsg}>{error}</Text>
+              {onRetry && (
+                <TouchableOpacity onPress={onRetry} style={[s.retryBtn, { backgroundColor: accentColor }]}>
+                  <Ionicons name="refresh" size={18} color={C.white} />
+                  <Text style={s.retryTxt}>Riprova</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )
+          : <Wrapper {...(wrapperProps as any)}>{children}</Wrapper>
       }
 
       <Sidebar
@@ -131,4 +148,9 @@ const s = StyleSheet.create({
   titleRow:{ flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot:     { width: 7, height: 7, borderRadius: 4 },
   title:   { fontSize: 15, fontWeight: '800', color: C.text },
+  errBox:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 6 },
+  errTitle:  { fontSize: 16, fontWeight: '800', color: C.text, marginTop: 8 },
+  errMsg:    { fontSize: 13.5, color: C.muted, textAlign: 'center', lineHeight: 19, maxWidth: 300 },
+  retryBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 11, borderRadius: 12, marginTop: 14 },
+  retryTxt:  { color: C.white, fontWeight: '700', fontSize: 14 },
 });

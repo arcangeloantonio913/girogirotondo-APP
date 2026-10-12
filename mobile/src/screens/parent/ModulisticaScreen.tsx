@@ -14,20 +14,25 @@ export default function ParentModulistica() {
   const [docs,     setDocs]     = useState<any[]>([]);
   const [receipts, setReceipts] = useState<string[]>([]); // doc ids letti
   const [loading,  setLoading]  = useState(true);
+  const [loadErr,  setLoadErr]  = useState<string | null>(null);
+  const [retry,    setRetry]    = useState(0);
   const [acking,   setAcking]   = useState<string | null>(null);
   const [opening,  setOpening]  = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true); setLoadErr(null);
     // Il parent_id è forzato server-side dal token → non serve passarlo (evita "undefined").
     Promise.allSettled([
       api.get('/documents'),
       api.get('/read-receipts'),
     ]).then(([dR, rR]) => {
       const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : undefined;
-      setDocs(val(dR) || []);
+      // Se il documento stesso non si carica mostro un errore con "Riprova" (non una lista vuota muta)
+      if (dR.status === 'rejected') { setDocs([]); setLoadErr('Impossibile caricare la modulistica. Verifica la connessione e riprova.'); }
+      else setDocs(val(dR) || []);
       setReceipts((val(rR) || []).map((r: any) => r.document_id));
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    }).finally(() => setLoading(false));
+  }, [retry]);
 
   const handleDownload = async (doc: any) => {
     setOpening(doc.id);
@@ -61,7 +66,7 @@ export default function ParentModulistica() {
   };
 
   return (
-    <ScreenLayout title="Modulistica" showBack color={C.babyBlue} loading={loading} scrollable={false}>
+    <ScreenLayout title="Modulistica" showBack color={C.primary} loading={loading} scrollable={false} error={loadErr} onRetry={() => setRetry(x => x + 1)}>
       <FlatList
         data={docs}
         keyExtractor={d => d.id}
@@ -81,7 +86,7 @@ export default function ParentModulistica() {
             <View style={s.card}>
               <View style={s.cardTop}>
                 <View style={s.docIcon}>
-                  <Ionicons name="document-text-outline" size={22} color={C.babyBlue} />
+                  <Ionicons name="document-text-outline" size={22} color={C.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.docTitle}>{item.title}</Text>
@@ -92,7 +97,7 @@ export default function ParentModulistica() {
                 {(item.has_file || item.file_url) && (
                   <TouchableOpacity onPress={() => handleDownload(item)} style={s.downloadBtn}
                     disabled={opening === item.id}>
-                    <Ionicons name="download-outline" size={16} color={C.babyBlue} />
+                    <Ionicons name="download-outline" size={16} color={C.primary} />
                     <Text style={s.downloadText}>{opening === item.id ? 'Apertura…' : 'Apri / Scarica'}</Text>
                   </TouchableOpacity>
                 )}
@@ -128,10 +133,10 @@ const s = StyleSheet.create({
   docTitle:     { fontSize: 14, fontWeight: '700', color: C.text },
   docDesc:      { fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 16 },
   cardActions:  { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-  downloadBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.babyBlue },
-  downloadText: { fontSize: 12, color: C.babyBlue, fontWeight: '600' },
+  downloadBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.primary },
+  downloadText: { fontSize: 12, color: C.primary, fontWeight: '600' },
   readBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#F0FFF4' },
   readText:     { fontSize: 12, color: C.accentGreen, fontWeight: '600' },
-  ackBtn:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: C.babyBlue },
+  ackBtn:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: C.primary },
   ackText:      { fontSize: 12, color: C.white, fontWeight: '600' },
 });

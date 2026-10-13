@@ -46,6 +46,13 @@ function daysBetween(a: string, b: string) {
   try { return Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86400000) + 1; }
   catch { return 1; }
 }
+// Elenco date (stringhe YYYY-MM-DD) da 'from' a 'to' inclusi (max 31 giorni di sicurezza)
+function rangeDates(from: string, to: string): string[] {
+  const out: string[] = []; let d = from; let g = 0;
+  while (d <= to && g < 31) { out.push(d); d = shiftDay(d, 1); g++; }
+  return out.length ? out : [from];
+}
+const EMPTY_MEAL = { primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '' };
 
 export default function AdminMensa() {
   const { sede } = useAuth();
@@ -60,14 +67,26 @@ export default function AdminMensa() {
   // Navigazione date
   const [navDate, setNavDate] = useState(TODAY);
 
-  // Form
+  // Form. dayMenus: un menu per giorno (chiave = data YYYY-MM-DD) → piatti diversi per
+  // ogni giorno del periodo selezionato.
   const [form, setForm] = useState({
     date_from: TODAY, date_to: TODAY,
-    primo: '', secondo: '', contorno: '', frutta: '',
-    merenda_mattina: '', merenda_pomeriggio: '',
+    dayMenus: { [TODAY]: { ...EMPTY_MEAL } } as Record<string, Record<string, string>>,
     class_ids: [] as string[], // [] = tutte le classi; altrimenti una o più classi
     sede_ids: sede ? [sede] : [],
   });
+
+  // aggiorna un campo pasto di uno specifico giorno
+  const setDayField = (date: string, key: string, val: string) =>
+    setForm(f => ({ ...f, dayMenus: { ...f.dayMenus, [date]: { ...(f.dayMenus[date] || EMPTY_MEAL), [key]: val } } }));
+  const copyPrevDay = (date: string) =>
+    setForm(f => {
+      const dates = rangeDates(f.date_from, f.date_to);
+      const i = dates.indexOf(date);
+      if (i <= 0) return f;
+      const prev = f.dayMenus[dates[i - 1]] || EMPTY_MEAL;
+      return { ...f, dayMenus: { ...f.dayMenus, [date]: { ...prev } } };
+    });
 
   useEffect(() => {
     Promise.allSettled([api.get('/meals'), api.get('/classes')])
@@ -95,9 +114,10 @@ export default function AdminMensa() {
   };
 
   const handleSave = async () => {
-    if (!form.primo && !form.secondo) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo'); return; }
+    const dates = rangeDates(form.date_from, form.date_to);
+    const filled = dates.filter(d => { const m = form.dayMenus[d]; return m && (m.primo || m.secondo); });
+    if (filled.length === 0) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo per un giorno'); return; }
     const targets: string[] = form.class_ids; // [] = tutte le classi
-    // Avviso anti-errore: se è legato SOLO ad alcune classi, gli altri non lo vedono.
     if (targets.length > 0 && !editId) {
       const label = targets.length === 1
         ? `"${classes.find((c: any) => c.id === targets[0])?.name || 'questa classe'}"`
@@ -106,37 +126,34 @@ export default function AdminMensa() {
         'Solo alcune classi',
         `Questo menu sarà visibile SOLO a ${label}. Per farlo vedere a TUTTI i genitori scegli "Tutte le classi".`,
         [
-          { text: '✓ Rendi per tutti', onPress: () => doSaveMulti(['']) },
-          { text: targets.length === 1 ? 'Solo questa' : 'Solo queste', style: 'destructive', onPress: () => doSaveMulti(targets) },
+          { text: '✓ Rendi per tutti', onPress: () => doSaveMulti([''], filled) },
+          { text: targets.length === 1 ? 'Solo questa' : 'Solo queste', style: 'destructive', onPress: () => doSaveMulti(targets, filled) },
           { text: 'Annulla', style: 'cancel' },
         ],
       );
       return;
     }
-    doSaveMulti(targets.length ? targets : ['']);
+    doSaveMulti(targets.length ? targets : [''], filled);
   };
 
-  // Crea UN menu per ciascuna classe selezionata (il backend tiene un class_id per record).
-  const doSaveMulti = async (targets: string[]) => {
+  // Crea un menu per OGNI giorno compilato × OGNI classe selezionata.
+  const doSaveMulti = async (targets: string[], dates: string[]) => {
     setSaving(true);
     try {
-      const date = form.date_from === form.date_to ? form.date_from : null;
-      const base = {
-        primo: form.primo, secondo: form.secondo, contorno: form.contorno, frutta: form.frutta,
-        merenda_mattina: form.merenda_mattina, merenda_pomeriggio: form.merenda_pomeriggio,
-        date_from: form.date_from, date_to: form.date_to, date,
-        sede_id: form.sede_ids[0],
-      };
-      // Il backend deriva la sede dall'header X-Sede-Id (non dal body).
       const cfg = form.sede_ids[0] ? { headers: { 'X-Sede-Id': form.sede_ids[0] } } : undefined;
       if (editId) {
-        const res = await api.put(`/meals/menu/${editId}`, { ...base, class_id: targets[0] || '' }, cfg);
+        const d = dates[0];
+        const dm = form.dayMenus[d] || EMPTY_MEAL;
+        const res = await api.put(`/meals/menu/${editId}`, { ...dm, date_from: d, date_to: d, date: d, class_id: targets[0] || '', sede_id: form.sede_ids[0] }, cfg);
         setMeals(prev => prev.map(m => m.id === editId ? res.data : m));
       } else {
         const created: any[] = [];
-        for (const t of targets) {
-          const res = await api.post('/meals/menu', { ...base, class_id: t }, cfg);
-          created.push(res.data);
+        for (const d of dates) {
+          const dm = form.dayMenus[d] || EMPTY_MEAL;
+          for (const t of targets) {
+            const res = await api.post('/meals/menu', { ...dm, date_from: d, date_to: d, date: d, class_id: t, sede_id: form.sede_ids[0] }, cfg);
+            created.push(res.data);
+          }
         }
         setMeals(prev => [...created, ...prev]);
       }
@@ -147,18 +164,21 @@ export default function AdminMensa() {
     finally { setSaving(false); }
   };
 
-  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_ids: [] as string[], sede_ids: sede ? [sede] : [] });
+  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, dayMenus: { [TODAY]: { ...EMPTY_MEAL } }, class_ids: [] as string[], sede_ids: sede ? [sede] : [] });
 
   const openNew = () => { setEditId(null); resetForm(); setShowForm(true); };
 
   const openEdit = (m: any) => {
     setEditId(m.id);
+    const d = m.date_from || m.date || TODAY;
     setForm({
-      date_from: m.date_from || m.date || TODAY,
-      date_to:   m.date_to || m.date || TODAY,
-      primo: m.primo || '', secondo: m.secondo || '', contorno: m.contorno || '',
-      frutta: m.frutta || '', merenda_mattina: m.merenda_mattina || '',
-      merenda_pomeriggio: m.merenda_pomeriggio || '', class_ids: m.class_id ? [m.class_id] : [],
+      date_from: d,
+      date_to:   d,  // in modifica si lavora su un singolo giorno
+      dayMenus: { [d]: {
+        primo: m.primo || '', secondo: m.secondo || '', contorno: m.contorno || '',
+        frutta: m.frutta || '', merenda_mattina: m.merenda_mattina || '', merenda_pomeriggio: m.merenda_pomeriggio || '',
+      } },
+      class_ids: m.class_id ? [m.class_id] : [],
       sede_ids: m.sede_id ? [m.sede_id] : (sede ? [sede] : []),
     });
     setShowForm(true);
@@ -328,25 +348,42 @@ export default function AdminMensa() {
 
             <View style={s.periodBox}>
               <Ionicons name="calendar-outline" size={16} color={C.primary} />
-              <Text style={s.periodTxt}>{form.date_from === form.date_to ? 'Solo questo giorno' : `Il menu vale per ${daysBetween(form.date_from, form.date_to)} giorni`}</Text>
+              <Text style={s.periodTxt}>{daysBetween(form.date_from, form.date_to) === 1 ? 'Compila il menu del giorno' : `${daysBetween(form.date_from, form.date_to)} giorni — compila un menu per ogni giorno`}</Text>
             </View>
 
-            {/* Pasti */}
-            <Text style={[s.fl, { marginTop: 16 }]}>Pasti</Text>
-            {PASTI.map(p => (
-              <View key={p.key} style={s.pastoInputRow}>
-                <Text style={s.pastoInputIcon}>{p.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.pastoInputLabel}>{p.label}{p.required ? ' *' : ''}</Text>
-                  <TextInput style={s.pastoInput}
-                    value={(form as any)[p.key]}
-                    onChangeText={t => setForm(prev => ({ ...prev, [p.key]: t }))}
-                    placeholder={`Es. ${p.key === 'primo' ? 'Pasta al pomodoro' : p.key === 'secondo' ? 'Pollo arrosto' : p.key === 'pane' ? 'Pane bianco' : p.key === 'frutta' ? 'Mela' : p.key === 'merenda_mattina' ? 'Latte e biscotti' : 'Frutta di stagione'}`}
-                    placeholderTextColor={C.muted}
-                  />
+            {/* Pasti — UNA sezione per OGNI giorno del periodo (menu diversi per ogni giorno) */}
+            {rangeDates(form.date_from, form.date_to).map((date, i) => {
+              const dm = form.dayMenus[date] || EMPTY_MEAL;
+              const multi = form.date_from !== form.date_to;
+              return (
+                <View key={date} style={multi ? s.dayCard : { marginTop: 16 }}>
+                  {multi ? (
+                    <View style={s.dayCardHead}>
+                      <Text style={s.dayCardTitle}>Menu Giorno {i + 1} — {fmtDay(date)}</Text>
+                      {i > 0 && (
+                        <TouchableOpacity onPress={() => copyPrevDay(date)}>
+                          <Text style={s.copyPrev}>↩ Copia da ieri</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : <Text style={s.fl}>Pasti</Text>}
+                  {PASTI.map(p => (
+                    <View key={p.key} style={s.pastoInputRow}>
+                      <Text style={s.pastoInputIcon}>{p.icon}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.pastoInputLabel}>{p.label}{p.required ? ' *' : ''}</Text>
+                        <TextInput style={s.pastoInput}
+                          value={(dm as any)[p.key]}
+                          onChangeText={t => setDayField(date, p.key, t)}
+                          placeholder={`Es. ${p.key === 'primo' ? 'Pasta al pomodoro' : p.key === 'secondo' ? 'Pollo arrosto' : p.key === 'frutta' ? 'Mela' : p.key === 'merenda_mattina' ? 'Latte e biscotti' : 'Frutta di stagione'}`}
+                          placeholderTextColor={C.muted}
+                        />
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
             <TouchableOpacity style={[s.submitBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
               <Text style={s.submitText}>{saving ? 'Salvataggio...' : (editId ? 'Salva Modifiche' : 'Salva Menu')}</Text>
@@ -393,6 +430,10 @@ const s = StyleSheet.create({
   dateStepTxt:   { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
   periodBox:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.primary + '0F', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   periodTxt:     { fontSize: 13, fontWeight: '700', color: C.primary },
+  dayCard:       { marginTop: 14, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: C.primary + '06' },
+  dayCardHead:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  dayCardTitle:  { fontSize: 14, fontWeight: '800', color: C.primary, textTransform: 'capitalize' },
+  copyPrev:      { fontSize: 12, fontWeight: '700', color: C.primary },
   pastoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   pastoInputIcon:{ fontSize: 24, width: 36, textAlign: 'center' },
   pastoInputLabel:{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 3 },

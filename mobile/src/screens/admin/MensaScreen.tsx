@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -33,6 +33,18 @@ const PRESETS = [
 function addDays(d: string, n: number) {
   const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + n - 1);
   return dt.toISOString().split('T')[0];
+}
+function shiftDay(d: string, n: number) {
+  const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate() + n);
+  return dt.toISOString().split('T')[0];
+}
+function fmtDay(d: string) {
+  try { return new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }); }
+  catch { return d; }
+}
+function daysBetween(a: string, b: string) {
+  try { return Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86400000) + 1; }
+  catch { return 1; }
 }
 
 export default function AdminMensa() {
@@ -84,10 +96,29 @@ export default function AdminMensa() {
 
   const handleSave = async () => {
     if (!form.primo && !form.secondo) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo'); return; }
+    // Avviso anti-errore: se è legato a UNA classe, solo quella lo vedrà.
+    if (form.class_id && !editId) {
+      const clsName = classes.find((c: any) => c.id === form.class_id)?.name || 'questa classe';
+      Alert.alert(
+        'Solo una classe',
+        `Questo menu sarà visibile SOLO a "${clsName}". Per farlo vedere a TUTTI i genitori scegli "Tutte le classi".`,
+        [
+          { text: '✓ Rendi per tutti', onPress: () => doSave('') },
+          { text: `Solo ${clsName}`, style: 'destructive', onPress: () => doSave(form.class_id) },
+          { text: 'Annulla', style: 'cancel' },
+        ],
+      );
+      return;
+    }
+    doSave(form.class_id);
+  };
+
+  const doSave = async (classIdArg: string) => {
     setSaving(true);
     try {
       const payload = {
         ...form,
+        class_id: classIdArg,
         sede_id: form.sede_ids[0],
         // singola data se from == to, altrimenti range (date = null) — come la web app
         date: form.date_from === form.date_to ? form.date_from : null,
@@ -144,7 +175,7 @@ export default function AdminMensa() {
   };
 
   return (
-    <ScreenLayout title="Menu Mensa" showBack color={C.accentGreen} loading={loading} scrollable={false}>
+    <ScreenLayout title="Menu Mensa" showBack color={C.primary} loading={loading} scrollable={false}>
       {/* Navigazione date */}
       <View style={s.dateNav}>
         <TouchableOpacity onPress={() => {
@@ -213,6 +244,7 @@ export default function AdminMensa() {
       {/* ── FORM NUOVO MENU ───────────────────────────────────────────────── */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet"
         onRequestClose={() => setShowForm(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{editId ? 'Modifica Menu' : 'Nuovo Menu'}</Text>
@@ -234,24 +266,42 @@ export default function AdminMensa() {
             {/* Classe */}
             <Text style={s.fl}>Classi</Text>
             <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_id: '' }))}
-              style={[s.chip, !form.class_id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }, { marginBottom: 6 }]}>
+              style={[s.chip, !form.class_id && { backgroundColor: C.primary, borderColor: C.primary }, { marginBottom: 6 }]}>
               <Text style={[s.chipText, !form.class_id && { color: C.white }]}>✓ Tutte le classi</Text>
             </TouchableOpacity>
             <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
               {classes.map(cls => (
                 <TouchableOpacity key={cls.id} onPress={() => setForm(p => ({ ...p, class_id: cls.id }))}
-                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.accentGreen, borderColor: C.accentGreen }]}>
+                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
                   <Text style={[s.chipText, form.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Date */}
-            <Text style={s.fl}>Data inizio</Text>
-            <TextInput style={s.input} value={form.date_from}
-              onChangeText={t => setForm(p => ({ ...p, date_from: t }))} placeholder={TODAY} />
+            {/* Periodo del menu — frecce, niente date scritte a mano */}
+            <Text style={s.fl}>Dal giorno</Text>
+            <View style={s.dateStepper}>
+              <TouchableOpacity onPress={() => setForm(p => { const nf = shiftDay(p.date_from, -1); return { ...p, date_from: nf, date_to: p.date_to < nf ? nf : p.date_to }; })} style={s.stepBtn}>
+                <Ionicons name="chevron-back" size={22} color={C.primary} />
+              </TouchableOpacity>
+              <Text style={s.dateStepTxt}>{fmtDay(form.date_from)}</Text>
+              <TouchableOpacity onPress={() => setForm(p => { const nf = shiftDay(p.date_from, 1); return { ...p, date_from: nf, date_to: p.date_to < nf ? nf : p.date_to }; })} style={s.stepBtn}>
+                <Ionicons name="chevron-forward" size={22} color={C.primary} />
+              </TouchableOpacity>
+            </View>
 
-            <Text style={s.fl}>Durata rapida</Text>
+            <Text style={[s.fl, { marginTop: 12 }]}>Fino al giorno</Text>
+            <View style={s.dateStepper}>
+              <TouchableOpacity onPress={() => setForm(p => ({ ...p, date_to: p.date_to > p.date_from ? shiftDay(p.date_to, -1) : p.date_to }))} style={s.stepBtn}>
+                <Ionicons name="chevron-back" size={22} color={C.primary} />
+              </TouchableOpacity>
+              <Text style={s.dateStepTxt}>{fmtDay(form.date_to)}</Text>
+              <TouchableOpacity onPress={() => setForm(p => ({ ...p, date_to: shiftDay(p.date_to, 1) }))} style={s.stepBtn}>
+                <Ionicons name="chevron-forward" size={22} color={C.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[s.fl, { marginTop: 12 }]}>Durata rapida</Text>
             <View style={s.chipRow}>
               {PRESETS.map(pr => (
                 <TouchableOpacity key={pr.days} onPress={() => applyPreset(pr.days)} style={s.presetBtn}>
@@ -260,9 +310,10 @@ export default function AdminMensa() {
               ))}
             </View>
 
-            <Text style={s.fl}>Data fine</Text>
-            <TextInput style={s.input} value={form.date_to}
-              onChangeText={t => setForm(p => ({ ...p, date_to: t }))} placeholder={TODAY} />
+            <View style={s.periodBox}>
+              <Ionicons name="calendar-outline" size={16} color={C.primary} />
+              <Text style={s.periodTxt}>{form.date_from === form.date_to ? 'Solo questo giorno' : `Il menu vale per ${daysBetween(form.date_from, form.date_to)} giorni`}</Text>
+            </View>
 
             {/* Pasti */}
             <Text style={[s.fl, { marginTop: 16 }]}>Pasti</Text>
@@ -286,6 +337,7 @@ export default function AdminMensa() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenLayout>
   );
@@ -295,9 +347,9 @@ const s = StyleSheet.create({
   dateNav:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: C.white, borderBottomWidth: 0.5, borderBottomColor: C.border },
   navBtn:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   dateText:      { fontSize: 14, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
-  todayBadge:    { backgroundColor: C.accentGreen, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
+  todayBadge:    { backgroundColor: C.primary, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
   todayText:     { fontSize: 10, color: C.white, fontWeight: '700' },
-  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
+  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 12, marginBottom: 12, justifyContent: 'center' },
   addBtnText:    { color: C.white, fontWeight: '700', fontSize: 14 },
   empty:         { alignItems: 'center', paddingTop: 50 },
   emptyText:     { fontSize: 14, color: C.muted, marginTop: 12, textAlign: 'center' },
@@ -318,12 +370,17 @@ const s = StyleSheet.create({
   chipRow:       { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip:          { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
   chipText:      { fontSize: 13, fontWeight: '600', color: C.text },
-  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.accentGreen, backgroundColor: C.white },
-  presetText:    { fontSize: 12, fontWeight: '600', color: C.accentGreen },
+  presetBtn:     { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.primary, backgroundColor: C.white },
+  presetText:    { fontSize: 12, fontWeight: '600', color: C.primary },
+  dateStepper:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 4, marginTop: 4 },
+  stepBtn:       { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: C.primary + '12' },
+  dateStepTxt:   { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: C.text, textTransform: 'capitalize' },
+  periodBox:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: C.primary + '0F', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  periodTxt:     { fontSize: 13, fontWeight: '700', color: C.primary },
   pastoInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   pastoInputIcon:{ fontSize: 24, width: 36, textAlign: 'center' },
   pastoInputLabel:{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 3 },
   pastoInput:    { borderWidth: 0.5, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: C.text, backgroundColor: C.white },
-  submitBtn:     { backgroundColor: C.accentGreen, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  submitBtn:     { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   submitText:    { color: C.white, fontWeight: '700', fontSize: 15 },
 });

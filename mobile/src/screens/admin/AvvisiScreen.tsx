@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, Alert, Modal, ScrollView,
+  StyleSheet, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -281,6 +281,7 @@ export default function AdminAvvisi() {
       {/* ── Modale crea/modifica ─────────────────────────────────────────── */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet"
         onRequestClose={() => { setShowForm(false); resetForm(); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{editing ? 'Modifica Avviso' : 'Nuovo Avviso'}</Text>
@@ -363,6 +364,7 @@ export default function AdminAvvisi() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenLayout>
   );

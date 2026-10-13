@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, Alert, Modal, ScrollView,
+  StyleSheet, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
@@ -170,6 +170,7 @@ export default function TeacherDiario() {
 
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet"
         onRequestClose={() => { setShowForm(false); resetForm(); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{editEntry ? 'Modifica Voce' : 'Nuova Voce Diario'}</Text>
@@ -214,6 +215,7 @@ export default function TeacherDiario() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenLayout>
   );

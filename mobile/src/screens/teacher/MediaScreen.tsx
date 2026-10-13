@@ -127,10 +127,10 @@ export default function TeacherMedia() {
     if (!pickedImages.length) { Alert.alert('Seleziona almeno una foto'); return; }
     if (!classId) { Alert.alert('Nessuna classe assegnata'); return; }
     setUploading(true);
-    // student_ids: se non seleziona nessuno → foto a TUTTA la classe (caso comune:
-    // foto di gruppo). Niente più blocco "seleziona almeno un bambino".
+    // "Tutta la classe" → foto DI CLASSE (student_ids VUOTO): finisce nella tab "Classe"
+    // di tutti i genitori. Solo con bambini scelti è una foto "personale" (tab Personale).
     const studentIds = (allStudents || selStudents.length === 0)
-      ? students.map(s => s.id)
+      ? []
       : selStudents;
 
     const uploaded: any[] = [];

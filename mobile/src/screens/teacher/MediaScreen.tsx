@@ -71,7 +71,7 @@ export default function TeacherMedia() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.4, // bassa qualità per upload veloce
+        quality: 0.8, // qualità alta (prima 0.4 = foto sgranate). Upload più pesante ma gestito dal timeout 90s
         allowsMultipleSelection: true,   // più foto in una volta sola
         selectionLimit: 10,
       });
@@ -89,6 +89,32 @@ export default function TeacherMedia() {
     } catch (e: any) {
       if(__DEV__) console.log('[MEDIA] pickImage error:', e?.message);
       Alert.alert('Errore selezione foto', e?.message || 'Errore sconosciuto');
+    }
+  };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permesso negato', 'Vai in Impostazioni e concedi l\'accesso alla fotocamera');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const img = {
+        uri: asset.uri,
+        base64: await new FileSystem.File(asset.uri).base64(),
+        mime: asset.mimeType || 'image/jpeg',
+      };
+      setPickedImages([img]);
+      setShowModal(true);
+    } catch (e: any) {
+      if(__DEV__) console.log('[MEDIA] takePhoto error:', e?.message);
+      Alert.alert('Errore fotocamera', e?.message || 'Errore sconosciuto');
     }
   };
 
@@ -172,10 +198,16 @@ export default function TeacherMedia() {
         keyExtractor={(item, i) => String(item?.id ?? i)}
         contentContainerStyle={{ padding: 10 }}
         ListHeaderComponent={
-          <TouchableOpacity onPress={pickImage} style={s.uploadBtn}>
-            <Ionicons name="cloud-upload-outline" size={20} color={C.white} />
-            <Text style={s.uploadBtnText}>Carica Foto</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+            <TouchableOpacity onPress={takePhoto} style={[s.uploadBtn, { flex: 1, marginBottom: 0 }]}>
+              <Ionicons name="camera-outline" size={20} color={C.white} />
+              <Text style={s.uploadBtnText}>Scatta Foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage} style={[s.uploadBtn, { flex: 1, marginBottom: 0, backgroundColor: C.white, borderWidth: 1.5, borderColor: C.primary }]}>
+              <Ionicons name="images-outline" size={20} color={C.primary} />
+              <Text style={[s.uploadBtnText, { color: C.primary }]}>Dalla Galleria</Text>
+            </TouchableOpacity>
+          </View>
         }
         ListEmptyComponent={
           <View style={s.empty}>

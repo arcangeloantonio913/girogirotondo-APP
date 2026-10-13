@@ -65,6 +65,11 @@ from routers.push_tokens import router as push_tokens_router
 from routers.avvisi import router as avvisi_router
 from routers.sedi import router as sedi_router
 from routers.presenze import router as presenze_router
+from routers.rette import router as rette_router
+from routers.pagamenti import router as pagamenti_router
+from routers.orgs import router as orgs_router
+from routers.export import router as export_router
+from routers.fatture import router as fatture_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -123,6 +128,11 @@ app.include_router(push_tokens_router)
 app.include_router(avvisi_router)
 app.include_router(sedi_router)
 app.include_router(presenze_router)
+app.include_router(rette_router)
+app.include_router(pagamenti_router)
+app.include_router(orgs_router)
+app.include_router(export_router)
+app.include_router(fatture_router)
 
 
 # --- Security headers middleware ---

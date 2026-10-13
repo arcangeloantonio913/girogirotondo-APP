@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StatusBar,
   ScrollView, ActivityIndicator, StyleSheet, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -106,6 +107,7 @@ export default function ScreenLayout({
       <ChildSwitcherBar />
 
       {/* ── Contenuto ──────────────────────────────────────────────────── */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {loading
         ? <ActivityIndicator size="large" color={accentColor} style={{ flex: 1 }} />
         : error
@@ -124,6 +126,7 @@ export default function ScreenLayout({
           )
           : <Wrapper {...(wrapperProps as any)}>{children}</Wrapper>
       }
+      </KeyboardAvoidingView>
 
       <Sidebar
         visible={sidebarOpen}

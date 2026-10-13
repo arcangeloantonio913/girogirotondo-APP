@@ -316,6 +316,24 @@ async def ensure_indexes(db=None):
         # --- PERF: liste avvisi (sort + targeting) ---
         ("avvisi", "created_at", {}),
         ("avvisi", "target_sedi", {}),
+        # --- RETTE / PAGAMENTI (FISM) ---
+        ("fee_plans", "id", {}),
+        ("fee_plans", "sede_id", {}),
+        ("student_fees", "id", {}),
+        ("student_fees", [("sede_id", 1), ("active", 1)], {}),
+        ("student_fees", "student_id", {}),
+        ("student_fees", "plan_id", {}),
+        ("charges", "id", {}),
+        ("charges", [("sede_id", 1), ("status", 1)], {}),
+        ("charges", [("student_id", 1), ("period", 1)], {}),
+        ("charges", "due_date", {}),
+        ("payments", "id", {}),
+        ("payments", "sede_id", {}),
+        ("payments", "charge_id", {}),
+        ("payments", [("student_id", 1), ("paid_at", 1)], {}),
+        ("fatture", "id", {}),
+        ("fatture", [("sede_id", 1), ("anno", 1)], {}),
+        ("fatture", "student_id", {}),
     ]
 
     for coll_name, keys, options in index_specs:

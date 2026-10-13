@@ -14,6 +14,25 @@ export default function ParentProfile() {
   const [newEmail, setNewEmail]         = useState(user?.email || '');
   const [emailMsg, setEmailMsg]         = useState('');
   const [saving, setSaving]             = useState(false);
+  // Cambio password self-service (il backend espone PATCH /users/{id}/password)
+  const [newPwd,     setNewPwd]     = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
+  const [showPwd,    setShowPwd]    = useState(false);
+  const [pwdMsg,     setPwdMsg]     = useState('');
+  const [savingPwd,  setSavingPwd]  = useState(false);
+
+  const handleChangePwd = async () => {
+    if (newPwd.length < 6) { setPwdMsg('❌ Minimo 6 caratteri'); return; }
+    if (newPwd !== confirmPwd) { setPwdMsg('❌ Le password non coincidono'); return; }
+    setSavingPwd(true);
+    try {
+      await api.patch(`/users/${user?.id}/password`, { password: newPwd });
+      setPwdMsg('✅ Password aggiornata con successo');
+      setNewPwd(''); setConfirmPwd('');
+    } catch (e: any) {
+      setPwdMsg('❌ ' + (e?.response?.data?.detail || 'Errore'));
+    } finally { setSavingPwd(false); }
+  };
 
   // Contatti scuola REALI per sede/tenant (niente più placeholder 081 000 000x).
   const _isDB = tenant.appName === 'Dimensione Bimbo';
@@ -85,6 +104,28 @@ export default function ParentProfile() {
           </View>
         </View>
 
+        {/* Cambia password */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Sicurezza</Text>
+          <View style={s.card}>
+            <Text style={s.label}>Nuova password</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput style={[s.input, { flex: 1 }]} value={newPwd} onChangeText={setNewPwd}
+                secureTextEntry={!showPwd} placeholder="Min. 6 caratteri" placeholderTextColor={C.muted} autoCapitalize="none" />
+              <TouchableOpacity onPress={() => setShowPwd(!showPwd)} style={{ padding: 6 }}>
+                <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={C.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[s.label, { marginTop: 12 }]}>Conferma password</Text>
+            <TextInput style={[s.input, { marginTop: 1 }]} value={confirmPwd} onChangeText={setConfirmPwd}
+              secureTextEntry={!showPwd} placeholder="Ripeti la password" placeholderTextColor={C.muted} autoCapitalize="none" />
+            {!!pwdMsg && <Text style={[s.msg, { color: pwdMsg.startsWith('✅') ? '#166534' : '#991B1B' }]}>{pwdMsg}</Text>}
+            <TouchableOpacity style={[s.pwdBtn, savingPwd && { opacity: 0.6 }]} onPress={handleChangePwd} disabled={savingPwd}>
+              <Text style={s.pwdBtnText}>{savingPwd ? 'Salvataggio...' : 'Cambia Password'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Contatti scuola */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Contatti Scuola</Text>
@@ -123,6 +164,8 @@ const s = StyleSheet.create({
   roleText:     { fontSize: 11, fontWeight: '700', color: '#166534' },
   section:      { marginBottom: 16 },
   sectionTitle: { fontSize: 12, fontWeight: '700', color: C.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  pwdBtn:       { backgroundColor: C.primary, borderRadius: 10, paddingVertical: 11, alignItems: 'center', marginTop: 14 },
+  pwdBtnText:   { color: C.white, fontWeight: '700', fontSize: 14 },
   card:         { backgroundColor: C.white, borderRadius: 16, padding: 14, borderWidth: 0.5, borderColor: C.border },
   row:          { flexDirection: 'row', alignItems: 'center' },
   label:        { fontSize: 11, color: C.muted, fontWeight: '500' },

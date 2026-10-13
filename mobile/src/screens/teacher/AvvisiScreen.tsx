@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, Alert, Modal, ScrollView,
+  StyleSheet, Alert, Modal, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenLayout from '../../components/layout/ScreenLayout';
@@ -187,6 +187,7 @@ export default function TeacherAvvisi() {
 
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet"
         onRequestClose={() => { setShowForm(false); reset(); }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>Nuovo Avviso</Text>
@@ -268,6 +269,7 @@ export default function TeacherAvvisi() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenLayout>
   );

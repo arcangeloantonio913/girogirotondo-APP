@@ -42,6 +42,20 @@ const TENANTS = {
     ogUrl: 'https://dimensionebimbowebapp.vercel.app',
     ogImage: 'https://dimensionebimbowebapp.vercel.app/logo-dimensione-bimbo.jpg',
   },
+  fism: {
+    name: 'Santa Teresa - La scuola in un touch',
+    short_name: 'Santa Teresa',
+    appleTitle: 'Santa Teresa',
+    description:
+      "La scuola dell'infanzia in un'app: comunicazioni, presenze, mensa, rette e pagamenti — per famiglie e maestre.",
+    title: 'Santa Teresa - La scuola in un touch',
+    ogTitle: 'Santa Teresa — La scuola in un touch',
+    theme_color: '#7A5CFF',
+    background_color: '#F6F4FF',
+    icon: '/logo-fism.png',
+    ogUrl: '',
+    ogImage: '',
+  },
 };
 
 const key = process.env.REACT_APP_TENANT || 'girogirotondo';

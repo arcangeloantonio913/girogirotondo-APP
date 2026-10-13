@@ -985,6 +985,85 @@ async def send_appointment_email(
                                 reply_to=ident["reply_to"])
 
 
+async def send_sollecito_email(
+    to_email: str,
+    sede_id: str | None = None,
+    org_id: str | None = None,
+    parent_name: str = "",
+    child_name: str = "",
+    amount: float = 0.0,
+) -> bool:
+    """Promemoria pagamento (retta scaduta) a una famiglia. Tono cortese, non intimidatorio.
+    Brand (nome + colore) risolti dal DB come tutte le altre send_*; nessun literal scuola.
+    `amount` = totale residuo scaduto in euro."""
+    year = datetime.now().year
+    school_name, brand_color, ident = await _resolve_email_context(sede_id, org_id)
+    if not _sender_ready(ident):
+        return False
+    brand_header, _ = _brand_parts(school_name)
+    importo = f"{float(amount or 0):.2f}".replace(".", ",")
+    saluto = f"Gentile {parent_name}," if parent_name else "Gentile famiglia,"
+    rif = f" relativo a {child_name}" if child_name else ""
+
+    subject = f"{brand_header} — Promemoria pagamento retta"
+    plain = (
+        f"{saluto}\n\n"
+        f"Le ricordiamo gentilmente che risulta un importo in scadenza{rif} "
+        f"di € {importo}.\n\n"
+        f"La preghiamo di procedere al pagamento o di contattarci per qualsiasi "
+        f"chiarimento: {ident['support_email']}.\n\n"
+        f"Grazie per la collaborazione,\n{school_name}"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="it"><body style="margin:0;padding:0;background:#FFFDD0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:white;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td align="center" style="padding-bottom:20px;border-bottom:1px solid #F0F0F0;">
+            <h1 style="margin:0;font-size:22px;color:{brand_color};font-weight:800;">&#127897; {brand_header}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 0 12px;">
+            <p style="font-size:15px;color:#1A202C;">{saluto}</p>
+            <p style="font-size:14px;color:#1A202C;">Le ricordiamo gentilmente che risulta
+            un importo in scadenza{rif}:</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom:24px;">
+            <table width="100%" style="background:#F9FAFB;border-radius:12px;padding:16px;" cellpadding="8">
+              <tr><td align="center" style="font-size:26px;color:{brand_color};font-weight:800;">&euro; {importo}</td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:16px;">
+            <p style="font-size:13px;color:#666;">La preghiamo di procedere al pagamento o di
+            contattarci per qualsiasi chiarimento a {ident['support_email']}.</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="border-top:1px solid #F0F0F0;padding-top:16px;">
+            <p style="font-size:11px;color:#bbb;">&copy; {year} {school_name}</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    if await _send_via_resend(to_email, subject, html, plain,
+                              from_name=ident["from_name"], from_email=ident["from_email"],
+                              reply_to=ident["reply_to"]):
+        return True
+    return await _send_via_smtp(to_email, subject, html, plain,
+                                from_name=ident["from_name"], from_email=ident["from_email"],
+                                reply_to=ident["reply_to"])
+
+
 async def send_set_password_email(
     to_email: str,
     user_name: str,

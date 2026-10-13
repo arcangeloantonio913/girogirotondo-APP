@@ -238,16 +238,14 @@ async def get_gallery(
             if class_id not in ctx.allowed_class_ids:
                 raise HTTPException(status_code=404, detail="Risorsa non trovata")
             query["class_id"] = class_id
-            # PRIVACY (minori): nella galleria di classe il genitore vede le foto NON taggate
-            # (di tutta la classe) + le foto personali DEI PROPRI figli, MAI le foto personali
-            # taggate ad ALTRI bambini. Prima il solo class_id mostrava tutto → leak.
-            query["$or"] = [
-                {"student_ids": {"$in": list(allowed)}},   # personali dei miei figli (lista)
-                {"student_id":  {"$in": list(allowed)}},   # personali dei miei figli (legacy singolo)
-                {"$and": [                                  # foto di classe NON taggata
-                    {"$or": [{"student_ids": {"$exists": False}}, {"student_ids": []}, {"student_ids": None}]},
-                    {"$or": [{"student_id":  {"$exists": False}}, {"student_id":  None}, {"student_id":  ""}]},
-                ]},
+            # SEPARAZIONE netta (richiesta scuola): nella tab "Classe" il genitore vede SOLO
+            # le foto di TUTTA la classe (senza tag specifici). Le foto personali del proprio
+            # figlio stanno nella tab "Personale" (ramo student_id sopra). Le foto taggate a
+            # bambini specifici (incl. i propri) NON compaiono qui. Privacy minori preservata:
+            # le foto di altri bambini restano comunque invisibili.
+            query["$and"] = [                                # SOLO foto di classe NON taggate
+                {"$or": [{"student_ids": {"$exists": False}}, {"student_ids": []}, {"student_ids": None}]},
+                {"$or": [{"student_id":  {"$exists": False}}, {"student_id":  None}, {"student_id":  ""}]},
             ]
         else:
             query["student_ids"] = {"$in": list(allowed)}

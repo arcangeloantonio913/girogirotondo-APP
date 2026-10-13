@@ -68,7 +68,7 @@ export default function TeacherMensa() {
     date_from: TODAY, date_to: TODAY,
     primo: '', secondo: '', contorno: '', frutta: '',
     merenda_mattina: '', merenda_pomeriggio: '',
-    class_id: '', // '' = tutte le mie classi
+    class_ids: [] as string[], // [] = tutte le classi; altrimenti una o più classi
   });
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function TeacherMensa() {
     setForm(p => ({ ...p, date_to: addDays(p.date_from, days) }));
   };
 
-  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_id: '' });
+  const resetForm = () => setForm({ date_from: TODAY, date_to: TODAY, primo: '', secondo: '', contorno: '', frutta: '', merenda_mattina: '', merenda_pomeriggio: '', class_ids: [] as string[] });
 
   const openNew = () => { setEditId(null); resetForm(); setShowForm(true); };
 
@@ -104,40 +104,52 @@ export default function TeacherMensa() {
       date_to:   m.date_to || m.date || TODAY,
       primo: m.primo || '', secondo: m.secondo || '', contorno: m.contorno || '',
       frutta: m.frutta || '', merenda_mattina: m.merenda_mattina || '',
-      merenda_pomeriggio: m.merenda_pomeriggio || '', class_id: m.class_id || '',
+      merenda_pomeriggio: m.merenda_pomeriggio || '', class_ids: m.class_id ? [m.class_id] : [],
     });
     setShowForm(true);
   };
 
   const handleSave = async () => {
     if (!form.primo && !form.secondo) { Alert.alert('Attenzione', 'Inserisci almeno Pasta e Secondo'); return; }
-    // Avviso anti-errore: se è legato a UNA classe, solo quella lo vedrà.
-    if (form.class_id && !editId) {
-      const clsName = classes.find((c: any) => c.id === form.class_id)?.name || 'questa classe';
+    const targets: string[] = form.class_ids; // [] = tutte le classi
+    if (targets.length > 0 && !editId) {
+      const label = targets.length === 1
+        ? `"${classes.find((c: any) => c.id === targets[0])?.name || 'questa classe'}"`
+        : `${targets.length} classi selezionate`;
       Alert.alert(
-        'Solo una classe',
-        `Questo menu sarà visibile SOLO a "${clsName}". Per farlo vedere a TUTTI i genitori scegli "Tutte le classi".`,
+        'Solo alcune classi',
+        `Questo menu sarà visibile SOLO a ${label}. Per farlo vedere a TUTTI i genitori scegli "Tutte le classi".`,
         [
-          { text: '✓ Rendi per tutti', onPress: () => doSave('') },
-          { text: `Solo ${clsName}`, style: 'destructive', onPress: () => doSave(form.class_id) },
+          { text: '✓ Rendi per tutti', onPress: () => doSaveMulti(['']) },
+          { text: targets.length === 1 ? 'Solo questa' : 'Solo queste', style: 'destructive', onPress: () => doSaveMulti(targets) },
           { text: 'Annulla', style: 'cancel' },
         ],
       );
       return;
     }
-    doSave(form.class_id);
+    doSaveMulti(targets.length ? targets : ['']);
   };
 
-  const doSave = async (classIdArg: string) => {
+  // Crea UN menu per ciascuna classe selezionata.
+  const doSaveMulti = async (targets: string[]) => {
     setSaving(true);
     try {
-      const payload = { ...form, class_id: classIdArg, date: form.date_from === form.date_to ? form.date_from : null };
+      const date = form.date_from === form.date_to ? form.date_from : null;
+      const base = {
+        primo: form.primo, secondo: form.secondo, contorno: form.contorno, frutta: form.frutta,
+        merenda_mattina: form.merenda_mattina, merenda_pomeriggio: form.merenda_pomeriggio,
+        date_from: form.date_from, date_to: form.date_to, date,
+      };
       if (editId) {
-        const res = await api.put(`/meals/menu/${editId}`, payload);   // MODIFICA
+        const res = await api.put(`/meals/menu/${editId}`, { ...base, class_id: targets[0] || '' });
         setMeals(prev => prev.map(m => m.id === editId ? res.data : m));
       } else {
-        const res = await api.post('/meals/menu', payload);            // NUOVO
-        setMeals(prev => [res.data, ...prev]);
+        const created: any[] = [];
+        for (const t of targets) {
+          const res = await api.post('/meals/menu', { ...base, class_id: t });
+          created.push(res.data);
+        }
+        setMeals(prev => [...created, ...prev]);
       }
       setShowForm(false);
       setEditId(null);
@@ -234,20 +246,29 @@ export default function TeacherMensa() {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Classe */}
-            <Text style={s.fl}>Classi</Text>
-            <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_id: '' }))}
-              style={[s.chip, !form.class_id && { backgroundColor: C.primary, borderColor: C.primary }, { marginBottom: 6 }]}>
-              <Text style={[s.chipText, !form.class_id && { color: C.white }]}>✓ Tutte le classi</Text>
+            {/* Classi — multi-selezione: "Tutte" oppure una o più classi */}
+            <Text style={s.fl}>Per quali classi</Text>
+            <TouchableOpacity onPress={() => setForm(p => ({ ...p, class_ids: [] }))}
+              style={[s.chip, form.class_ids.length === 0 && { backgroundColor: C.primary, borderColor: C.primary }, { marginBottom: 6 }]}>
+              <Text style={[s.chipText, form.class_ids.length === 0 && { color: C.white }]}>✓ Tutte le classi</Text>
             </TouchableOpacity>
             <View style={[s.chipRow, { flexWrap: 'wrap' }]}>
-              {classes.map(cls => (
-                <TouchableOpacity key={cls.id} onPress={() => setForm(p => ({ ...p, class_id: cls.id }))}
-                  style={[s.chip, form.class_id === cls.id && { backgroundColor: C.primary, borderColor: C.primary }]}>
-                  <Text style={[s.chipText, form.class_id === cls.id && { color: C.white }]}>{cls.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {classes.map(cls => {
+                const sel = form.class_ids.includes(cls.id);
+                return (
+                  <TouchableOpacity key={cls.id}
+                    onPress={() => setForm(p => ({ ...p, class_ids: sel ? p.class_ids.filter(x => x !== cls.id) : [...p.class_ids, cls.id] }))}
+                    style={[s.chip, sel && { backgroundColor: C.primary, borderColor: C.primary }]}>
+                    <Text style={[s.chipText, sel && { color: C.white }]}>{sel ? '✓ ' : ''}{cls.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+            {form.class_ids.length > 1 && (
+              <Text style={{ fontSize: 12, color: C.primary, fontWeight: '600', marginTop: 6 }}>
+                Verrà creato un menu per ognuna delle {form.class_ids.length} classi scelte.
+              </Text>
+            )}
 
             {/* Periodo del menu — frecce, niente date scritte a mano */}
             <Text style={s.fl}>Dal giorno</Text>

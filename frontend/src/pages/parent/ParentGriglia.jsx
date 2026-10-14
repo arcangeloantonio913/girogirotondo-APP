@@ -71,7 +71,14 @@ export default function ParentGriglia() {
     ]).then(([gRes, cRes, mRes]) => {
       if (gRes.status === 'fulfilled') setGriglia(gRes.value.data?.[0] || null);
       if (cRes.status === 'fulfilled') setChild(cRes.value.data);
-      if (mRes && mRes.status === 'fulfilled') setMenu((mRes.value.data || [])[0] || null);
+      if (mRes && mRes.status === 'fulfilled') {
+        // Scegli il menu della CLASSE del bambino (poi l'universale di sede). MAI [0]:
+        // prima prendeva un menu qualsiasi → a un genitore potevano comparire i piatti/
+        // etichette di un'altra classe (es. "Così"/"Splendida" da un menu non suo).
+        const childClassId = cRes.status === 'fulfilled' ? (cRes.value.data?.class_id) : null;
+        const rows = mRes.value.data || [];
+        setMenu(rows.find(m => m.class_id === childClassId) || rows.find(m => !m.class_id) || null);
+      }
       if (gRes.status === 'rejected' && cRes.status === 'rejected') {
         console.error(gRes.reason, cRes.reason);
         setLoadError(true);

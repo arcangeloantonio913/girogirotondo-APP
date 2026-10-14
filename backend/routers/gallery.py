@@ -97,7 +97,7 @@ def _fix_data_url_mime(data_url: str) -> str:
         return data_url
 
 
-def _thumbnail_from_data_url(data_url: str, max_px: int = 400, quality: int = 60) -> Optional[str]:
+def _thumbnail_from_data_url(data_url: str, max_px: int = 1080, quality: int = 78) -> Optional[str]:
     """Generate a small JPEG thumbnail (base64 data URL) from a base64 image data URL.
 
     Decode base64 → PIL open → thumbnail to ~400px longest side → JPEG q60 → base64.
@@ -182,13 +182,17 @@ def _slim_list_item(item: dict) -> dict:
     """
     item = _refresh_signed_url(item)
     item["has_media"] = bool(item.get("media_url") or item.get("thumbnail_url"))
+    full = item.get("media_url")
     if item.get("thumbnail_url"):
-        # Le build mobile GIÀ INSTALLATE leggono `media_url` (non `thumbnail_url`): se qui
-        # mettevamo None la foto risultava VUOTA sul telefono. Serviamo invece la THUMBNAIL
-        # (piccola → lista leggera uguale) così si vede ovunque; la foto PIENA resta dietro
-        # GET /gallery/{id} e i client aggiornati la scaricano a schermo quando has_full=True.
-        item["has_full"] = bool(item.get("media_url"))
-        item["media_url"] = item["thumbnail_url"]
+        # Le build mobile GIÀ INSTALLATE (Android congelato in revisione) leggono `media_url`
+        # anche A SCHERMO INTERO. Alleggerire la lista sostituendo la piena con la thumbnail
+        # ha senso SOLO per le foto base64 (data URL da decine di KB l'una). Per le foto su
+        # Firebase media_url e thumbnail_url sono entrambi URL firmati di peso identico:
+        # sostituirle NON alleggerisce nulla e le rende SFOCATE sulle build vecchie. Quindi
+        # serviamo la foto PIENA (URL) e degradiamo a thumbnail solo i data URL base64.
+        item["has_full"] = bool(full)
+        if isinstance(full, str) and full.startswith("data:"):
+            item["media_url"] = item["thumbnail_url"]
     return item
 
 

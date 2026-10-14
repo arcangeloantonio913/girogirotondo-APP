@@ -75,7 +75,7 @@ def _check_size(data: bytes, media_type: str):
         raise HTTPException(status_code=413, detail=f"File troppo grande. Limite: {label}")
 
 
-def _compress_image(file_bytes: bytes, max_px: int = 800, quality: int = 70) -> bytes:
+def _compress_image(file_bytes: bytes, max_px: int = 1600, quality: int = 82) -> bytes:
     """
     Comprimi un'immagine a max_px sul lato lungo, JPEG quality.
     Restituisce i bytes compressi (o originali se PIL fallisce).
@@ -196,8 +196,13 @@ def delete_file(storage_path: str):
         logger.warning("Could not delete storage file %s: %s", storage_path, exc)
 
 
-def generate_thumbnail(image_bytes: bytes, size: Tuple[int, int] = (400, 400)) -> Optional[bytes]:
-    """Genera un thumbnail JPEG compresso. Restituisce None se PIL non è disponibile."""
+def generate_thumbnail(image_bytes: bytes, size: Tuple[int, int] = (1080, 1080)) -> Optional[bytes]:
+    """Genera un thumbnail JPEG compresso. Restituisce None se PIL non è disponibile.
+
+    NB: la thumbnail viene servita A SCHERMO INTERO dalle build mobile VECCHIE (leggono
+    media_url, dove la lista inserisce la thumbnail). Per questo è 1080px/q82 e non 400px:
+    deve risultare nitida anche ingrandita, non solo come miniatura in griglia.
+    """
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(image_bytes))
@@ -205,7 +210,7 @@ def generate_thumbnail(image_bytes: bytes, size: Tuple[int, int] = (400, 400)) -
             img = img.convert("RGB")
         img.thumbnail(size, Image.LANCZOS)
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=75, optimize=True)
+        img.save(buf, format="JPEG", quality=82, optimize=True)
         return buf.getvalue()
     except Exception as exc:
         logger.warning("Thumbnail generation failed: %s", exc)

@@ -5,10 +5,12 @@
  */
 export function pickMealForClass(list: any[] | null | undefined, classId?: string | null): any | null {
   if (!Array.isArray(list) || list.length === 0) return null;
-  return (
-    (classId && list.find(m => m?.class_id === classId)) ||
-    list.find(m => !m?.class_id) ||
-    list[0] ||
-    null
-  );
+  const universal = list.find(m => !m?.class_id) || null;
+  if (classId) {
+    // Menu della classe del bambino → altrimenti universale di sede. MAI quello di
+    // un'altra classe: senza questo guard un genitore poteva vedere il menu sbagliato.
+    return list.find(m => m?.class_id === classId) || universal;
+  }
+  // Classe non nota → solo universale di sede, non indoviniamo una classe a caso.
+  return universal;
 }
